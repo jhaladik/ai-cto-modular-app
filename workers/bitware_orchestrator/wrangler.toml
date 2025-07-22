@@ -15,8 +15,8 @@ database_id = "a9c2f79e-682c-4faf-bf8a-d2f2800b97e5" # Set during deployment
 # KV Storage binding for pipeline caching and optimization
 [[kv_namespaces]]
 binding = "PIPELINE_CACHE"
-id = "7a3b5d2f9e8c4a1b6d3f2e9c8a5b4d2f"          # Set during deployment
-preview_id = "9e8c4a1b6d3f2e9c8a5b4d2f7a3b5d2f"    # For staging
+id = "192f5800664048949d39a0acc3a0afa4"          # Set during deployment
+preview_id = "b15317a13f6c40b5ac323d15af2f5dd5"    # For staging
 
 # R2 Storage (optional - for storing large pipeline results)
 # [[r2_buckets]]
@@ -84,59 +84,6 @@ ENABLE_DEBUG_LOGGING = false
 ENABLE_PERFORMANCE_PROFILING = true
 LOG_WORKER_REQUESTS = false
 LOG_PIPELINE_DETAILS = true
-
-# Multi-Environment Configuration
-
-[env.development]
-name = "bitware-orchestrator-dev"
-vars = { 
-  DEFAULT_BUDGET_LIMIT_USD = "0.50",
-  MAX_PIPELINE_TIME_SECONDS = "120",
-  MAX_CONCURRENT_PIPELINES = "3",
-  ENABLE_DEBUG_LOGGING = "true",
-  # Development Worker URLs
-  TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher-dev.jhaladik.workers.dev",
-  RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder-dev.jhaladik.workers.dev",
-  FEED_FETCHER_URL = "https://bitware-feed-fetcher-dev.jhaladik.workers.dev",
-  CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier-dev.jhaladik.workers.dev",
-  REPORT_BUILDER_URL = "https://bitware-report-builder-dev.jhaladik.workers.dev"
-}
-
-[env.staging]
-name = "bitware-orchestrator-staging"
-vars = { 
-  DEFAULT_BUDGET_LIMIT_USD = "1.0",
-  MAX_PIPELINE_TIME_SECONDS = "180",
-  MAX_CONCURRENT_PIPELINES = "5",
-  # Staging Worker URLs
-  TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher-staging.jhaladik.workers.dev",
-  RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder-staging.jhaladik.workers.dev", 
-  FEED_FETCHER_URL = "https://bitware-feed-fetcher-staging.jhaladik.workers.dev",
-  CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier-staging.jhaladik.workers.dev",
-  REPORT_BUILDER_URL = "https://bitware-report-builder-staging.jhaladik.workers.dev"
-}
-
-[env.production]
-name = "bitware-orchestrator-prod"
-vars = { 
-  DEFAULT_BUDGET_LIMIT_USD = "2.0",
-  EMERGENCY_BUDGET_LIMIT_USD = "10.0",
-  MAX_PIPELINE_TIME_SECONDS = "300",
-  MAX_CONCURRENT_PIPELINES = "10",
-  MAX_DAILY_PIPELINES = "1000",
-  ENABLE_DEBUG_LOGGING = "false"
-}
-
-[env.enterprise]
-name = "bitware-orchestrator-enterprise"
-vars = { 
-  DEFAULT_BUDGET_LIMIT_USD = "5.0",
-  EMERGENCY_BUDGET_LIMIT_USD = "25.0",
-  MAX_PIPELINE_TIME_SECONDS = "600",
-  MAX_CONCURRENT_PIPELINES = "25",
-  MAX_DAILY_PIPELINES = "5000",
-  MAX_HOURLY_COST_USD = "200.0"
-}
 
 # Secrets that need to be set via wrangler secret put:
 # wrangler secret put WORKER_SHARED_SECRET  

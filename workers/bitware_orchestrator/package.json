@@ -1,0 +1,147 @@
+{
+    "name": "bitware-orchestrator",
+    "version": "1.0.0",
+    "description": "AI Factory Pipeline Orchestrator - Unified endpoint for end-to-end intelligence report generation",
+    "main": "index.ts",
+    "type": "module",
+    "scripts": {
+      "dev": "wrangler dev --env development",
+      "deploy": "wrangler deploy",
+      "deploy:dev": "wrangler deploy --env development",
+      "deploy:staging": "wrangler deploy --env staging",
+      "deploy:prod": "wrangler deploy --env production",
+      "test": "chmod +x test.sh && ./test.sh",
+      "lint": "eslint index.ts --ext .ts",
+      "format": "prettier --write index.ts README.md",
+      "validate": "npm run lint && npm run format && npm run test",
+      "logs": "wrangler tail",
+      "logs:prod": "wrangler tail --env production",
+      "health": "curl -X GET \"$WORKER_URL/health\"",
+      "pipeline:test": "curl -X POST \"$WORKER_URL/generate\" -H \"X-API-Key: $CLIENT_API_KEY\" -H \"Content-Type: application/json\" -d '{\"topic\": \"artificial intelligence\"}'"
+    },
+    "keywords": [
+      "ai-orchestration",
+      "workflow-engine",
+      "intelligence-pipeline",
+      "cloudflare-workers",
+      "bitware",
+      "gpt-4o-mini",
+      "end-to-end-reports",
+      "rss-intelligence",
+      "ai-factory"
+    ],
+    "author": "AI Factory Team",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/your-org/ai-factory-pipeline.git",
+      "directory": "workers/bitware_orchestrator"
+    },
+    "bugs": {
+      "url": "https://github.com/your-org/ai-factory-pipeline/issues"
+    },
+    "homepage": "https://github.com/your-org/ai-factory-pipeline/tree/main/workers/bitware_orchestrator",
+    "dependencies": {
+      "@cloudflare/workers-types": "^4.20240725.0"
+    },
+    "devDependencies": {
+      "typescript": "^5.5.3",
+      "esbuild": "^0.23.0",
+      "wrangler": "^3.65.1",
+      "@types/node": "^20.14.11",
+      "eslint": "^8.57.0",
+      "@typescript-eslint/eslint-plugin": "^6.21.0",
+      "@typescript-eslint/parser": "^6.21.0",
+      "prettier": "^3.3.2"
+    },
+    "engines": {
+      "node": ">=18.0.0",
+      "npm": ">=9.0.0"
+    },
+    "bitware": {
+      "worker_type": "PipelineOrchestrator",
+      "role": "Coordinate all pipeline workers for unified report generation",
+      "pipeline_position": "Orchestrator",
+      "depends_on": [
+        "bitware_topic_researcher",
+        "bitware_rss_librarian",
+        "bitware_feed_fetcher",
+        "bitware_content_classifier",
+        "bitware_report_builder"
+      ],
+      "provides_to": [
+        "external_clients",
+        "dashboard_api",
+        "scheduled_jobs"
+      ],
+      "external_apis": [
+        "openai"
+      ],
+      "cost_per_request": "0.10-0.30 USD",
+      "performance": {
+        "full_pipeline": "90-200 seconds",
+        "cached_request": "< 10 seconds"
+      }
+    },
+    "ai_factory": {
+      "pipeline_stage": "orchestration",
+      "input_source": "client_topic_request",
+      "output_destination": "report_builder.generate",
+      "quality_metrics": {
+        "orchestration_success_rate": "> 0.95",
+        "pipeline_completion_time": "< 180s",
+        "report_quality": "> 0.9"
+      },
+      "integration_endpoints": {
+        "health_check": "/health",
+        "generate_report": "/generate",
+        "pipeline_status": "/admin/pipeline-status"
+      },
+      "report_capabilities": {
+        "end_to_end_generation": "From topic to intelligence in one API call",
+        "job_tracking": "Track and monitor pipeline execution stages"
+      },
+      "output_formats": [
+        "json",
+        "html",
+        "email"
+      ]
+    },
+    "monitoring": {
+      "key_metrics": [
+        "orchestration_jobs.completed",
+        "pipeline_errors",
+        "avg_pipeline_time",
+        "report_delivery_success",
+        "pipeline_cost"
+      ],
+      "alerting": {
+        "error_rate_threshold": 10,
+        "pipeline_timeout_threshold": 200000,
+        "daily_cost_threshold": 300.0
+      }
+    },
+    "integration_notes": {
+      "authentication": "X-API-Key for clients, Bearer token for inter-worker calls",
+      "caching": "Pre-generated reports cached via KV in downstream worker",
+      "fallbacks": "Partial report from most advanced available stage if failure occurs",
+      "cost_control": "Monitored budget alerts and intelligent fallback routing"
+    },
+    "ai_capabilities": {
+      "models_used": [
+        "gpt-4o-mini"
+      ],
+      "intelligence_features": [
+        "Multi-worker orchestration",
+        "AI-powered full pipeline execution",
+        "Cost tracking and fallback strategy",
+        "Dynamic worker resolution"
+      ],
+      "optimization": [
+        "Concurrent stage invocation",
+        "Result caching between stages",
+        "Retry logic and graceful degradation"
+      ]
+    }
+  }
+  
