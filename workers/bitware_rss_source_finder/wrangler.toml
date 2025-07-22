@@ -1,0 +1,30 @@
+# workers/bitware_rss_source_finder/wrangler.toml
+
+name = "bitware-rss-source-finder"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+# KV Namespace for caching RSS sources
+[[kv_namespaces]]
+binding = "RSS_SOURCE_CACHE"
+id = "ce56b0331a474852a30e6a8abac4e6a9"  # Replace with actual KV namespace ID
+preview_id = "75d3a968eb1141b68d90b4e1f3f5642b"  # Replace with preview namespace ID
+
+# D1 Database for RSS sources
+[[d1_databases]]
+binding = "RSS_SOURCES_DB"
+database_name = "rss-sources-db"
+database_id = "e1432d6e-2bf0-4322-a10d-dac7e2b37529"  # Replace with actual D1 database ID
+
+# Environment variables
+[vars]
+WORKER_NAME = "bitware_rss_source_finder"
+VERSION = "1.0.0"
+MAX_FEEDS_DEFAULT = "20"
+
+# Authentication configuration
+WORKER_SHARED_SECRET = "bitware-internal-auth-2024"  # Shared among all Bitware workers
+CLIENT_API_KEY = "bitware-client-api-2024"           # For external client access
+
+# External service keys (add as needed)
+# RSS_HUB_API_KEY = "your-rss-service-key"          # Uncomment if using external RSS APIs

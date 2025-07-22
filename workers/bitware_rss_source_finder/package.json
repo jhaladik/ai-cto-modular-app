@@ -1,0 +1,33 @@
+{
+  "name": "bitware-rss-source-finder",
+  "version": "2.0.0",
+  "description": "Database-driven RSS source discovery worker with quality scoring",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "./test.sh",
+    "db:create": "wrangler d1 create RSS_SOURCES_DB",
+    "db:init": "wrangler d1 execute RSS_SOURCES_DB --file=schema.sql",
+    "db:seed": "wrangler d1 execute RSS_SOURCES_DB --file=seed.sql",
+    "db:reset": "npm run db:init && npm run db:seed",
+    "kv:create": "wrangler kv:namespace create RSS_SOURCE_CACHE"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240000.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.0.0"
+  },
+  "keywords": ["rss", "ai", "cloudflare", "worker", "bitware", "database", "d1"],
+  "author": "AI CTO System",
+  "license": "MIT",
+  "bitware": {
+    "type": "SourceDiscoveryWorker",
+    "role": "Database-driven RSS feed discovery",
+    "inputs": ["topic", "maxFeeds", "minQualityScore", "language"], 
+    "outputs": ["feeds", "stats", "cached"],
+    "storage": ["D1", "KV"],
+    "version": "2.0.0"
+  }
+}

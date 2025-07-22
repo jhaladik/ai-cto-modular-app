@@ -1,0 +1,39 @@
+{
+  "name": "bitware-topic-researcher",
+  "version": "1.0.0",
+  "description": "AI-powered RSS source discovery worker using web search and LLM validation",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "deploy-dev": "wrangler deploy --env development",
+    "deploy-prod": "wrangler deploy --env production",
+    "build": "echo 'No build step required'",
+    "test": "./test.sh",
+    "db:init": "wrangler d1 execute topic-research-db --file=schema.sql",
+    "db:migrate": "wrangler d1 execute topic-research-db --file=add_reasoning_column.sql --remote",
+    "db:seed": "wrangler d1 execute topic-research-db --file=seed.sql",
+    "logs": "wrangler tail",
+    "secret:openai": "wrangler secret put OPENAI_API_KEY"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240403.0",
+    "typescript": "^5.0.4",
+    "wrangler": "^3.34.2"
+  },
+  "dependencies": {},
+  "keywords": [
+    "cloudflare-workers",
+    "rss",
+    "ai",
+    "content-discovery",
+    "web-search",
+    "bitware-oboe"
+  ],
+  "author": "AI Factory Development",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/ai-factory"
+  }
+}

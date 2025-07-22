@@ -1,0 +1,15 @@
+name = "bitware-topic-researcher"
+main = "index.ts"
+compatibility_date = "2024-03-08"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "TOPIC_RESEARCH_DB"
+database_name = "topic-research-db"
+database_id = "cfe96e96-0c70-4918-9c7d-92d1b236e531" # Replace with actual D1 database ID
+
+# KV Namespace binding for caching
+[[kv_namespaces]]
+binding = "RESEARCH_CACHE"
+id = "9f36993b564143468c36ce9819301efe" # Replace with actual KV namespace ID
+preview_id = "your-kv-preview-id"
