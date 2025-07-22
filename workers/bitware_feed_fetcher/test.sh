@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Bitware Topic Researcher - Enhanced Test Suite with API Debugging
-# Includes detailed debugging for API issues
+# Bitware Feed Fetcher - Comprehensive Test Suite
+# Tests RSS parsing, article extraction, and batch processing
 
 # Remove set -e to continue testing even if individual tests fail
 # set -e
 
 # Configuration
-WORKER_URL="https://bitware-topic-researcher.jhaladik.workers.dev"
+WORKER_URL="https://bitware-feed-fetcher.jhaladik.workers.dev"
 CLIENT_API_KEY="external-client-api-key-2024"
 WORKER_SECRET="internal-worker-auth-token-2024"
-WORKER_ID="bitware_topic_researcher"
+WORKER_ID="bitware_feed_fetcher"
 
-echo "🔍 Bitware Topic Researcher - Enhanced Test Suite Starting..."
+echo "📡 Bitware Feed Fetcher - Comprehensive Test Suite Starting..."
 echo "Worker URL: $WORKER_URL"
 echo ""
 
@@ -27,6 +27,14 @@ NC='\033[0m' # No Color
 # Test counter
 TESTS_PASSED=0
 TESTS_FAILED=0
+
+# Test RSS feeds for various scenarios
+TEST_FEEDS=(
+  "https://feeds.reuters.com/reuters/technologyNews"
+  "https://feeds.bbci.co.uk/news/technology/rss.xml"
+  "https://rss.cnn.com/rss/cnn_tech.rss"
+  "https://www.techcrunch.com/feed/"
+)
 
 # Helper function to run tests
 run_test() {
@@ -138,7 +146,7 @@ run_detailed_test() {
   echo ""
 }
 
-echo "=== Phase 0: Pre-flight Debug Check ==="
+echo "=== Phase 0: Pre-flight Check ==="
 
 # Check if worker is accessible
 echo -n "Worker accessibility check... "
@@ -150,25 +158,20 @@ else
   exit 1
 fi
 
-# Debug endpoint to check environment variables
-run_detailed_test "Environment Variables Debug" \
-  "curl -s -w '\n%{http_code}' '$WORKER_URL/debug'" \
-  "200" \
-  "true"
-
+echo ""
 echo "=== Phase 1: Public Endpoints (No Auth) ==="
 
 # Test help endpoint
 run_test "Help endpoint" \
   "curl -s -w '\n%{http_code}' '$WORKER_URL/help'" \
   "200" \
-  "bitware_topic_researcher"
+  "bitware_feed_fetcher"
 
 # Test capabilities endpoint  
 run_test "Capabilities endpoint" \
   "curl -s -w '\n%{http_code}' '$WORKER_URL/capabilities'" \
   "200" \
-  "ContentDiscoverer"
+  "ContentExtractor"
 
 # Test CORS preflight
 run_test "CORS preflight" \
@@ -180,47 +183,33 @@ echo "=== Phase 2: Authentication Tests ==="
 
 # Test missing API key
 run_test "Missing API key" \
-  "curl -s -w '\n%{http_code}' '$WORKER_URL/?topic=ai'" \
+  "curl -s -w '\n%{http_code}' '$WORKER_URL/?feed_url=https://example.com/feed'" \
   "401" \
   "API key required"
 
 # Test invalid API key
 run_test "Invalid API key" \
-  "curl -s -w '\n%{http_code}' -H 'X-API-Key: invalid' '$WORKER_URL/?topic=ai'" \
+  "curl -s -w '\n%{http_code}' -H 'X-API-Key: invalid' '$WORKER_URL/?feed_url=https://example.com/feed'" \
   "401" \
   "API key required"
 
-# Test correct API key format
-run_detailed_test "Correct API Key Format Check" \
-  "curl -s -w '\n%{http_code}' -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?topic=test'" \
-  "200" \
-  "false"
-
 echo ""
-echo "=== Phase 3: API Integration Tests ==="
+echo "=== Phase 3: Single Feed Processing Tests ==="
 
-# Test missing topic parameter
-run_test "Missing topic parameter" \
+# Test missing feed_url parameter
+run_test "Missing feed_url parameter" \
   "curl -s -w '\n%{http_code}' -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/'" \
   "400" \
-  "Missing required parameter: topic"
+  "Missing required parameter: feed_url"
 
-# Detailed API test with small topic to check OpenAI integration
-echo ""
-run_detailed_test "AI Integration Test (Simple Topic)" \
-  "curl -s -w '\n%{http_code}' -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?topic=technology&depth=1&min_quality=0.5'" \
-  "200" \
-  "true"
-
-# Test various topics with shorter timeouts
-topics=("ai" "science" "news" "tech")
-
-for topic in "${topics[@]}"; do
-  echo -n "Testing: Basic research ($topic)... "
+# Test single feed processing with real RSS feeds
+for feed_url in "${TEST_FEEDS[@]}"; do
+  echo ""
+  echo -n "Testing: Single feed processing ($feed_url)... "
   start_time=$(date +%s%3N)
   
   temp_file=$(mktemp)
-  if curl -s -w '\n%{http_code}' --max-time 60 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?topic=$topic&depth=1&min_quality=0.5" > "$temp_file" 2>/dev/null; then
+  if curl -s -w '\n%{http_code}' --max-time 30 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?feed_url=${feed_url}&max_articles=5" > "$temp_file" 2>/dev/null; then
     status_code=$(tail -n1 "$temp_file")
     body=$(head -n -1 "$temp_file")
     curl_success=true
@@ -239,11 +228,11 @@ for topic in "${topics[@]}"; do
     ((TESTS_FAILED++))
   elif [[ "$status_code" == "200" ]]; then
     if echo "$body" | grep -q '"status"'; then
-      sources_count=$(echo "$body" | grep -o '"sources_discovered":[0-9]*' | cut -d':' -f2 || echo "0")
-      quality_count=$(echo "$body" | grep -o '"quality_sources":[0-9]*' | cut -d':' -f2 || echo "0")
+      articles_count=$(echo "$body" | grep -o '"articles_found":[0-9]*' | cut -d':' -f2 || echo "0")
+      stored_count=$(echo "$body" | grep -o '"articles_stored":[0-9]*' | cut -d':' -f2 || echo "0")
       
       echo -e "${GREEN}✓ PASS${NC} (${duration}ms)"
-      echo "    Sources discovered: $sources_count, Quality sources: $quality_count"
+      echo "    Articles found: $articles_count, Stored: $stored_count"
       ((TESTS_PASSED++))
     else
       echo -e "${YELLOW}⚠ PARTIAL${NC} - Response received but unexpected format"
@@ -251,7 +240,7 @@ for topic in "${topics[@]}"; do
       ((TESTS_PASSED++))
     fi
   elif [[ "$status_code" == "500" ]]; then
-    echo -e "${RED}✗ FAIL${NC} - Internal Server Error (likely OpenAI API issue)"
+    echo -e "${RED}✗ FAIL${NC} - Internal Server Error (likely RSS parsing issue)"
     echo "    Response: $(echo "$body" | head -c 200)..."
     ((TESTS_FAILED++))
   else
@@ -262,23 +251,93 @@ for topic in "${topics[@]}"; do
 done
 
 # Test parameter variations
-run_test "High quality threshold" \
-  "curl -s -w '\n%{http_code}' --max-time 60 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?topic=technology&min_quality=0.9'" \
-  "200"
-
-# Test exclude domains
-run_test "Exclude domains" \
-  "curl -s -w '\n%{http_code}' --max-time 60 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?topic=news&exclude_domains=reddit.com,twitter.com'" \
+run_test "Max articles limit" \
+  "curl -s -w '\n%{http_code}' --max-time 30 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?feed_url=${TEST_FEEDS[0]}&max_articles=3'" \
   "200"
 
 echo ""
-echo "=== Phase 4: Caching Tests ==="
+echo "=== Phase 4: Batch Processing Tests ==="
 
-# Test caching (second request should be faster)
+# Test batch processing with multiple feeds
+echo -n "Testing: Batch processing... "
+start_time=$(date +%s%3N)
+
+batch_payload=$(cat <<EOF
+{
+  "feed_urls": [
+    "${TEST_FEEDS[0]}",
+    "${TEST_FEEDS[1]}"
+  ],
+  "max_articles_per_feed": 5
+}
+EOF
+)
+
+temp_file=$(mktemp)
+if curl -s -w '\n%{http_code}' --max-time 45 -H "X-API-Key: $CLIENT_API_KEY" -H "Content-Type: application/json" -d "$batch_payload" "$WORKER_URL/batch" > "$temp_file" 2>/dev/null; then
+  status_code=$(tail -n1 "$temp_file")
+  body=$(head -n -1 "$temp_file")
+  curl_success=true
+else
+  status_code="000"  
+  body="CURL_ERROR"
+  curl_success=false
+fi
+
+end_time=$(date +%s%3N)
+duration=$((end_time - start_time))
+rm -f "$temp_file"
+
+if [[ "$curl_success" == "false" ]]; then
+  echo -e "${RED}✗ FAIL${NC} - Curl failed"
+  ((TESTS_FAILED++))
+elif [[ "$status_code" == "200" ]]; then
+  if echo "$body" | grep -q '"feeds_processed"'; then
+    feeds_processed=$(echo "$body" | grep -o '"feeds_processed":[0-9]*' | cut -d':' -f2 || echo "0")
+    feeds_successful=$(echo "$body" | grep -o '"feeds_successful":[0-9]*' | cut -d':' -f2 || echo "0")
+    total_articles=$(echo "$body" | grep -o '"total_articles":[0-9]*' | cut -d':' -f2 || echo "0")
+    
+    echo -e "${GREEN}✓ PASS${NC} (${duration}ms)"
+    echo "    Feeds processed: $feeds_processed, Successful: $feeds_successful, Articles: $total_articles"
+    ((TESTS_PASSED++))
+  else
+    echo -e "${YELLOW}⚠ PARTIAL${NC} - Response received but unexpected format"
+    ((TESTS_PASSED++))
+  fi
+else
+  echo -e "${RED}✗ FAIL${NC} - Status: $status_code"
+  echo "    Response: $(echo "$body" | head -c 200)..."
+  ((TESTS_FAILED++))
+fi
+
+# Test empty batch
+run_test "Empty batch request" \
+  "curl -s -w '\n%{http_code}' --max-time 10 -H 'X-API-Key: $CLIENT_API_KEY' -H 'Content-Type: application/json' -d '{\"feed_urls\": []}' '$WORKER_URL/batch'" \
+  "400" \
+  "empty feed_urls array"
+
+# Test oversized batch
+large_batch_payload="{\"feed_urls\": ["
+for i in {1..25}; do
+  large_batch_payload="${large_batch_payload}\"https://example${i}.com/feed\""
+  if [ $i -lt 25 ]; then large_batch_payload="${large_batch_payload},"; fi
+done
+large_batch_payload="${large_batch_payload}]}"
+
+run_test "Oversized batch (25 feeds)" \
+  "curl -s -w '\n%{http_code}' --max-time 10 -H 'X-API-Key: $CLIENT_API_KEY' -H 'Content-Type: application/json' -d '$large_batch_payload' '$WORKER_URL/batch'" \
+  "400" \
+  "Maximum 20 feeds"
+
+echo ""
+echo "=== Phase 5: Caching Tests ==="
+
+# Test caching with same feed URL
+test_feed=${TEST_FEEDS[0]}
 echo -n "Testing: Caching (first request)... "
 start_time=$(date +%s%3N)
 temp_file=$(mktemp)
-curl -s --max-time 60 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?topic=caching_test&depth=1" > "$temp_file" 2>/dev/null
+curl -s --max-time 30 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?feed_url=$test_feed&max_articles=3" > "$temp_file" 2>/dev/null
 end_time=$(date +%s%3N)
 first_duration=$((end_time - start_time))
 rm -f "$temp_file"
@@ -289,7 +348,7 @@ sleep 2  # Small delay
 echo -n "Testing: Caching (second request)... "
 start_time=$(date +%s%3N)
 temp_file=$(mktemp)
-if curl -s -w '\n%{http_code}' --max-time 30 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?topic=caching_test&depth=1" > "$temp_file" 2>/dev/null; then
+if curl -s -w '\n%{http_code}' --max-time 15 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?feed_url=$test_feed&max_articles=3" > "$temp_file" 2>/dev/null; then
   end_time=$(date +%s%3N)
   second_duration=$((end_time - start_time))
   body=$(head -n -1 "$temp_file")
@@ -308,7 +367,7 @@ fi
 rm -f "$temp_file"
 
 echo ""
-echo "=== Phase 5: Admin Endpoints (Worker Auth) ==="
+echo "=== Phase 6: Admin Endpoints (Worker Auth) ==="
 
 # Test admin without auth
 run_test "Admin stats (no auth)" \
@@ -320,31 +379,31 @@ run_test "Admin stats (no auth)" \
 run_test "Admin stats (with auth)" \
   "curl -s -w '\n%{http_code}' -H 'Authorization: Bearer $WORKER_SECRET' -H 'X-Worker-ID: $WORKER_ID' '$WORKER_URL/admin/stats'" \
   "200" \
-  "total_sessions"
+  "total_jobs"
 
-# Test recent sessions
-run_test "Recent sessions" \
-  "curl -s -w '\n%{http_code}' -H 'Authorization: Bearer $WORKER_SECRET' -H 'X-Worker-ID: $WORKER_ID' '$WORKER_URL/admin/sessions'" \
+# Test recent jobs
+run_test "Recent jobs" \
+  "curl -s -w '\n%{http_code}' -H 'Authorization: Bearer $WORKER_SECRET' -H 'X-Worker-ID: $WORKER_ID' '$WORKER_URL/admin/jobs'" \
   "200" \
-  "sessions"
+  "jobs"
 
 echo ""
-echo "=== Phase 6: Edge Cases ==="
+echo "=== Phase 7: Edge Cases ==="
 
-# Test very long topic
-run_test "Long topic name" \
-  "curl -s -w '\n%{http_code}' --max-time 60 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?topic=very%20long%20topic%20name%20that%20might%20cause%20issues%20with%20processing'" \
-  "200"
+# Test invalid feed URL
+run_test "Invalid feed URL" \
+  "curl -s -w '\n%{http_code}' --max-time 20 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?feed_url=https://example.com/invalid-feed'" \
+  "500"
 
-# Test special characters
-run_test "Special characters" \
-  "curl -s -w '\n%{http_code}' --max-time 60 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?topic=AI%20%26%20ML%20%28machine%20learning%29'" \
-  "200"
+# Test malformed JSON in batch
+run_test "Malformed JSON batch" \
+  "curl -s -w '\n%{http_code}' --max-time 10 -H 'X-API-Key: $CLIENT_API_KEY' -H 'Content-Type: application/json' -d '{invalid json}' '$WORKER_URL/batch'" \
+  "500"
 
-# Test invalid depth
-run_test "Invalid depth parameter" \
-  "curl -s -w '\n%{http_code}' --max-time 60 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?topic=test&depth=invalid'" \
-  "200" # Should default to 3
+# Test very long feed URL
+run_test "Very long feed URL" \
+  "curl -s -w '\n%{http_code}' --max-time 20 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?feed_url=https://example.com/very/long/path/that/might/cause/issues/with/processing/feed.xml'" \
+  "500" # Expected to fail gracefully
 
 # Test 404
 run_test "Non-existent endpoint" \
@@ -352,61 +411,45 @@ run_test "Non-existent endpoint" \
   "404"
 
 echo ""
-echo "=== API Error Analysis ==="
+echo "=== Phase 8: RSS Processing Quality Tests ==="
 
-# Test to identify specific API issues
-echo -n "API Error Analysis (detailed)... "
-start_time=$(date +%s%3N)
-temp_file=$(mktemp)
-temp_headers=$(mktemp)
-
-if curl -s -w '\n%{http_code}' -D "$temp_headers" --max-time 60 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?topic=api_test&depth=1" > "$temp_file" 2>/dev/null; then
-  end_time=$(date +%s%3N)
-  duration=$((end_time - start_time))
-  status_code=$(tail -n1 "$temp_file")
-  body=$(head -n -1 "$temp_file")
-  headers=$(cat "$temp_headers")
-  
-  echo -e "${BLUE}${duration}ms${NC}"
-  echo "Status: $status_code"
-  
-  if [[ "$status_code" == "500" ]]; then
-    echo -e "${RED}Internal Server Error Details:${NC}"
-    echo "$body" | head -5
-  elif [[ "$status_code" == "200" ]]; then
-    echo -e "${GREEN}API Working Successfully${NC}"
-    if echo "$body" | grep -q '"sources"'; then
-      echo "Sources field found in response"
-    fi
-    if echo "$body" | grep -q '"error"'; then
-      echo "Error field found: $(echo "$body" | grep -o '"error":"[^"]*"')"
-    fi
-  fi
-else
-  echo -e "${RED}✗ CURL FAILED${NC} - Network or timeout issue"
-fi
-
-rm -f "$temp_file" "$temp_headers"
+# Detailed test of RSS content extraction
+run_detailed_test "RSS Content Quality Check" \
+  "curl -s -w '\n%{http_code}' --max-time 30 -H 'X-API-Key: $CLIENT_API_KEY' '$WORKER_URL/?feed_url=${TEST_FEEDS[0]}&max_articles=2'" \
+  "200" \
+  "false"
 
 echo ""
 echo "=== Performance Summary ==="
 
 # Final performance test
-echo -n "Final performance test... "
+echo -n "Final performance test (batch)... "
 start_time=$(date +%s%3N)
+
+final_batch_payload=$(cat <<EOF
+{
+  "feed_urls": [
+    "${TEST_FEEDS[0]}",
+    "${TEST_FEEDS[1]}"
+  ],
+  "max_articles_per_feed": 3
+}
+EOF
+)
+
 temp_file=$(mktemp)
-if curl -s -w '\n%{http_code}' --max-time 60 -H "X-API-Key: $CLIENT_API_KEY" "$WORKER_URL/?topic=performance_final&depth=1" > "$temp_file" 2>/dev/null; then
+if curl -s -w '\n%{http_code}' --max-time 60 -H "X-API-Key: $CLIENT_API_KEY" -H "Content-Type: application/json" -d "$final_batch_payload" "$WORKER_URL/batch" > "$temp_file" 2>/dev/null; then
   end_time=$(date +%s%3N)
   duration=$((end_time - start_time))
   status_code=$(tail -n1 "$temp_file")
   
   if [[ "$status_code" == "200" ]]; then
-    if [[ $duration -lt 30000 ]]; then
-      echo -e "${GREEN}✓ EXCELLENT${NC} (${duration}ms < 30s)"
-    elif [[ $duration -lt 60000 ]]; then
-      echo -e "${YELLOW}⚠ ACCEPTABLE${NC} (${duration}ms < 60s)"
+    if [[ $duration -lt 15000 ]]; then
+      echo -e "${GREEN}✓ EXCELLENT${NC} (${duration}ms < 15s)"
+    elif [[ $duration -lt 30000 ]]; then
+      echo -e "${YELLOW}⚠ ACCEPTABLE${NC} (${duration}ms < 30s)"
     else
-      echo -e "${RED}✗ SLOW${NC} (${duration}ms > 60s)"
+      echo -e "${RED}✗ SLOW${NC} (${duration}ms > 30s)"
     fi
   else
     echo -e "${RED}✗ FAILED${NC} - Status: $status_code"
@@ -422,22 +465,24 @@ echo -e "Tests Passed: ${GREEN}$TESTS_PASSED${NC}"
 echo -e "Tests Failed: ${RED}$TESTS_FAILED${NC}"
 
 if [ $TESTS_FAILED -eq 0 ]; then
-  echo -e "${GREEN}🎉 All tests passed! Worker is ready for production.${NC}"
+  echo -e "${GREEN}🎉 All tests passed! Feed Fetcher is ready for production.${NC}"
   exit 0
 elif [ $TESTS_FAILED -lt 5 ]; then
   echo -e "${YELLOW}⚠ Some tests failed, but worker appears mostly functional.${NC}"
   echo -e "${PURPLE}Common issues to check:${NC}"
-  echo "1. OpenAI API key is correctly set in Cloudflare Workers"
-  echo "2. Environment variables match wrangler.toml configuration"
+  echo "1. RSS feed URLs may be temporarily unavailable"
+  echo "2. Network timeouts during processing"
   echo "3. D1 database is properly created and accessible"
   echo "4. KV namespace is correctly bound"
+  echo "5. Authentication credentials match environment variables"
   exit 0
 else
   echo -e "${RED}❌ Multiple tests failed. Please review and fix issues.${NC}"
   echo -e "${PURPLE}Debugging steps:${NC}"
-  echo "1. Check /debug endpoint output above for environment variables"
-  echo "2. Verify OpenAI API key format and permissions"
-  echo "3. Check Cloudflare Workers dashboard for error logs"
-  echo "4. Ensure D1 database schema is properly initialized"
+  echo "1. Check Cloudflare Workers dashboard for error logs"
+  echo "2. Verify D1 database schema is properly initialized"
+  echo "3. Test individual RSS feed URLs manually"
+  echo "4. Ensure proper network connectivity to test RSS feeds"
+  echo "5. Check authentication environment variables"
   exit 1
 fi

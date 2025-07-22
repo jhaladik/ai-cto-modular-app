@@ -1,0 +1,15 @@
+name = "bitware-feed-fetcher"
+main = "index.ts"
+compatibility_date = "2024-03-08"
+
+# D1 Database binding for article storage
+[[d1_databases]]
+binding = "FETCHED_ARTICLES_DB"
+database_name = "fetched-articles-db"
+database_id = "3dc8e03d-327a-4626-b50f-d611649a9582" # Replace with actual D1 database ID after creation
+
+# KV Namespace binding for feed caching
+[[kv_namespaces]]
+binding = "FEED_CACHE"
+id = "6680b20e04224f9faf087189ffc6a3d5" # Replace with actual KV namespace ID after creation
+preview_id = "77480062b0cb40cdb9d3445309413d92" # For development/preview

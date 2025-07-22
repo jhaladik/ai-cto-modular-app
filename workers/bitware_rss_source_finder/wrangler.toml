@@ -21,10 +21,3 @@ database_id = "e1432d6e-2bf0-4322-a10d-dac7e2b37529"  # Replace with actual D1 d
 WORKER_NAME = "bitware_rss_source_finder"
 VERSION = "1.0.0"
 MAX_FEEDS_DEFAULT = "20"
-
-# Authentication configuration
-WORKER_SHARED_SECRET = "bitware-internal-auth-2024"  # Shared among all Bitware workers
-CLIENT_API_KEY = "bitware-client-api-2024"           # For external client access
-
-# External service keys (add as needed)
-# RSS_HUB_API_KEY = "your-rss-service-key"          # Uncomment if using external RSS APIs

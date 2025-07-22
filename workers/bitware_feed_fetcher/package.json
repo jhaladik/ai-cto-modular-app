@@ -1,0 +1,48 @@
+{
+    "name": "bitware-feed-fetcher",
+    "version": "1.0.0",
+    "description": "RSS feed fetcher and article extractor worker for AI Factory pipeline",
+    "main": "index.ts",
+    "scripts": {
+      "dev": "wrangler dev --local",
+      "deploy": "wrangler deploy",
+      "deploy-dev": "wrangler deploy --env development",
+      "deploy-prod": "wrangler deploy --env production", 
+      "build": "echo 'No build step required'",
+      "test": "./test.sh",
+      "db:init": "wrangler d1 execute fetched-articles-db --file=schema.sql",
+      "db:migrate": "wrangler d1 execute fetched-articles-db --file=migration.sql --remote",
+      "db:fix": "wrangler d1 execute fetched-articles-db --file=migration.sql",
+      "db:reset": "wrangler d1 execute fetched-articles-db --command=\"DROP TABLE IF EXISTS rss_articles; DROP TABLE IF EXISTS fetch_jobs;\" && npm run db:init",
+      "logs": "wrangler tail",
+      "secret:worker": "wrangler secret put WORKER_SHARED_SECRET",
+      "secret:client": "wrangler secret put CLIENT_API_KEY",
+      "kv:create": "wrangler kv:namespace create FEED_CACHE",
+      "kv:create-preview": "wrangler kv:namespace create FEED_CACHE --preview",
+      "d1:create": "wrangler d1 create fetched-articles-db"
+    },
+    "devDependencies": {
+      "@cloudflare/workers-types": "^4.20240403.0",
+      "typescript": "^5.0.4",
+      "wrangler": "^3.34.2"
+    },
+    "dependencies": {},
+    "keywords": [
+      "cloudflare-workers",
+      "rss",
+      "feed-parser",
+      "content-extraction",
+      "article-processing",
+      "ai-factory",
+      "bitware-oboe"
+    ],
+    "author": "AI Factory Development",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/your-org/ai-factory"
+    },
+    "engines": {
+      "node": ">=18.0.0"
+    }
+  }
