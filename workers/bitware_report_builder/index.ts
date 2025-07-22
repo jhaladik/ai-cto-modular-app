@@ -222,6 +222,10 @@ interface Env {
   
     try {
       // Create report job
+      // Add this before jobResult = await env.REPORT_GENERATION_DB.prepare(...)
+      if (!['executive_summary', 'trend_analysis', 'technical_deep_dive', 'competitive_intelligence', 'daily_briefing'].includes(reportRequest.report_type)) {
+        return errorResponse('Invalid report_type', 400);
+        }
       jobResult = await env.REPORT_GENERATION_DB.prepare(
         `INSERT INTO report_jobs (report_type, topic_filters, time_range, output_format, status) 
          VALUES (?, ?, ?, ?, 'processing') RETURNING id`
