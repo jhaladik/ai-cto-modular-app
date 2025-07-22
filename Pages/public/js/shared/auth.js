@@ -65,6 +65,9 @@ class AuthClient {
     }
   
     async validateSession() {
+      // Always reload from localStorage first
+      this.sessionToken = localStorage.getItem('bitware-session-token');
+      
       if (!this.sessionToken) {
         return { valid: false, error: 'No session token' };
       }
@@ -111,11 +114,11 @@ class AuthClient {
       }
       return this.userInfo;
     }
-  
+    
     getSessionToken() {
-      return this.sessionToken;
+      return this.sessionToken || localStorage.getItem('bitware-session-token');
     }
-  }
-  
-  // Global auth instance
-  window.authClient = new AuthClient();  
+}
+
+// Global auth instance
+window.authClient = new AuthClient();

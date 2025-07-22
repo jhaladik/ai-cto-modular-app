@@ -127,7 +127,7 @@ class APIClient {
       for (const worker of workers) {
         try {
           await this.callWorker(worker, '/health');
-          healthResults[worker] = { status: 'online', error: null };
+          healthResults[worker] = { status: 'healthy', error: null };
         } catch (error) {
           healthResults[worker] = { status: 'offline', error: error.message };
         }

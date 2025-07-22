@@ -137,68 +137,65 @@ class Dashboard {
     }
   
     async checkWorkerHealth() {
-      try {
-        const healthResults = await this.apiClient.checkWorkerHealth();
-        
-        let onlineCount = 0;
-        const totalWorkers = Object.keys(healthResults).length;
-        
-        // Update individual worker status
-        for (const [workerName, health] of Object.entries(healthResults)) {
-          const statusId = `status-${workerName}`;
-          const status = health.status === 'online' ? 'online' : 'offline';
-          window.UI.updateStatusDot(statusId, status);
+        try {
+          const healthResults = await this.apiClient.checkWorkerHealth();
           
-          if (health.status === 'online') {
-            onlineCount++;
+          let onlineCount = 0;
+          const totalWorkers = Object.keys(healthResults).length;
+          
+          // Update individual worker status
+          for (const [workerName, health] of Object.entries(healthResults)) {
+            const statusId = `status-${workerName}`;
+            
+            // Fix: Check for both 'healthy' (backend) and 'online' (frontend)
+            const isOnline = health.status === 'online' || health.status === 'healthy';
+            const status = isOnline ? 'online' : 'offline';
+            
+            window.UI.updateStatusDot(statusId, status);
+            
+            if (isOnline) {
+              onlineCount++;
+            }
           }
-        }
-        
-        // Update overall system status
-        const activeWorkers = document.getElementById('active-workers');
-        if (activeWorkers) {
-          activeWorkers.textContent = `${onlineCount}/${totalWorkers}`;
-        }
-        
-        const pipelineHealth = document.getElementById('pipeline-health');
-        if (pipelineHealth) {
-          if (onlineCount === totalWorkers) {
-            pipelineHealth.textContent = 'All Systems Operational';
-            pipelineHealth.className = 'status-value status-healthy';
-          } else if (onlineCount > 0) {
-            pipelineHealth.textContent = 'Partial Service';
-            pipelineHealth.className = 'status-value status-warning';
-          } else {
-            pipelineHealth.textContent = 'System Offline';
+          
+          // Update overall system status
+          const activeWorkers = document.getElementById('active-workers');
+          if (activeWorkers) {
+            activeWorkers.textContent = `${onlineCount}/${totalWorkers}`;
+          }
+          
+          const pipelineHealth = document.getElementById('pipeline-health');
+          if (pipelineHealth) {
+            if (onlineCount === totalWorkers) {
+              pipelineHealth.textContent = 'All Systems Operational';
+              pipelineHealth.className = 'status-value status-healthy';
+            } else if (onlineCount > 0) {
+              pipelineHealth.textContent = 'Partial Service';
+              pipelineHealth.className = 'status-value status-warning';
+            } else {
+              pipelineHealth.textContent = 'System Offline';
+              pipelineHealth.className = 'status-value status-error';
+            }
+          }
+          
+        } catch (error) {
+          console.error('Health check failed:', error);
+          
+          // Show all workers as offline on error
+          const workers = ['orchestrator', 'topic-researcher', 'rss-librarian', 'feed-fetcher', 'content-classifier', 'report-builder'];
+          workers.forEach(worker => {
+            const statusId = `status-${worker}`;
+            window.UI.updateStatusDot(statusId, 'offline');
+          });
+          
+          const pipelineHealth = document.getElementById('pipeline-health');
+          if (pipelineHealth) {
+            pipelineHealth.textContent = 'Health Check Failed';
             pipelineHealth.className = 'status-value status-error';
           }
         }
-        
-      } catch (error) {
-        console.error('Health check failed:', error);
-        
-        // Show all workers as offline on error
-        const workers = ['orchestrator', 'topic-researcher', 'rss-librarian', 'feed-fetcher', 'content-classifier', 'report-builder'];
-        workers.forEach(worker => {
-          const statusId = `status-${worker}`;
-          window.UI.updateStatusDot(statusId, 'offline');
-        });
-        
-        const pipelineHealth = document.getElementById('pipeline-health');
-        if (pipelineHealth) {
-          pipelineHealth.textContent = 'Health Check Failed';
-          pipelineHealth.className = 'status-value status-error';
-        }
       }
-    }
-  
-    updateSystemStatus() {
-      const lastUpdated = document.getElementById('last-updated');
-      if (lastUpdated) {
-        lastUpdated.textContent = window.UI.formatTimestamp(Date.now());
-      }
-    }
-  
+      
     openWorkerInterface(workerName) {
       // For Phase 1, we'll just show an alert
       // In Phase 2, these will navigate to individual worker pages

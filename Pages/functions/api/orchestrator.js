@@ -36,9 +36,9 @@ export async function onRequest(context) {
       method: request.method,
       headers: {
         'X-API-Key': env.CLIENT_API_KEY,
+        'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
         'X-Worker-ID': 'ai_factory_frontend',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`
+        'Content-Type': 'application/json'
       },
       body: body
     });

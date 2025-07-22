@@ -30,9 +30,10 @@ export async function onRequest(context) {
       headers: {
         'X-API-Key': env.CLIENT_API_KEY,
         'X-Worker-ID': 'ai_factory_frontend',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`  // ← Add this line
       },
-      body: body
+           body: body
     });
     
     const data = await response.text();
