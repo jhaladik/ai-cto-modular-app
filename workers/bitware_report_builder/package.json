@@ -1,0 +1,255 @@
+{
+    "name": "bitware-report-builder",
+    "version": "1.0.0",
+    "description": "AI-powered intelligence report generator - final worker in AI Factory RSS pipeline",
+    "main": "index.ts",
+    "type": "module",
+    "scripts": {
+      "dev": "wrangler dev --env development",
+      "deploy": "wrangler deploy",
+      "deploy:dev": "wrangler deploy --env development",
+      "deploy:staging": "wrangler deploy --env staging", 
+      "deploy:prod": "wrangler deploy --env production",
+      "deploy:enterprise": "wrangler deploy --env enterprise",
+      "build": "tsc && esbuild index.js --bundle --format=esm --outfile=dist/index.js",
+      "test": "chmod +x test.sh && ./test.sh",
+      "test:local": "wrangler dev --local --env development",
+      "db:create": "wrangler d1 create bitware-report-generation-db",
+      "db:init": "wrangler d1 execute bitware-report-generation-db --file=schema.sql",
+      "db:migrate": "wrangler d1 execute bitware-report-generation-db --file=migration.sql",
+      "db:reset": "wrangler d1 execute bitware-report-generation-db --command=\"DROP TABLE IF EXISTS generated_reports; DROP TABLE IF EXISTS report_jobs; DROP TABLE IF EXISTS report_analytics;\" && npm run db:init",
+      "kv:create": "wrangler kv:namespace create REPORT_CACHE && wrangler kv:namespace create REPORT_CACHE --preview",
+      "setup": "chmod +x setup.sh && ./setup.sh",
+      "setup:quick": "npm run db:create && npm run db:init && npm run kv:create",
+      "setup:guided": "chmod +x setup.sh && ./setup.sh",
+      "setup:full": "npm run setup && echo 'Review wrangler.toml and set secrets before deploying'",
+      "logs": "wrangler tail",
+      "logs:prod": "wrangler tail --env production",
+      "logs:staging": "wrangler tail --env staging",
+      "secrets:setup": "echo 'Required secrets:' && echo '1. wrangler secret put OPENAI_API_KEY' && echo '2. wrangler secret put WORKER_SHARED_SECRET' && echo '3. wrangler secret put CLIENT_API_KEY'",
+      "secrets:info": "npm run secrets:setup",
+      "health": "curl -X GET \"$WORKER_URL/health\"",
+      "help": "curl -X GET \"$WORKER_URL/help\"",
+      "test-report": "curl -X POST \"$WORKER_URL/generate\" -H \"X-API-Key: $CLIENT_API_KEY\" -H \"Content-Type: application/json\" -d '{\"report_type\": \"executive_summary\", \"topic_filters\": [\"artificial intelligence\"], \"time_range\": \"7d\"}'",
+      "quick-test": "curl -X POST \"$WORKER_URL/quick-summary\" -H \"X-API-Key: $CLIENT_API_KEY\" -H \"Content-Type: application/json\" -d '{\"topic\": \"technology\", \"time_range\": \"24h\"}'",
+      "lint": "eslint index.ts --ext .ts",
+      "format": "prettier --write index.ts schema.sql README.md",
+      "validate": "npm run lint && npm run format && npm run test",
+      "integration:test": "npm run test && npm run health",
+      "benchmark": "echo 'Running performance benchmarks...' && time npm run test-report"
+    },
+    "keywords": [
+      "ai",
+      "intelligence-reports",
+      "report-generation", 
+      "trend-analysis",
+      "executive-summary",
+      "competitive-intelligence",
+      "cloudflare-workers",
+      "openai",
+      "gpt-4o-mini",
+      "bitware-oboe",
+      "ai-factory",
+      "rss-pipeline",
+      "business-intelligence",
+      "automated-reports",
+      "multi-format-output"
+    ],
+    "author": "AI Factory Team",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/your-org/ai-factory-pipeline.git",
+      "directory": "workers/bitware_report_builder"
+    },
+    "bugs": {
+      "url": "https://github.com/your-org/ai-factory-pipeline/issues"
+    },
+    "homepage": "https://github.com/your-org/ai-factory-pipeline/tree/main/workers/bitware_report_builder",
+    "dependencies": {
+      "@cloudflare/workers-types": "^4.20240725.0"
+    },
+    "devDependencies": {
+      "typescript": "^5.5.3",
+      "esbuild": "^0.23.0",
+      "wrangler": "^3.65.1",
+      "@types/node": "^20.14.11",
+      "eslint": "^8.57.0",
+      "@typescript-eslint/eslint-plugin": "^6.21.0",
+      "@typescript-eslint/parser": "^6.21.0", 
+      "prettier": "^3.3.2"
+    },
+    "engines": {
+      "node": ">=18.0.0",
+      "npm": ">=9.0.0"
+    },
+    "bitware": {
+      "worker_type": "IntelligenceGenerator",
+      "role": "Transform analyzed articles into actionable intelligence reports and insights",
+      "pipeline_position": 5,
+      "depends_on": [
+        "bitware_content_classifier",
+        "bitware_feed_fetcher"
+      ],
+      "provides_to": [
+        "external_clients",
+        "dashboard_systems",
+        "email_systems"
+      ],
+      "storage": {
+        "d1": "report_generation_db",
+        "kv": "report_cache",
+        "k2": "template_params"
+      },
+      "external_apis": [
+        "openai"
+      ],
+      "cost_per_request": "0.05-0.20 USD",
+      "performance": {
+        "simple_summary": "5-10 seconds",
+        "comprehensive_report": "30-60 seconds",
+        "complex_analysis": "60-120 seconds"
+      }
+    },
+    "ai_factory": {
+      "pipeline_stage": "intelligence_generation",
+      "input_source": "bitware_content_classifier.article_analysis",
+      "output_destination": "external_clients",
+      "quality_metrics": {
+        "report_accuracy": "> 0.9",
+        "insight_relevance": "> 0.85", 
+        "generation_speed": "< 120s for complex reports",
+        "cost_efficiency": "< $0.20 per comprehensive report"
+      },
+      "integration_endpoints": {
+        "health_check": "/health",
+        "main_generation": "/generate",
+        "quick_analysis": "/quick-summary",
+        "trend_analysis": "/trend-analysis",
+        "admin_monitoring": "/admin/stats",
+        "cost_tracking": "/admin/costs",
+        "public_viewing": "/reports/{id}/view"
+      },
+      "report_capabilities": {
+        "executive_summary": "High-level insights for C-level executives",
+        "trend_analysis": "Emerging patterns and trend detection",
+        "technical_deep_dive": "Detailed technical analysis for specialists",
+        "competitive_intelligence": "Market and competitive positioning analysis", 
+        "daily_briefing": "Concise daily intelligence updates"
+      },
+      "output_formats": [
+        "json",
+        "html", 
+        "markdown",
+        "email"
+      ]
+    },
+    "deployment": {
+      "environments": {
+        "development": {
+          "url": "https://bitware-report-builder-dev.your-subdomain.workers.dev",
+          "cost_limits": {
+            "per_report": 0.50,
+            "daily": 10.0
+          },
+          "cache_ttl": 30,
+          "timeout": 60
+        },
+        "staging": {
+          "url": "https://bitware-report-builder-staging.your-subdomain.workers.dev",
+          "cost_limits": {
+            "per_report": 1.0,
+            "daily": 25.0
+          },
+          "cache_ttl": 60,
+          "timeout": 90
+        },
+        "production": {
+          "url": "https://bitware-report-builder-prod.your-subdomain.workers.dev",
+          "cost_limits": {
+            "per_report": 5.0,
+            "daily": 250.0
+          },
+          "cache_ttl": 120,
+          "timeout": 180
+        },
+        "enterprise": {
+          "url": "https://bitware-report-builder-enterprise.your-subdomain.workers.dev",
+          "cost_limits": {
+            "per_report": 10.0,
+            "daily": 1000.0
+          },
+          "cache_ttl": 240,
+          "timeout": 300
+        }
+      }
+    },
+    "monitoring": {
+      "key_metrics": [
+        "report_jobs.completed",
+        "report_jobs.failed", 
+        "avg_generation_time",
+        "total_cost_usd",
+        "reports_accessed",
+        "user_feedback_score"
+      ],
+      "alerting": {
+        "cost_threshold_percent": 80,
+        "error_rate_threshold": 10,
+        "response_time_threshold": 120000,
+        "daily_cost_threshold": 200.0
+      }
+    },
+    "testing": {
+      "test_reports": [
+        {
+          "type": "executive_summary",
+          "topic": "artificial intelligence",
+          "expected_duration": "< 60 seconds",
+          "expected_cost": "< $0.20"
+        },
+        {
+          "type": "trend_analysis", 
+          "topic": "climate technology",
+          "expected_duration": "< 90 seconds",
+          "expected_cost": "< $0.30"
+        }
+      ],
+      "performance_benchmarks": {
+        "quick_summary": "< 10 seconds",
+        "executive_summary": "< 60 seconds", 
+        "trend_analysis": "< 90 seconds",
+        "technical_deep_dive": "< 120 seconds"
+      }
+    },
+    "integration_notes": {
+      "data_sources": [
+        "bitware_content_classifier.article_analysis",
+        "bitware_feed_fetcher.rss_articles"
+      ],
+      "authentication": "X-API-Key for client, Bearer token for worker-to-worker",
+      "response_format": "JSON with intelligence_report structure",
+      "caching": "1-hour KV cache for identical report requests",
+      "error_handling": "Graceful degradation with fallback summaries",
+      "cost_management": "Built-in cost tracking and limits with alerting"
+    },
+    "ai_capabilities": {
+      "models_used": [
+        "gpt-4o-mini"
+      ],
+      "intelligence_features": [
+        "Executive summary generation",
+        "Trend pattern detection", 
+        "Competitive landscape analysis",
+        "Entity relationship mapping",
+        "Sentiment trend analysis",
+        "Multi-format report generation"
+      ],
+      "optimization": [
+        "Prompt engineering for report quality",
+        "Token usage optimization",
+        "Cost-efficient batch processing",
+        "Intelligent caching strategies"
+      ]
+    }
+  }
