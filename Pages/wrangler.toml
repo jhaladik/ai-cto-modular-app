@@ -1,0 +1,33 @@
+# wrangler.toml
+# @WORKER: PagesConfiguration
+# 🧱 Type: ConfigurationFile
+# 📍 Path: wrangler.toml
+# 🎯 Role: Cloudflare Pages deployment configuration for AI Factory frontend
+# 💾 Storage: { pages: "static hosting", functions: "serverless proxy" }
+
+name = "ai-factory-frontend"
+compatibility_date = "2025-01-20"
+pages_build_output_dir = "public"
+
+# KV namespace for session storage
+[[env.production.kv_namespaces]]
+binding = "BITWARE_SESSION_STORE"
+id = "4581e54c54184e3686b3e70f2f61936b"  # Create via: wrangler kv:namespace create "BITWARE_SESSION_STORE"
+preview_id = "58f5813fdc09495fbc07fb8a29e5b27d"
+
+# Environment configuration for production
+[env.production]
+# Backend worker URLs (update these with your actual worker URLs)
+ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"
+TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.jhaladik.workers.dev"
+RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"
+FEED_FETCHER_URL = "https://bitware-feed-fetcher.jhaladik.workers.dev"
+CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier.jhaladik.workers.dev"
+REPORT_BUILDER_URL = "https://bitware-report-builder.jhaladik.workers.dev"
+
+# Authentication credentials (set via wrangler pages secret)
+# CLIENT_API_KEY = "your-client-api-key"              # Set via: wrangler pages secret put CLIENT_API_KEY
+# WORKER_SHARED_SECRET = "your-worker-shared-secret"  # Set via: wrangler pages secret put WORKER_SHARED_SECRET
+# ADMIN_PASSWORD = "secure-admin-password"            # Set via: wrangler pages secret put ADMIN_PASSWORD
+# USER_PASSWORD = "secure-user-password"              # Set via: wrangler pages secret put USER_PASSWORD
+

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Factory Dashboard</title>
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>AI Factory</h2>
+            <p>Initializing systems...</p>
+        </div>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form" class="login-container" style="display: none;">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>🏭 AI Factory</h1>
+                <p>RSS Intelligence Pipeline</p>
+            </div>
+            <form id="auth-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn-primary">Login</button>
+                <div id="login-error" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="dashboard-container" style="display: none;">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>🏭 AI Factory Dashboard</h1>
+                <div class="status-indicator">
+                    <span class="status-dot status-online"></span>
+                    <span>System Online</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <span id="user-info" class="user-info"></span>
+                <button id="logout-btn" class="btn-secondary">Logout</button>
+            </div>
+        </header>
+
+        <!-- Pipeline Overview -->
+        <section class="pipeline-overview">
+            <h2>RSS Intelligence Pipeline</h2>
+            <div class="pipeline-flow">
+                <div class="pipeline-step" data-worker="topic-researcher">
+                    <div class="step-icon">🔍</div>
+                    <div class="step-info">
+                        <h3>Topic Researcher</h3>
+                        <p>Discover RSS sources</p>
+                        <div class="step-status" id="status-topic-researcher">
+                            <span class="status-dot"></span>
+                            <span>Checking...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                
+                <div class="pipeline-step" data-worker="rss-librarian">
+                    <div class="step-icon">📚</div>
+                    <div class="step-info">
+                        <h3>RSS Librarian</h3>
+                        <p>Curate sources</p>
+                        <div class="step-status" id="status-rss-librarian">
+                            <span class="status-dot"></span>
+                            <span>Checking...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                
+                <div class="pipeline-step" data-worker="feed-fetcher">
+                    <div class="step-icon">📡</div>
+                    <div class="step-info">
+                        <h3>Feed Fetcher</h3>
+                        <p>Extract articles</p>
+                        <div class="step-status" id="status-feed-fetcher">
+                            <span class="status-dot"></span>
+                            <span>Checking...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                
+                <div class="pipeline-step" data-worker="content-classifier">
+                    <div class="step-icon">🧠</div>
+                    <div class="step-info">
+                        <h3>Content Classifier</h3>
+                        <p>AI analysis</p>
+                        <div class="step-status" id="status-content-classifier">
+                            <span class="status-dot"></span>
+                            <span>Checking...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                
+                <div class="pipeline-step" data-worker="report-builder">
+                    <div class="step-icon">📊</div>
+                    <div class="step-info">
+                        <h3>Report Builder</h3>
+                        <p>Generate reports</p>
+                        <div class="step-status" id="status-report-builder">
+                            <span class="status-dot"></span>
+                            <span>Checking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Worker Interfaces -->
+        <section class="worker-interfaces">
+            <h2>Worker Interfaces</h2>
+            <div class="worker-grid">
+                <div class="worker-card" data-worker="orchestrator">
+                    <div class="worker-icon">🎯</div>
+                    <h3>Orchestrator</h3>
+                    <p>Pipeline coordination</p>
+                    <button class="btn-primary worker-btn" data-worker="orchestrator">
+                        Manage Pipeline
+                    </button>
+                </div>
+                
+                <div class="worker-card" data-worker="topic-researcher">
+                    <div class="worker-icon">🔍</div>
+                    <h3>Topic Researcher</h3>
+                    <p>Discover RSS sources for topics</p>
+                    <button class="btn-primary worker-btn" data-worker="topic-researcher">
+                        Research Topics
+                    </button>
+                </div>
+                
+                <div class="worker-card" data-worker="rss-librarian">
+                    <div class="worker-icon">📚</div>
+                    <h3>RSS Librarian</h3>
+                    <p>Manage and curate RSS sources</p>
+                    <button class="btn-primary worker-btn" data-worker="rss-librarian">
+                        Manage Sources
+                    </button>
+                </div>
+                
+                <div class="worker-card" data-worker="feed-fetcher">
+                    <div class="worker-icon">📡</div>
+                    <h3>Feed Fetcher</h3>
+                    <p>Fetch articles from RSS feeds</p>
+                    <button class="btn-primary worker-btn" data-worker="feed-fetcher">
+                        Fetch Articles
+                    </button>
+                </div>
+                
+                <div class="worker-card" data-worker="content-classifier">
+                    <div class="worker-icon">🧠</div>
+                    <h3>Content Classifier</h3>
+                    <p>AI analysis and relevance scoring</p>
+                    <button class="btn-primary worker-btn" data-worker="content-classifier">
+                        Analyze Content
+                    </button>
+                </div>
+                
+                <div class="worker-card" data-worker="report-builder">
+                    <div class="worker-icon">📊</div>
+                    <h3>Report Builder</h3>
+                    <p>Generate intelligence reports</p>
+                    <button class="btn-primary worker-btn" data-worker="report-builder">
+                        Build Reports
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Status -->
+        <section class="system-status">
+            <h2>System Status</h2>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h3>Pipeline Health</h3>
+                    <div id="pipeline-health" class="status-value">Checking...</div>
+                </div>
+                <div class="status-card">
+                    <h3>Active Workers</h3>
+                    <div id="active-workers" class="status-value">0/6</div>
+                </div>
+                <div class="status-card">
+                    <h3>Last Updated</h3>
+                    <div id="last-updated" class="status-value">--</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/shared/api.js"></script>
+    <script src="/js/shared/ui.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

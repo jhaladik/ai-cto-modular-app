@@ -1,0 +1,293 @@
+/* public/css/dashboard.css */
+/* @WORKER: DashboardStyles */  
+/* 🧱 Type: Stylesheet */
+/* 📍 Path: public/css/dashboard.css */
+/* 🎯 Role: Dashboard-specific styling for AI Factory frontend */
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .login-card {
+    background: var(--surface-color);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  .login-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  
+  .login-header h1 {
+    font-size: 32px;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+  
+  .login-header p {
+    color: var(--text-secondary);
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+  }
+  
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .dashboard-container {
+    min-height: 100vh;
+    background-color: var(--background-color);
+  }
+  
+  .dashboard-header {
+    background: var(--surface-color);
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+  
+  .header-left h1 {
+    font-size: 28px;
+    margin-bottom: 4px;
+  }
+  
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .user-info {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  
+  .pipeline-overview {
+    padding: 32px 24px;
+    background: var(--surface-color);
+    margin: 24px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+  }
+  
+  .pipeline-overview h2 {
+    margin-bottom: 24px;
+    font-size: 24px;
+  }
+  
+  .pipeline-flow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 16px 0;
+  }
+  
+  .pipeline-step {
+    flex-shrink: 0;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    text-align: center;
+    min-width: 160px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .pipeline-step:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  
+  .step-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+  
+  .step-info h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+  }
+  
+  .step-info p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  
+  .step-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  
+  .pipeline-arrow {
+    font-size: 24px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  
+  .worker-interfaces {
+    padding: 32px 24px;
+    background: var(--surface-color);
+    margin: 24px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+  }
+  
+  .worker-interfaces h2 {
+    margin-bottom: 24px;
+    font-size: 24px;
+  }
+  
+  .worker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .worker-card {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+  
+  .worker-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  
+  .worker-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  
+  .worker-card h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+  
+  .worker-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+  }
+  
+  .system-status {
+    padding: 32px 24px;
+    background: var(--surface-color);
+    margin: 24px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+  }
+  
+  .system-status h2 {
+    margin-bottom: 24px;
+    font-size: 24px;
+  }
+  
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+  }
+  
+  .status-card {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .status-card h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+  }
+  
+  .status-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  
+  .status-healthy {
+    color: var(--success-color);
+  }
+  
+  .status-warning {
+    color: var(--warning-color);
+  }
+  
+  .status-error {
+    color: var(--error-color);
+  }
+  
+  @media (max-width: 768px) {
+    .dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    
+    .pipeline-flow {
+      flex-direction: column;
+    }
+    
+    .pipeline-arrow {
+      transform: rotate(90deg);
+    }
+    
+    .worker-grid {
+      grid-template-columns: 1fr;
+    }
+  }
