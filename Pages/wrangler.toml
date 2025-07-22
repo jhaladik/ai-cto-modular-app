@@ -24,10 +24,3 @@ RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"
 FEED_FETCHER_URL = "https://bitware-feed-fetcher.jhaladik.workers.dev"
 CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier.jhaladik.workers.dev"
 REPORT_BUILDER_URL = "https://bitware-report-builder.jhaladik.workers.dev"
-
-# Authentication credentials (set via wrangler pages secret)
-# CLIENT_API_KEY = "your-client-api-key"              # Set via: wrangler pages secret put CLIENT_API_KEY
-# WORKER_SHARED_SECRET = "your-worker-shared-secret"  # Set via: wrangler pages secret put WORKER_SHARED_SECRET
-# ADMIN_PASSWORD = "secure-admin-password"            # Set via: wrangler pages secret put ADMIN_PASSWORD
-# USER_PASSWORD = "secure-user-password"              # Set via: wrangler pages secret put USER_PASSWORD
-
