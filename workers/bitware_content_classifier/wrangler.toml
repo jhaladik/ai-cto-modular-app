@@ -1,0 +1,57 @@
+name = "bitware-content-classifier"
+compatibility_date = "2024-07-22"
+compatibility_flags = [ "nodejs_compat" ]
+
+# Worker configuration
+main = "index.ts"
+minify = true
+
+# D1 Database binding
+[[d1_databases]]
+binding = "CONTENT_ANALYSIS_DB" 
+database_name = "bitware-content-analysis-db"
+database_id = "752330ba-0eca-47f0-9416-ecee9419b685" # Set during deployment
+
+# KV Storage binding for caching
+[[kv_namespaces]]
+binding = "ANALYSIS_CACHE"
+id = "339648ea0ebe4b85980781358ff7994b"          # Set during deployment
+preview_id = "9351144e51f141c7b4003f861d12d736"    # For staging
+
+# R2 Storage (optional - for storing large analysis reports)
+# [[r2_buckets]]
+# binding = "ANALYSIS_REPORTS"
+# bucket_name = "bitware-analysis-reports"
+
+# Environment variables
+[vars]
+
+# AI Configuration
+AI_MODEL = "gpt-4o-mini"
+MAX_BATCH_SIZE = 10
+DEFAULT_ANALYSIS_DEPTH = "standard"
+CACHE_TTL_HOURS = 2
+
+# Cost Management
+MAX_COST_PER_REQUEST = 1.0  # USD
+DAILY_COST_LIMIT = 50.0     # USD
+TOKEN_RATE_LIMIT = 50000    # tokens per hour
+
+# Performance Settings
+REQUEST_TIMEOUT_MS = 45000   # 45 seconds for AI processing
+RETRY_ATTEMPTS = 2
+RETRY_DELAY_MS = 1000
+
+# Secrets that need to be set via wrangler secret put:
+# wrangler secret put OPENAI_API_KEY
+# wrangler secret put WORKER_SHARED_SECRET  
+# wrangler secret put CLIENT_API_KEY
+
+# Database setup commands:
+# wrangler d1 create bitware-content-analysis-db
+# wrangler d1 execute bitware-content-analysis-db --file=schema.sql
+# wrangler d1 execute bitware-content-analysis-db --file=migration.sql (if needed)
+
+# KV namespace setup:
+# wrangler kv:namespace create "ANALYSIS_CACHE"
+# wrangler kv:namespace create "ANALYSIS_CACHE" --preview

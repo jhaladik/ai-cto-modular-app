@@ -1,0 +1,175 @@
+{
+    "name": "bitware-content-classifier",
+    "version": "1.0.0",
+    "description": "AI-powered content analysis engine for RSS articles using OpenAI GPT-4o-mini",
+    "main": "index.ts",
+    "type": "module",
+    "scripts": {
+      "dev": "wrangler dev --env development",
+      "deploy": "wrangler deploy",
+      "deploy:dev": "wrangler deploy --env development",
+      "deploy:staging": "wrangler deploy --env staging", 
+      "deploy:prod": "wrangler deploy --env production",
+      "build": "tsc && esbuild index.js --bundle --format=esm --outfile=dist/index.js",
+      "test": "chmod +x test.sh && ./test.sh",
+      "test:local": "wrangler dev --local --env development",
+      "db:create": "wrangler d1 create bitware-content-analysis-db",
+      "db:init": "wrangler d1 execute bitware-content-analysis-db --file=schema.sql",
+      "db:migrate": "wrangler d1 execute bitware-content-analysis-db --file=migration.sql",
+      "kv:create": "wrangler kv:namespace create ANALYSIS_CACHE && wrangler kv:namespace create ANALYSIS_CACHE --preview",
+      "setup": "npm run db:create && npm run db:init && npm run kv:create",
+      "logs": "wrangler tail",
+      "logs:prod": "wrangler tail --env production",
+      "secrets:setup": "echo 'Run: wrangler secret put OPENAI_API_KEY && wrangler secret put WORKER_SHARED_SECRET && wrangler secret put CLIENT_API_KEY'",
+      "health": "curl -X GET \"$WORKER_URL/health\" -H \"X-API-Key: $CLIENT_API_KEY\"",
+      "help": "curl -X GET \"$WORKER_URL/help\"",
+      "lint": "eslint index.ts --ext .ts",
+      "format": "prettier --write index.ts schema.sql README.md"
+    },
+    "keywords": [
+      "ai",
+      "content-analysis", 
+      "rss",
+      "sentiment-analysis",
+      "topic-classification",
+      "cloudflare-workers",
+      "openai",
+      "gpt-4o-mini",
+      "bitware-oboe"
+    ],
+    "author": "AI Factory Team",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/your-org/ai-factory-pipeline.git",
+      "directory": "workers/bitware_content_classifier"
+    },
+    "bugs": {
+      "url": "https://github.com/your-org/ai-factory-pipeline/issues"
+    },
+    "homepage": "https://github.com/your-org/ai-factory-pipeline/tree/main/workers/bitware_content_classifier",
+    "dependencies": {
+      "@cloudflare/workers-types": "^4.20240725.0"
+    },
+    "devDependencies": {
+      "typescript": "^5.5.3",
+      "esbuild": "^0.23.0",
+      "wrangler": "^3.65.1",
+      "@types/node": "^20.14.11",
+      "eslint": "^8.57.0",
+      "@typescript-eslint/eslint-plugin": "^6.21.0",
+      "@typescript-eslint/parser": "^6.21.0", 
+      "prettier": "^3.3.2"
+    },
+    "engines": {
+      "node": ">=18.0.0",
+      "npm": ">=9.0.0"
+    },
+    "bitware": {
+      "worker_type": "AIProcessor",
+      "role": "AI-powered content analysis, topic classification, and relevance scoring",
+      "pipeline_position": 4,
+      "depends_on": [
+        "bitware_feed_fetcher"
+      ],
+      "provides_to": [
+        "bitware_report_builder"
+      ],
+      "storage": {
+        "d1": "content_analysis_db",
+        "kv": "analysis_cache",
+        "k2": "ai_params"
+      },
+      "external_apis": [
+        "openai"
+      ],
+      "cost_per_request": "0.001-0.003 USD",
+      "performance": {
+        "single_article": "2-3 seconds",
+        "batch_processing": "30-60 seconds for 20 articles"
+      }
+    },
+    "ai_factory": {
+      "pipeline_stage": "content_classification",
+      "input_source": "bitware_feed_fetcher.rss_articles",
+      "output_destination": "bitware_report_builder.analyzed_articles",
+      "quality_metrics": {
+        "relevance_accuracy": "> 0.8",
+        "sentiment_consistency": "> 0.85", 
+        "processing_speed": "< 60s per 20 articles",
+        "cost_efficiency": "< $0.003 per article"
+      },
+      "integration_endpoints": {
+        "health_check": "/health",
+        "worker_to_worker": "/analyze",
+        "admin_monitoring": "/admin/stats",
+        "cost_tracking": "/admin/costs"
+      }
+    },
+    "deployment": {
+      "environments": {
+        "development": {
+          "url": "https://bitware-content-classifier-dev.your-subdomain.workers.dev",
+          "cost_limits": {
+            "per_request": 0.10,
+            "daily": 5.0
+          }
+        },
+        "staging": {
+          "url": "https://bitware-content-classifier-staging.your-subdomain.workers.dev",
+          "cost_limits": {
+            "per_request": 0.50,
+            "daily": 20.0
+          }
+        },
+        "production": {
+          "url": "https://bitware-content-classifier-prod.your-subdomain.workers.dev",
+          "cost_limits": {
+            "per_request": 2.0,
+            "daily": 100.0
+          }
+        }
+      }
+    },
+    "monitoring": {
+      "key_metrics": [
+        "analysis_jobs.completed",
+        "analysis_jobs.failed", 
+        "avg_relevance_score",
+        "processing_cost_usd",
+        "processing_time_ms",
+        "tokens_used"
+      ],
+      "alerting": {
+        "cost_threshold": 80,
+        "error_rate_threshold": 5,
+        "response_time_threshold": 45000
+      }
+    },
+    "testing": {
+      "test_articles": [
+        {
+          "url": "https://www.bbc.com/news/technology-123456",
+          "topic": "artificial intelligence",
+          "expected_relevance": "> 0.8"
+        },
+        {
+          "url": "https://techcrunch.com/climate-tech-article",
+          "topic": "climate change",
+          "expected_relevance": "> 0.7"
+        }
+      ],
+      "performance_benchmarks": {
+        "single_analysis": "< 5 seconds",
+        "batch_10_articles": "< 30 seconds",
+        "batch_20_articles": "< 60 seconds"
+      }
+    },
+    "integration_notes": {
+      "fetch_articles_from": "bitware_feed_fetcher.rss_articles table",
+      "authentication": "X-API-Key for client, Bearer token for worker-to-worker",
+      "response_format": "JSON with analysis_results array",
+      "caching": "2-hour KV cache for identical analysis requests",
+      "error_handling": "Graceful degradation with fallback scoring"
+    }
+  }
