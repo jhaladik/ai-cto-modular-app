@@ -887,27 +887,95 @@ interface Env {
     }
   }
 
-  // Add these functions to your bitware_orchestrator/index.ts
-async function handlePipelineHealthCheck(env: Env, corsHeaders: any): Promise<Response> {
+  // Add this CORRECTED function to your bitware_orchestrator/index.ts
+  // Replace the existing handlePipelineHealthCheck function
+
+  async function handlePipelineHealthCheck(env: Env, corsHeaders: any): Promise<Response> {
     try {
-      const health = await checkOrchestratorHealth(env);
-      const workerHealthChecks = await Promise.allSettled([
-        fetch(`${env.TOPIC_RESEARCHER_URL}/health`),
-        fetch(`${env.RSS_LIBRARIAN_URL}/health`),
-        fetch(`${env.FEED_FETCHER_URL}/health`),
-        fetch(`${env.CONTENT_CLASSIFIER_URL}/health`),
-        fetch(`${env.REPORT_BUILDER_URL}/health`)
-      ]);
+      console.log('🔍 Starting pipeline health check...');
       
+      // Define worker configurations
+      const workerConfigs = [
+        { name: 'topic_researcher', url: env.TOPIC_RESEARCHER_URL },
+        { name: 'rss_librarian', url: env.RSS_LIBRARIAN_URL },
+        { name: 'feed_fetcher', url: env.FEED_FETCHER_URL },
+        { name: 'content_classifier', url: env.CONTENT_CLASSIFIER_URL },
+        { name: 'report_builder', url: env.REPORT_BUILDER_URL }
+      ];
+
+      // Check each worker's health with proper authentication
+      const workerHealthChecks = await Promise.allSettled(
+        workerConfigs.map(worker => {
+          console.log(`🔍 Checking ${worker.name} at ${worker.url}/health`);
+          return fetch(`${worker.url}/health`, {
+            method: 'GET',
+            headers: {
+              'X-API-Key': env.CLIENT_API_KEY
+            },
+            signal: AbortSignal.timeout(10000) // 10 second timeout
+          });
+        })
+      );
+
+      // Process health check results
+      const workers = await Promise.all(
+        workerHealthChecks.map(async (result, index) => {
+          const workerConfig = workerConfigs[index];
+          
+          if (result.status === 'fulfilled' && result.value.ok) {
+            try {
+              // ✅ FIXED: Actually parse the JSON response and check the status field
+              const healthData = await result.value.json();
+              const isHealthy = healthData.status === 'healthy';
+              
+              console.log(`✅ ${workerConfig.name}: HTTP ${result.value.status}, Status: ${healthData.status}, Healthy: ${isHealthy}`);
+              
+              return {
+                name: workerConfig.name,
+                healthy: isHealthy,
+                status: healthData.status,
+                response_time_ms: healthData.response_time_ms || null,
+                last_check: new Date().toISOString()
+              };
+            } catch (parseError) {
+              console.log(`❌ ${workerConfig.name}: HTTP OK but JSON parse failed:`, parseError);
+              return {
+                name: workerConfig.name,
+                healthy: false,
+                status: 'parse_error',
+                error: 'Failed to parse health response',
+                last_check: new Date().toISOString()
+              };
+            }
+          } else {
+            const status = result.status === 'fulfilled' ? result.value.status : 'network_error';
+            const error = result.status === 'rejected' ? result.reason.message : `HTTP ${result.value.status}`;
+            
+            console.log(`❌ ${workerConfig.name}: Failed - ${error}`);
+            
+            return {
+              name: workerConfig.name,
+              healthy: false,
+              status: 'unhealthy',
+              error: error,
+              last_check: new Date().toISOString()
+            };
+          }
+        })
+      );
+
+      console.log('🎯 Health check complete:', workers.map(w => `${w.name}: ${w.healthy ? '✅' : '❌'}`).join(', '));
+
       return jsonResponse({
-        orchestrator_healthy: health.healthy,
-        workers: workerHealthChecks.map((result, index) => ({
-          name: ['topic_researcher', 'rss_librarian', 'feed_fetcher', 'content_classifier', 'report_builder'][index],
-          healthy: result.status === 'fulfilled' && result.value.ok
-        }))
+        workers: workers,
+        timestamp: new Date().toISOString(),
+        total_workers: workers.length,
+        healthy_workers: workers.filter(w => w.healthy).length
       }, { headers: corsHeaders });
+
     } catch (error) {
-      return errorResponse('Health check failed', 500);
+      console.error('❌ Health check failed:', error);
+      return errorResponse('Health check failed: ' + error.message, 500);
     }
   }
   

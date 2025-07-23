@@ -16,22 +16,25 @@ class APIClient {
       if (!sessionToken) {
         throw new Error('No session token - user not authenticated');
       }
-  
+    
       try {
-        const url = `/api/${workerName}${endpoint ? `?endpoint=${encodeURIComponent(endpoint)}` : ''}`;
+        // Always use the base API URL without query parameters
+        const url = `/api/${workerName}`;
         
+        // Always POST with JSON body containing endpoint, method, and data
         const options = {
-          method: method,
+          method: 'POST',  // Always POST to the Pages Function proxy
           headers: {
             'Content-Type': 'application/json',
-            'x-bitware-session-token': sessionToken
-          }
+            'X-Session-Token': sessionToken  // Fixed header name (capital X and S)
+          },
+          body: JSON.stringify({
+            endpoint: endpoint,      // The backend endpoint to call
+            method: method,          // The HTTP method for the backend
+            data: data              // The data to send to the backend
+          })
         };
-  
-        if (data && method !== 'GET') {
-          options.body = JSON.stringify(data);
-        }
-  
+    
         const response = await fetch(url, options);
         
         if (!response.ok) {
@@ -41,9 +44,22 @@ class APIClient {
             window.location.reload();
             return;
           }
-          throw new Error(`${workerName} request failed: ${response.status}`);
+          
+          // Try to get more detailed error information
+          let errorMessage = `${workerName} request failed: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch (parseError) {
+            // If we can't parse the error response, use the default message
+            console.warn('Could not parse error response:', parseError);
+          }
+          
+          throw new Error(errorMessage);
         }
-  
+    
         return await response.json();
         
       } catch (error) {

@@ -195,71 +195,66 @@ class MainDashboard {
       }
   }
 
+  // Fixed updateSystemHealth function for dashboard.js
   async updateSystemHealth() {
-      try {
-          const health = await this.apiClient.callWorker('orchestrator', '/pipeline-health');
-          
-          let onlineWorkers = 0;
-          let totalWorkers = 0;
-          
-          if (health && health.workers) {
-              totalWorkers = Object.keys(health.workers).length;
-              onlineWorkers = Object.values(health.workers).filter(w => w.status === 'online').length;
-              
-              // Cache worker health data
-              this.workerHealthCache.clear();
-              Object.entries(health.workers).forEach(([name, data]) => {
-                  this.workerHealthCache.set(name, data);
-              });
-              this.lastHealthCheck = Date.now();
-          }
-          
-          // Update system indicator
-          const statusDot = document.getElementById('system-status-dot');
-          const statusText = document.getElementById('system-status-text');
-          
-          if (statusDot && statusText) {
-              if (onlineWorkers === totalWorkers && totalWorkers > 0) {
-                  statusDot.className = 'status-dot status-online';
-                  statusText.textContent = 'All Systems Online';
-              } else if (onlineWorkers > 0) {
-                  statusDot.className = 'status-dot status-warning';
-                  statusText.textContent = 'Partial Systems';
-              } else {
-                  statusDot.className = 'status-dot status-offline';
-                  statusText.textContent = 'Systems Offline';
-              }
-          }
-          
-          // Update active workers metric
-          const activeWorkersElement = document.getElementById('active-workers');
-          if (activeWorkersElement) {
-              activeWorkersElement.textContent = `${onlineWorkers}/${totalWorkers}`;
-          }
-          
-          const workerChange = document.getElementById('worker-change');
-          if (workerChange) {
-              if (onlineWorkers === totalWorkers) {
-                  workerChange.textContent = 'All Online';
-                  workerChange.className = 'metric-change metric-up';
-              } else if (onlineWorkers > 0) {
-                  workerChange.textContent = `${totalWorkers - onlineWorkers} Offline`;
-                  workerChange.className = 'metric-change metric-down';
-              } else {
-                  workerChange.textContent = 'All Offline';
-                  workerChange.className = 'metric-change metric-down';
-              }
-          }
-          
-      } catch (error) {
-          console.error('Failed to update system health:', error);
-          
-          const statusDot = document.getElementById('system-status-dot');
-          const statusText = document.getElementById('system-status-text');
-          
-          if (statusDot) statusDot.className = 'status-dot status-offline';
-          if (statusText) statusText.textContent = 'Status Unknown';
-      }
+    try {
+        const health = await this.apiClient.callWorker('orchestrator', '/pipeline-health');
+        
+        let onlineWorkers = 0;
+        let totalWorkers = 0;
+        
+        // FIX: Handle array format from API
+        if (health && health.workers && Array.isArray(health.workers)) {
+            totalWorkers = health.workers.length;
+            onlineWorkers = health.workers.filter(w => w.healthy === true).length;
+            
+            // Cache worker health data in correct format
+            this.workerHealthCache.clear();
+            health.workers.forEach(worker => {
+                this.workerHealthCache.set(worker.name, {
+                    status: worker.healthy ? 'online' : 'offline',
+                    healthy: worker.healthy
+                });
+            });
+            
+            this.lastHealthCheck = Date.now();
+        }
+        
+        // Update the worker count display
+        const activeWorkersElement = document.getElementById('active-workers');
+        if (activeWorkersElement) {
+            activeWorkersElement.textContent = `${onlineWorkers}/${totalWorkers}`;
+        }
+        
+        const workersStatusElement = document.getElementById('workers-status');
+        if (workersStatusElement) {
+            const offlineCount = totalWorkers - onlineWorkers;
+            if (onlineWorkers === totalWorkers) {
+                workersStatusElement.textContent = 'All Online';
+                workersStatusElement.className = 'workers-status online';
+            } else if (onlineWorkers === 0) {
+                workersStatusElement.textContent = `${totalWorkers} Offline`;
+                workersStatusElement.className = 'workers-status offline';
+            } else {
+                workersStatusElement.textContent = `${offlineCount} Offline`;
+                workersStatusElement.className = 'workers-status partial';
+            }
+        }
+        
+    } catch (error) {
+        console.error('Failed to update system health:', error);
+        // Set error state
+        const activeWorkersElement = document.getElementById('active-workers');
+        if (activeWorkersElement) {
+            activeWorkersElement.textContent = '?/?';
+        }
+        
+        const workersStatusElement = document.getElementById('workers-status');
+        if (workersStatusElement) {
+            workersStatusElement.textContent = 'Error';
+            workersStatusElement.className = 'workers-status error';
+        }
+    }
   }
 
   async updateMetrics() {
@@ -329,48 +324,77 @@ class MainDashboard {
       });
   }
 
+  // Fixed updateWorkerStatus function for dashboard.js
   async updateWorkerStatus() {
-      try {
-          // Use cached health data if recent
-          let healthData = null;
-          const now = Date.now();
-          
-          if (now - this.lastHealthCheck < this.healthCheckInterval && this.workerHealthCache.size > 0) {
-              healthData = { workers: Object.fromEntries(this.workerHealthCache) };
-          } else {
-              healthData = await this.apiClient.callWorker('orchestrator', '/pipeline-health');
-          }
-          
-          if (healthData && healthData.workers) {
-              // Update pipeline step statuses
-              Object.entries(healthData.workers).forEach(([workerName, data]) => {
-                  const statusDot = document.getElementById(`status-${workerName}`);
-                  const statusText = document.getElementById(`status-text-${workerName}`);
-                  
-                  if (statusDot && statusText) {
-                      statusDot.className = `status-dot status-${data.status === 'online' ? 'online' : 'offline'}`;
-                      statusText.textContent = data.status === 'online' ? 'Online' : 'Offline';
-                  }
-              });
-          }
-          
-          // Update worker statistics (using mock data for demonstration)
-          this.updateWorkerStats();
-          
-      } catch (error) {
-          console.error('Failed to update worker status:', error);
-          
-          // Set all workers to unknown status on error
-          this.workers.forEach(worker => {
-              const statusDot = document.getElementById(`status-${worker.name}`);
-              const statusText = document.getElementById(`status-text-${worker.name}`);
-              
-              if (statusDot) statusDot.className = 'status-dot status-offline';
-              if (statusText) statusText.textContent = 'Unknown';
-          });
-      }
+    try {
+        // Use cached health data if recent
+        let healthData = null;
+        const now = Date.now();
+        
+        if (now - this.lastHealthCheck < this.healthCheckInterval && this.workerHealthCache.size > 0) {
+            // Use cached data
+            healthData = { workers: Array.from(this.workerHealthCache.entries()).map(([name, data]) => ({
+                name: name,
+                healthy: data.healthy
+            }))};
+        } else {
+            // Fetch fresh data
+            healthData = await this.apiClient.callWorker('orchestrator', '/pipeline-health');
+        }
+        
+        // FIX: Handle array format from API
+        if (healthData && healthData.workers && Array.isArray(healthData.workers)) {
+            
+            // Update pipeline step statuses
+            healthData.workers.forEach(worker => {
+                const statusDot = document.getElementById(`status-${worker.name.replace('_', '-')}`);
+                const statusText = document.getElementById(`status-text-${worker.name.replace('_', '-')}`);
+                
+                if (statusDot && statusText) {
+                    const isOnline = worker.healthy === true;
+                    statusDot.className = `status-dot status-${isOnline ? 'online' : 'offline'}`;
+                    statusText.textContent = isOnline ? 'Ready' : 'Offline';
+                }
+            });
+            
+            // Update worker interface cards
+            this.workers.forEach(workerConfig => {
+                const workerData = healthData.workers.find(w => w.name === workerConfig.name.replace('-', '_'));
+                const workerCard = document.querySelector(`[data-worker="${workerConfig.name}"]`);
+                
+                if (workerCard && workerData) {
+                    const statusIndicator = workerCard.querySelector('.worker-status-indicator');
+                    const testButton = workerCard.querySelector('.test-worker-btn');
+                    
+                    if (statusIndicator) {
+                        const isOnline = workerData.healthy === true;
+                        statusIndicator.className = `worker-status-indicator ${isOnline ? 'online' : 'offline'}`;
+                        statusIndicator.textContent = isOnline ? 'Online' : 'Offline';
+                    }
+                    
+                    if (testButton) {
+                        testButton.disabled = !workerData.healthy;
+                    }
+                }
+            });
+        }
+        
+    } catch (error) {
+        console.error('Failed to update worker status:', error);
+        
+        // Set all workers to error state
+        this.workers.forEach(workerConfig => {
+            const statusDot = document.getElementById(`status-${workerConfig.name.replace('_', '-')}`);
+            const statusText = document.getElementById(`status-text-${workerConfig.name.replace('_', '-')}`);
+            
+            if (statusDot && statusText) {
+                statusDot.className = 'status-dot status-error';
+                statusText.textContent = 'Error';
+            }
+        });
+    }
   }
-
+  
   updateWorkerStats() {
       // Update orchestrator stats
       const orchestratorStats = [

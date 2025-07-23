@@ -50,7 +50,7 @@ BALANCED_TIMEOUT_MS = 150000             # 2.5 minutes for balanced mode
 
 # Worker Integration URLs (Production)
 TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.jhaladik.workers.dev"
-RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"
+RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"  
 FEED_FETCHER_URL = "https://bitware-feed-fetcher.jhaladik.workers.dev"
 CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier.jhaladik.workers.dev"
 REPORT_BUILDER_URL = "https://bitware-report-builder.jhaladik.workers.dev"

@@ -1,14 +1,8 @@
-// functions/api/orchestrator.js - PROPERLY FIXED
+// functions/api/orchestrator.js - COMPLETE WORKING VERSION
 export async function onRequestPost(context) {
   const { request, env } = context;
   
-  let sessionToken = null; // Define first
-  
-  // Debug logging (now sessionToken is defined)
-  console.log('Environment check:', {
-    hasBitwareSessionStore: !!env.BITWARE_SESSION_STORE,
-    allEnvKeys: Object.keys(env)
-  });
+  console.log('Orchestrator proxy called');
 
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -20,14 +14,16 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const { endpoint, method, data } = body;
     
+    console.log('Request body:', { endpoint, method, data });
+    
     const publicEndpoints = ['/health', '/help', '/capabilities'];
     const isPublicEndpoint = publicEndpoints.includes(endpoint);
     
     if (!isPublicEndpoint) {
-      // ASSIGN (don't declare new const)
-      sessionToken = request.headers.get('X-Session-Token') || request.headers.get('x-session-token');
+      const sessionToken = request.headers.get('X-Session-Token') || request.headers.get('x-session-token');
       
       if (!sessionToken) {
+        console.log('No session token provided');
         return new Response(JSON.stringify({
           success: false,
           error: 'No session token'
@@ -37,9 +33,9 @@ export async function onRequestPost(context) {
         });
       }
       
-      // FIX: Use correct key format
       const sessionData = await env.BITWARE_SESSION_STORE.get(`session:${sessionToken}`);
       if (!sessionData) {
+        console.log('Invalid session token');
         return new Response(JSON.stringify({
           success: false,
           error: 'Invalid or expired session'
@@ -48,9 +44,10 @@ export async function onRequestPost(context) {
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
         });
       }
+      
+      console.log('Session validated successfully');
     }
     
-    // Rest of your code...
     const workerHeaders = { 'Content-Type': 'application/json' };
     
     if (!isPublicEndpoint) {
@@ -59,6 +56,7 @@ export async function onRequestPost(context) {
     
     const workerUrl = env.ORCHESTRATOR_URL;
     if (!workerUrl) {
+      console.log('ORCHESTRATOR_URL not configured');
       return new Response(JSON.stringify({
         success: false,
         error: 'Orchestrator worker URL not configured'
@@ -78,8 +76,12 @@ export async function onRequestPost(context) {
       requestOptions.body = JSON.stringify(data);
     }
     
+    console.log('Calling backend:', { fullUrl, method: requestOptions.method });
+    
     const response = await fetch(fullUrl, requestOptions);
     const responseData = await response.text();
+    
+    console.log('Backend response:', { status: response.status, hasData: !!responseData });
     
     return new Response(responseData, {
       status: response.status,
