@@ -1,0 +1,62 @@
+{
+  "name": "ai-factory-frontend-worker",
+  "version": "2.0.0",
+  "description": "AI Factory Frontend Worker - Service bindings architecture for RSS intelligence pipeline",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --local --port 3000",
+    "dev:remote": "wrangler dev --remote",
+    "build": "echo 'Wrangler handles TypeScript compilation'",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "deploy:dev": "wrangler deploy --env dev",
+    "setup": "npm run setup:kv && npm run setup:secrets && npm run setup:bindings",
+    "setup:kv": "wrangler kv:namespace create SESSION_STORE && wrangler kv:namespace create SESSION_STORE --preview",
+    "setup:secrets": "echo 'Run: wrangler secret put CLIENT_API_KEY && wrangler secret put WORKER_SHARED_SECRET && wrangler secret put ADMIN_PASSWORD && wrangler secret put USER_PASSWORD'",
+    "setup:bindings": "echo 'Verify service bindings are configured in wrangler.toml'",
+    "test": "echo 'Tests not yet implemented'",
+    "test:auth": "curl -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"admin123\"}'",
+    "test:health": "curl http://localhost:3000/api/orchestrator/status",
+    "validate": "wrangler validate",
+    "tail": "wrangler tail",
+    "logs": "wrangler tail --format pretty"
+  },
+  "keywords": [
+    "ai-factory",
+    "rss-intelligence",
+    "cloudflare-worker",
+    "service-bindings",
+    "bitware-oboe",
+    "frontend-worker"
+  ],
+  "author": "AI Factory Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250723.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.25.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/ai-factory-frontend-worker.git"
+  },
+  "homepage": "https://ai-factory-frontend-worker.yourname.workers.dev",
+  "files": [
+    "src/**/*",
+    "wrangler.toml",
+    "README.md"
+  ],
+  "workspaces": {
+    "packages": []
+  },
+  "peerDependencies": {
+    "@cloudflare/workers-types": "^4.20250712.0"
+  },
+  "volta": {
+    "node": "18.20.4",
+    "npm": "10.8.2"
+  }
+}
