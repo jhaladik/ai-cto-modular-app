@@ -79,6 +79,13 @@ export default {
         return jsonResponse(getHelpInfo(), { headers: corsHeaders });
       }
 
+      // ADD THIS HEALTH ENDPOINT
+      if (url.pathname === '/health') {
+        const health = await checkWorkerHealth(env);
+        return jsonResponse(health, { headers: corsHeaders });
+      }
+
+
       if (url.pathname === '/capabilities') {
         return jsonResponse(getCapabilities(), { headers: corsHeaders });
       }
@@ -745,6 +752,28 @@ function getHelpInfo() {
     },
     processing: 'RSS 2.0, RSS 1.0, and Atom feed formats supported'
   };
+}
+
+async function checkWorkerHealth(env: Env) {
+  try {
+    // Test database connection
+    const testQuery = await env.FETCHED_ARTICLES_DB.prepare(`
+      SELECT COUNT(*) as count FROM fetch_jobs WHERE status = 'completed'
+    `).first();
+    
+    return {
+      status: 'healthy',
+      database: 'connected',
+      total_jobs: testQuery.count || 0,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    return {
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
 }
 
 function getCapabilities() {

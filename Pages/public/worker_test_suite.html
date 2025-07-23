@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Factory Worker Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2C3E50, #3498DB);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .control-group input, .control-group select {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .test-all-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .test-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .test-all-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .workers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .worker-card {
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .worker-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .worker-header {
+            background: linear-gradient(45deg, #6c5ce7, #a29bfe);
+            color: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .worker-icon {
+            font-size: 24px;
+        }
+
+        .worker-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .worker-status {
+            margin-left: auto;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-unknown { background: #6c757d; }
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-testing { background: #ffc107; color: #212529; }
+
+        .worker-body {
+            padding: 15px;
+        }
+
+        .endpoint-list {
+            margin-bottom: 15px;
+        }
+
+        .endpoint-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .endpoint-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #6c757d;
+        }
+
+        .endpoint-status.success { background: #28a745; }
+        .endpoint-status.error { background: #dc3545; }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .test-btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0, 123, 255, 0.3);
+        }
+
+        .test-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .test-btn.secondary {
+            background: linear-gradient(45deg, #6c757d, #495057);
+        }
+
+        .results-section {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+
+        .result-item {
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .result-item.success {
+            color: #28a745;
+        }
+
+        .result-item.error {
+            color: #dc3545;
+        }
+
+        .response-data {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        .overall-status {
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .status-summary {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .status-details {
+            color: #6c757d;
+        }
+
+        .diagnostic-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px;
+        }
+
+        .diagnostic-title {
+            color: #856404;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .diagnostic-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏭 AI Factory Worker Test Suite</h1>
+            <p>Comprehensive testing and diagnostics for all 6 workers</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Production URL:</label>
+                <input type="text" id="baseUrl" value="https://ai-factory-frontend.pages.dev" placeholder="https://your-pages-domain.pages.dev">
+                
+                <label>API Key:</label>
+                <input type="text" id="apiKey" placeholder="your-client-api-key">
+                
+                <label>Test Mode:</label>
+                <select id="testMode">
+                    <option value="public">Public Endpoints Only</option>
+                    <option value="authenticated">Authenticated Endpoints</option>
+                    <option value="all">All Endpoints</option>
+                </select>
+                
+                <button class="test-all-btn" onclick="testAllWorkers()">🧪 Test All Workers</button>
+            </div>
+        </div>
+
+        <div class="diagnostic-section">
+            <div class="diagnostic-title">🔍 Common Issues Diagnostics</div>
+            <div id="diagnostics">
+                <div class="diagnostic-item">
+                    <strong>Step 1:</strong> Verify your production Pages deployment is live (check URL above)
+                </div>
+                <div class="diagnostic-item">
+                    <strong>Step 2:</strong> Test public endpoints first (no API key needed)
+                </div>
+                <div class="diagnostic-item">
+                    <strong>Step 3:</strong> If public endpoints fail, check Pages Functions deployment and worker URLs
+                </div>
+                <div class="diagnostic-item">
+                    <strong>Step 4:</strong> If authenticated endpoints fail, verify production secrets are set
+                </div>
+            </div>
+        </div>
+
+        <div class="workers-grid">
+            <div class="worker-card" data-worker="orchestrator">
+                <div class="worker-header">
+                    <span class="worker-icon">🎯</span>
+                    <span class="worker-name">Orchestrator</span>
+                    <span class="worker-status status-unknown">Unknown</span>
+                </div>
+                <div class="worker-body">
+                    <div class="endpoint-list">
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/health"></span>
+                            <span>GET /health</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/help"></span>
+                            <span>GET /help</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/capabilities"></span>
+                            <span>GET /capabilities</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/orchestrate"></span>
+                            <span>POST /orchestrate</span>
+                        </div>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testWorker('orchestrator', 'health')">Health Check</button>
+                        <button class="test-btn secondary" onclick="testWorker('orchestrator', 'full')">Full Test</button>
+                    </div>
+                    <div class="results-section" id="results-orchestrator" style="display: none;">
+                        <div id="results-orchestrator-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card" data-worker="topic-researcher">
+                <div class="worker-header">
+                    <span class="worker-icon">🔍</span>
+                    <span class="worker-name">Topic Researcher</span>
+                    <span class="worker-status status-unknown">Unknown</span>
+                </div>
+                <div class="worker-body">
+                    <div class="endpoint-list">
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/health"></span>
+                            <span>GET /health</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/help"></span>
+                            <span>GET /help</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/research"></span>
+                            <span>POST /research</span>
+                        </div>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testWorker('topic-researcher', 'health')">Health Check</button>
+                        <button class="test-btn secondary" onclick="testWorker('topic-researcher', 'full')">Full Test</button>
+                    </div>
+                    <div class="results-section" id="results-topic-researcher" style="display: none;">
+                        <div id="results-topic-researcher-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card" data-worker="rss-librarian">
+                <div class="worker-header">
+                    <span class="worker-icon">📚</span>
+                    <span class="worker-name">RSS Librarian</span>
+                    <span class="worker-status status-unknown">Unknown</span>
+                </div>
+                <div class="worker-body">
+                    <div class="endpoint-list">
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/health"></span>
+                            <span>GET /health</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/help"></span>
+                            <span>GET /help</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/sources"></span>
+                            <span>GET /sources</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/topics"></span>
+                            <span>GET /topics</span>
+                        </div>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testWorker('rss-librarian', 'health')">Health Check</button>
+                        <button class="test-btn secondary" onclick="testWorker('rss-librarian', 'full')">Full Test</button>
+                    </div>
+                    <div class="results-section" id="results-rss-librarian" style="display: none;">
+                        <div id="results-rss-librarian-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card" data-worker="feed-fetcher">
+                <div class="worker-header">
+                    <span class="worker-icon">📡</span>
+                    <span class="worker-name">Feed Fetcher</span>
+                    <span class="worker-status status-unknown">Unknown</span>
+                </div>
+                <div class="worker-body">
+                    <div class="endpoint-list">
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/health"></span>
+                            <span>GET /health</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/help"></span>
+                            <span>GET /help</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/fetch"></span>
+                            <span>POST /fetch</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/status"></span>
+                            <span>GET /status</span>
+                        </div>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testWorker('feed-fetcher', 'health')">Health Check</button>
+                        <button class="test-btn secondary" onclick="testWorker('feed-fetcher', 'full')">Full Test</button>
+                    </div>
+                    <div class="results-section" id="results-feed-fetcher" style="display: none;">
+                        <div id="results-feed-fetcher-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card" data-worker="content-classifier">
+                <div class="worker-header">
+                    <span class="worker-icon">🧠</span>
+                    <span class="worker-name">Content Classifier</span>
+                    <span class="worker-status status-unknown">Unknown</span>
+                </div>
+                <div class="worker-body">
+                    <div class="endpoint-list">
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/health"></span>
+                            <span>GET /health</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/help"></span>
+                            <span>GET /help</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/analyze"></span>
+                            <span>POST /analyze</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/results"></span>
+                            <span>GET /results</span>
+                        </div>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testWorker('content-classifier', 'health')">Health Check</button>
+                        <button class="test-btn secondary" onclick="testWorker('content-classifier', 'full')">Full Test</button>
+                    </div>
+                    <div class="results-section" id="results-content-classifier" style="display: none;">
+                        <div id="results-content-classifier-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="worker-card" data-worker="report-builder">
+                <div class="worker-header">
+                    <span class="worker-icon">📊</span>
+                    <span class="worker-name">Report Builder</span>
+                    <span class="worker-status status-unknown">Unknown</span>
+                </div>
+                <div class="worker-body">
+                    <div class="endpoint-list">
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/health"></span>
+                            <span>GET /health</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/help"></span>
+                            <span>GET /help</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/generate"></span>
+                            <span>POST /generate</span>
+                        </div>
+                        <div class="endpoint-item">
+                            <span class="endpoint-status" data-endpoint="/reports"></span>
+                            <span>GET /reports</span>
+                        </div>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testWorker('report-builder', 'health')">Health Check</button>
+                        <button class="test-btn secondary" onclick="testWorker('report-builder', 'full')">Full Test</button>
+                    </div>
+                    <div class="results-section" id="results-report-builder" style="display: none;">
+                        <div id="results-report-builder-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="overall-status">
+            <div class="status-summary" id="overallStatus">Ready to test workers</div>
+            <div class="status-details" id="statusDetails">Click "Test All Workers" to run comprehensive health checks</div>
+        </div>
+    </div>
+
+    <script>
+        // Worker configurations
+        const workerConfig = {
+            'orchestrator': {
+                endpoints: {
+                    '/health': { method: 'GET', auth: false },
+                    '/help': { method: 'GET', auth: false },
+                    '/capabilities': { method: 'GET', auth: false },
+                    '/orchestrate': { method: 'POST', auth: true, body: { topic: 'test', urgency: 'low' } }
+                }
+            },
+            'topic-researcher': {
+                endpoints: {
+                    '/health': { method: 'GET', auth: false },
+                    '/help': { method: 'GET', auth: false },
+                    '/research': { method: 'POST', auth: true, body: { topic: 'artificial intelligence' } }
+                }
+            },
+            'rss-librarian': {
+                endpoints: {
+                    '/health': { method: 'GET', auth: false },
+                    '/help': { method: 'GET', auth: false },
+                    '/sources': { method: 'GET', auth: true },
+                    '/topics': { method: 'GET', auth: true }
+                }
+            },
+            'feed-fetcher': {
+                endpoints: {
+                    '/health': { method: 'GET', auth: false },
+                    '/help': { method: 'GET', auth: false },
+                    '/status': { method: 'GET', auth: true },
+                    '/fetch': { method: 'POST', auth: true, body: { sources: ['test-source'] } }
+                }
+            },
+            'content-classifier': {
+                endpoints: {
+                    '/health': { method: 'GET', auth: false },
+                    '/help': { method: 'GET', auth: false },
+                    '/analyze': { method: 'POST', auth: true, body: { articles: ['test article'] } },
+                    '/results': { method: 'GET', auth: true }
+                }
+            },
+            'report-builder': {
+                endpoints: {
+                    '/health': { method: 'GET', auth: false },
+                    '/help': { method: 'GET', auth: false },
+                    '/generate': { method: 'POST', auth: true, body: { topic: 'test report' } },
+                    '/reports': { method: 'GET', auth: true }
+                }
+            }
+        };
+
+        // Test a single worker
+        async function testWorker(workerName, testType = 'health') {
+            const baseUrl = document.getElementById('baseUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const testMode = document.getElementById('testMode').value;
+            
+            updateWorkerStatus(workerName, 'testing');
+            const resultsDiv = document.getElementById(`results-${workerName}`);
+            const contentDiv = document.getElementById(`results-${workerName}-content`);
+            
+            resultsDiv.style.display = 'block';
+            contentDiv.innerHTML = '<div class="result-item">🧪 Testing in progress...</div>';
+            
+            const results = [];
+            const config = workerConfig[workerName];
+            
+            if (!config) {
+                results.push({ endpoint: 'config', success: false, error: 'Worker configuration not found' });
+                displayResults(workerName, results);
+                return;
+            }
+            
+            // Determine which endpoints to test
+            let endpointsToTest = [];
+            if (testType === 'health') {
+                endpointsToTest = ['/health'];
+            } else {
+                endpointsToTest = Object.keys(config.endpoints);
+                if (testMode === 'public') {
+                    endpointsToTest = endpointsToTest.filter(ep => !config.endpoints[ep].auth);
+                } else if (testMode === 'authenticated') {
+                    endpointsToTest = endpointsToTest.filter(ep => config.endpoints[ep].auth);
+                }
+            }
+            
+            // Test each endpoint
+            for (const endpoint of endpointsToTest) {
+                const endpointConfig = config.endpoints[endpoint];
+                if (!endpointConfig) continue;
+                
+                try {
+                    const result = await testEndpoint(baseUrl, workerName, endpoint, endpointConfig, apiKey);
+                    results.push(result);
+                    updateEndpointStatus(workerName, endpoint, result.success);
+                } catch (error) {
+                    results.push({
+                        endpoint,
+                        success: false,
+                        error: error.message,
+                        details: 'Network or proxy error'
+                    });
+                    updateEndpointStatus(workerName, endpoint, false);
+                }
+            }
+            
+            // Update worker overall status
+            const hasSuccess = results.some(r => r.success);
+            const allSuccess = results.every(r => r.success);
+            
+            if (allSuccess) {
+                updateWorkerStatus(workerName, 'online');
+            } else if (hasSuccess) {
+                updateWorkerStatus(workerName, 'online'); // Partial success still counts as online
+            } else {
+                updateWorkerStatus(workerName, 'offline');
+            }
+            
+            displayResults(workerName, results);
+        }
+        
+        // Test a specific endpoint
+        async function testEndpoint(baseUrl, workerName, endpoint, config, apiKey) {
+            const url = `${baseUrl}/api/${workerName}`;
+            
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add authentication if required
+            if (config.auth && apiKey) {
+                headers['X-API-Key'] = apiKey;
+            }
+            
+            const requestOptions = {
+                method: 'POST', // Always POST to proxy
+                headers,
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: config.method,
+                    data: config.body || null
+                })
+            };
+            
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch(url, requestOptions);
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                let responseData;
+                try {
+                    responseData = await response.json();
+                } catch {
+                    responseData = await response.text();
+                }
+                
+                return {
+                    endpoint,
+                    success: response.ok,
+                    status: response.status,
+                    responseTime,
+                    data: responseData,
+                    error: response.ok ? null : `HTTP ${response.status}`
+                };
+            } catch (error) {
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                return {
+                    endpoint,
+                    success: false,
+                    responseTime,
+                    error: error.message,
+                    details: 'Connection failed - check if worker proxy is running'
+                };
+            }
+        }
+        
+        // Test all workers
+        async function testAllWorkers() {
+            const button = document.querySelector('.test-all-btn');
+            button.disabled = true;
+            button.textContent = '🧪 Testing...';
+            
+            const workers = Object.keys(workerConfig);
+            const testPromises = workers.map(worker => testWorker(worker, 'health'));
+            
+            await Promise.all(testPromises);
+            
+            // Update overall status
+            updateOverallStatus();
+            
+            button.disabled = false;
+            button.textContent = '🧪 Test All Workers';
+        }
+        
+        // Update worker status display
+        function updateWorkerStatus(workerName, status) {
+            const card = document.querySelector(`[data-worker="${workerName}"]`);
+            const statusElement = card.querySelector('.worker-status');
+            
+            statusElement.className = `worker-status status-${status}`;
+            statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+        
+        // Update endpoint status indicator
+        function updateEndpointStatus(workerName, endpoint, success) {
+            const card = document.querySelector(`[data-worker="${workerName}"]`);
+            const statusDot = card.querySelector(`[data-endpoint="${endpoint}"]`);
+            
+            if (statusDot) {
+                statusDot.className = `endpoint-status ${success ? 'success' : 'error'}`;
+            }
+        }
+        
+        // Display test results
+        function displayResults(workerName, results) {
+            const contentDiv = document.getElementById(`results-${workerName}-content`);
+            
+            let html = '';
+            
+            for (const result of results) {
+                const statusClass = result.success ? 'success' : 'error';
+                const statusIcon = result.success ? '✅' : '❌';
+                
+                html += `
+                    <div class="result-item ${statusClass}">
+                        ${statusIcon} ${result.endpoint} (${result.responseTime || 0}ms)
+                        ${result.error ? `- Error: ${result.error}` : ''}
+                    </div>
+                `;
+                
+                if (result.data) {
+                    html += `
+                        <div class="response-data">
+                            ${JSON.stringify(result.data, null, 2)}
+                        </div>
+                    `;
+                }
+                
+                if (result.details) {
+                    html += `<div class="result-item error">💡 ${result.details}</div>`;
+                }
+            }
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        // Update overall system status
+        function updateOverallStatus() {
+            const statusSummary = document.getElementById('overallStatus');
+            const statusDetails = document.getElementById('statusDetails');
+            
+            const onlineWorkers = document.querySelectorAll('.worker-status.status-online').length;
+            const totalWorkers = Object.keys(workerConfig).length;
+            
+            if (onlineWorkers === totalWorkers) {
+                statusSummary.textContent = '🟢 All Systems Operational';
+                statusSummary.style.color = '#28a745';
+                statusDetails.textContent = `All ${totalWorkers} workers are responding correctly`;
+            } else if (onlineWorkers > 0) {
+                statusSummary.textContent = '🟡 Partial Service';
+                statusSummary.style.color = '#ffc107';
+                statusDetails.textContent = `${onlineWorkers}/${totalWorkers} workers online - check failed workers above`;
+            } else {
+                statusSummary.textContent = '🔴 System Offline';
+                statusSummary.style.color = '#dc3545';
+                statusDetails.textContent = 'No workers responding - check proxy configuration and worker deployments';
+            }
+        }
+        
+        // Auto-test on page load if base URL looks like a valid production URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const baseUrl = document.getElementById('baseUrl').value;
+            if (baseUrl.includes('pages.dev') || baseUrl.includes('https://')) {
+                // Auto-run health checks after a short delay for production
+                setTimeout(() => {
+                    testAllWorkers();
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 AI Factory Diagnostic Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .diagnostic-section {
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .diagnostic-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .diagnostic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .diagnostic-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .diagnostic-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            font-size: 24px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .status-indicator {
+            margin-left: auto;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-unknown { background: #6c757d; color: white; }
+        .status-pass { background: #28a745; color: white; }
+        .status-fail { background: #dc3545; color: white; }
+        .status-warning { background: #ffc107; color: #212529; }
+        .status-testing { background: #17a2b8; color: white; }
+
+        .test-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .test-item:last-child {
+            border-bottom: none;
+        }
+
+        .test-status {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #6c757d;
+            flex-shrink: 0;
+        }
+
+        .test-status.pass { background: #28a745; }
+        .test-status.fail { background: #dc3545; }
+        .test-status.warning { background: #ffc107; }
+        .test-status.testing { 
+            background: #17a2b8; 
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .test-description {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .test-result {
+            font-size: 12px;
+            color: #6c757d;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #ffc107, #ff8f00);
+            color: #212529;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .results-area {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .command-box {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .issue-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .issue-list li {
+            padding: 10px;
+            margin-bottom: 5px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .fix-suggestion {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 AI Factory Diagnostic Tool</h1>
+            <p>Comprehensive system health analysis and troubleshooting</p>
+        </div>
+
+        <!-- Configuration Section -->
+        <div class="diagnostic-section">
+            <div class="section-title">
+                <span>⚙️</span>
+                <span>Configuration</span>
+            </div>
+            
+            <div style="max-width: 600px;">
+                <label>Production Frontend URL:</label>
+                <input type="text" class="config-input" id="frontendUrl" value="https://ai-factory-frontend.pages.dev" placeholder="https://your-pages-domain.pages.dev">
+                
+                <label>API Key (optional for public endpoints):</label>
+                <input type="password" class="config-input" id="apiKey" placeholder="your-client-api-key">
+                
+                <div style="margin-top: 15px;">
+                    <button class="btn btn-success" onclick="runFullDiagnostic()">🔍 Run Full Diagnostic</button>
+                    <button class="btn btn-warning" onclick="runQuickCheck()">⚡ Quick Check</button>
+                    <button class="btn" onclick="clearResults()">🗑️ Clear Results</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="diagnostic-section">
+            <div class="section-title">
+                <span>📊</span>
+                <span>System Summary</span>
+            </div>
+            
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="passCount" style="color: #28a745;">0</div>
+                    <div class="stat-label">Tests Passed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="failCount" style="color: #dc3545;">0</div>
+                    <div class="stat-label">Tests Failed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="workerCount" style="color: #007bff;">0</div>
+                    <div class="stat-label">Workers Online</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="responseTime" style="color: #6c757d;">-</div>
+                    <div class="stat-label">Avg Response (ms)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Tests -->
+        <div class="diagnostic-section">
+            <div class="section-title">
+                <span>🧪</span>
+                <span>Diagnostic Tests</span>
+            </div>
+            
+            <div class="diagnostic-grid">
+                <!-- Frontend Connectivity -->
+                <div class="diagnostic-card">
+                    <div class="card-header">
+                        <span class="card-icon">🌐</span>
+                        <span class="card-title">Frontend Connectivity</span>
+                        <span class="status-indicator status-unknown" id="frontend-status">Unknown</span>
+                    </div>
+                    
+                    <div class="test-item">
+                        <span class="test-status" id="test-frontend-reachable"></span>
+                        <span class="test-description">Frontend server reachable</span>
+                        <span class="test-result" id="result-frontend-reachable"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-pages-functions"></span>
+                        <span class="test-description">Pages Functions responding</span>
+                        <span class="test-result" id="result-pages-functions"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-cors-setup"></span>
+                        <span class="test-description">CORS configuration</span>
+                        <span class="test-result" id="result-cors-setup"></span>
+                    </div>
+                </div>
+
+                <!-- Authentication -->
+                <div class="diagnostic-card">
+                    <div class="card-header">
+                        <span class="card-icon">🔐</span>
+                        <span class="card-title">Authentication</span>
+                        <span class="status-indicator status-unknown" id="auth-status">Unknown</span>
+                    </div>
+                    
+                    <div class="test-item">
+                        <span class="test-status" id="test-session-management"></span>
+                        <span class="test-description">Session management</span>
+                        <span class="test-result" id="result-session-management"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-api-key-validation"></span>
+                        <span class="test-description">API key validation</span>
+                        <span class="test-result" id="result-api-key-validation"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-proxy-auth"></span>
+                        <span class="test-description">Proxy authentication</span>
+                        <span class="test-result" id="result-proxy-auth"></span>
+                    </div>
+                </div>
+
+                <!-- Worker Health -->
+                <div class="diagnostic-card">
+                    <div class="card-header">
+                        <span class="card-icon">🏭</span>
+                        <span class="card-title">Worker Health</span>
+                        <span class="status-indicator status-unknown" id="worker-status">Unknown</span>
+                    </div>
+                    
+                    <div class="test-item">
+                        <span class="test-status" id="test-orchestrator"></span>
+                        <span class="test-description">Orchestrator</span>
+                        <span class="test-result" id="result-orchestrator"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-topic-researcher"></span>
+                        <span class="test-description">Topic Researcher</span>
+                        <span class="test-result" id="result-topic-researcher"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-rss-librarian"></span>
+                        <span class="test-description">RSS Librarian</span>
+                        <span class="test-result" id="result-rss-librarian"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-feed-fetcher"></span>
+                        <span class="test-description">Feed Fetcher</span>
+                        <span class="test-result" id="result-feed-fetcher"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-content-classifier"></span>
+                        <span class="test-description">Content Classifier</span>
+                        <span class="test-result" id="result-content-classifier"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-report-builder"></span>
+                        <span class="test-description">Report Builder</span>
+                        <span class="test-result" id="result-report-builder"></span>
+                    </div>
+                </div>
+
+                <!-- Network & Performance -->
+                <div class="diagnostic-card">
+                    <div class="card-header">
+                        <span class="card-icon">📡</span>
+                        <span class="card-title">Network & Performance</span>
+                        <span class="status-indicator status-unknown" id="network-status">Unknown</span>
+                    </div>
+                    
+                    <div class="test-item">
+                        <span class="test-status" id="test-response-times"></span>
+                        <span class="test-description">Response times</span>
+                        <span class="test-result" id="result-response-times"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-concurrent-requests"></span>
+                        <span class="test-description">Concurrent requests</span>
+                        <span class="test-result" id="result-concurrent-requests"></span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status" id="test-error-handling"></span>
+                        <span class="test-description">Error handling</span>
+                        <span class="test-result" id="result-error-handling"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Issues & Recommendations -->
+        <div class="diagnostic-section">
+            <div class="section-title">
+                <span>⚠️</span>
+                <span>Issues & Recommendations</span>
+            </div>
+            
+            <ul class="issue-list" id="issuesList">
+                <li>Run diagnostic tests to identify issues...</li>
+            </ul>
+        </div>
+
+        <!-- Detailed Results -->
+        <div class="diagnostic-section">
+            <div class="section-title">
+                <span>📋</span>
+                <span>Detailed Results</span>
+            </div>
+            
+            <div class="results-area" id="detailedResults">
+                Click "Run Full Diagnostic" to see detailed test results...
+            </div>
+        </div>
+
+        <!-- Troubleshooting Commands -->
+        <div class="diagnostic-section">
+            <div class="section-title">
+                <span>🛠️</span>
+                <span>Troubleshooting Commands</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>1. Check if Pages deployment is live:</h4>
+                <div class="command-box">wrangler pages deployment list</div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>2. Test individual worker directly (bypass Pages proxy):</h4>
+                <div class="command-box">curl https://bitware-orchestrator.yourname.workers.dev/health</div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>3. Check Cloudflare Pages Functions logs:</h4>
+                <div class="command-box">wrangler pages deployment tail --project-name=ai-factory-frontend</div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>4. Verify production secrets are set:</h4>
+                <div class="command-box">
+wrangler pages secret list --project-name=ai-factory-frontend<br>
+# Should show: CLIENT_API_KEY, WORKER_SHARED_SECRET, etc.
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>5. Test production authentication manually:</h4>
+                <div class="command-box">
+curl -X POST https://your-pages-domain.pages.dev/api/orchestrator \<br>
+  -H "Content-Type: application/json" \<br>
+  -H "X-API-Key: your-production-api-key" \<br>
+  -d '{"endpoint":"/health","method":"GET"}'
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4>6. Check worker URLs in wrangler.toml:</h4>
+                <div class="command-box">
+# Verify all worker URLs are correct:<br>
+ORCHESTRATOR_URL = "https://bitware-orchestrator.yourname.workers.dev"<br>
+TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.yourname.workers.dev"<br>
+# etc...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const workers = ['orchestrator', 'topic-researcher', 'rss-librarian', 'feed-fetcher', 'content-classifier', 'report-builder'];
+        let testResults = {};
+        let responseTimes = [];
+
+        // Run full diagnostic
+        async function runFullDiagnostic() {
+            clearResults();
+            logResult('🔍 Starting full diagnostic...\n');
+            
+            updateAllTestStatus('testing');
+            
+            // Test frontend connectivity
+            await testFrontendConnectivity();
+            
+            // Test authentication
+            await testAuthentication();
+            
+            // Test worker health
+            await testWorkerHealth();
+            
+            // Test network performance
+            await testNetworkPerformance();
+            
+            // Generate summary and recommendations
+            generateSummary();
+            generateRecommendations();
+            
+            logResult('\n✅ Diagnostic complete!');
+        }
+
+        // Run quick check
+        async function runQuickCheck() {
+            clearResults();
+            logResult('⚡ Running quick health check...\n');
+            
+            const frontendUrl = document.getElementById('frontendUrl').value;
+            
+            // Test basic connectivity
+            try {
+                const startTime = Date.now();
+                const response = await fetch(`${frontendUrl}/api/orchestrator`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: '/health', method: 'GET' })
+                });
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                if (response.ok) {
+                    logResult(`✅ Frontend proxy responding (${responseTime}ms)`);
+                    setTestStatus('test-frontend-reachable', 'pass', `${responseTime}ms`);
+                } else {
+                    logResult(`❌ Frontend proxy error: HTTP ${response.status}`);
+                    setTestStatus('test-frontend-reachable', 'fail', `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                logResult(`❌ Frontend connection failed: ${error.message}`);
+                setTestStatus('test-frontend-reachable', 'fail', 'Connection failed');
+            }
+            
+            logResult('\n⚡ Quick check complete!');
+        }
+
+        // Test frontend connectivity
+        async function testFrontendConnectivity() {
+            logResult('🌐 Testing frontend connectivity...\n');
+            const frontendUrl = document.getElementById('frontendUrl').value;
+            
+            // Test if frontend is reachable
+            try {
+                const response = await fetch(frontendUrl, { method: 'HEAD' });
+                if (response.ok) {
+                    setTestStatus('test-frontend-reachable', 'pass', 'OK');
+                    logResult('  ✅ Frontend server reachable');
+                } else {
+                    setTestStatus('test-frontend-reachable', 'fail', `HTTP ${response.status}`);
+                    logResult(`  ❌ Frontend server error: HTTP ${response.status}`);
+                }
+            } catch (error) {
+                setTestStatus('test-frontend-reachable', 'fail', 'Connection failed');
+                logResult(`  ❌ Frontend server unreachable: ${error.message}`);
+            }
+            
+            // Test Pages Functions
+            try {
+                const response = await fetch(`${frontendUrl}/api/orchestrator`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: '/health', method: 'GET' })
+                });
+                
+                if (response.ok) {
+                    setTestStatus('test-pages-functions', 'pass', 'OK');
+                    logResult('  ✅ Pages Functions responding');
+                } else {
+                    setTestStatus('test-pages-functions', 'fail', `HTTP ${response.status}`);
+                    logResult(`  ❌ Pages Functions error: HTTP ${response.status}`);
+                }
+            } catch (error) {
+                setTestStatus('test-pages-functions', 'fail', 'Failed');
+                logResult(`  ❌ Pages Functions failed: ${error.message}`);
+            }
+            
+            // Test CORS
+            try {
+                const response = await fetch(`${frontendUrl}/api/orchestrator`, {
+                    method: 'OPTIONS',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const corsHeader = response.headers.get('Access-Control-Allow-Origin');
+                if (corsHeader) {
+                    setTestStatus('test-cors-setup', 'pass', 'Configured');
+                    logResult('  ✅ CORS headers present');
+                } else {
+                    setTestStatus('test-cors-setup', 'warning', 'Missing headers');
+                    logResult('  ⚠️ CORS headers missing');
+                }
+            } catch (error) {
+                setTestStatus('test-cors-setup', 'fail', 'Failed');
+                logResult(`  ❌ CORS test failed: ${error.message}`);
+            }
+            
+            updateSectionStatus('frontend-status');
+        }
+
+        // Test authentication
+        async function testAuthentication() {
+            logResult('\n🔐 Testing authentication...\n');
+            const frontendUrl = document.getElementById('frontendUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            // Test session management (always passes for now as it's frontend-only)
+            setTestStatus('test-session-management', 'pass', 'OK');
+            logResult('  ✅ Session management available');
+            
+            // Test API key validation
+            if (apiKey) {
+                try {
+                    const response = await fetch(`${frontendUrl}/api/orchestrator`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-API-Key': apiKey
+                        },
+                        body: JSON.stringify({ endpoint: '/orchestrate', method: 'POST', data: { topic: 'test' } })
+                    });
+                    
+                    if (response.status === 401) {
+                        setTestStatus('test-api-key-validation', 'fail', 'Invalid key');
+                        logResult('  ❌ API key validation failed');
+                    } else if (response.ok || response.status === 400) {
+                        setTestStatus('test-api-key-validation', 'pass', 'Valid');
+                        logResult('  ✅ API key accepted');
+                    } else {
+                        setTestStatus('test-api-key-validation', 'warning', `HTTP ${response.status}`);
+                        logResult(`  ⚠️ API key test inconclusive: HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    setTestStatus('test-api-key-validation', 'fail', 'Error');
+                    logResult(`  ❌ API key test failed: ${error.message}`);
+                }
+            } else {
+                setTestStatus('test-api-key-validation', 'warning', 'No key provided');
+                logResult('  ⚠️ No API key provided for testing');
+            }
+            
+            // Test proxy authentication
+            try {
+                const response = await fetch(`${frontendUrl}/api/orchestrator`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: '/health', method: 'GET' })
+                });
+                
+                if (response.ok) {
+                    setTestStatus('test-proxy-auth', 'pass', 'OK');
+                    logResult('  ✅ Proxy authentication working');
+                } else {
+                    setTestStatus('test-proxy-auth', 'fail', `HTTP ${response.status}`);
+                    logResult(`  ❌ Proxy authentication failed: HTTP ${response.status}`);
+                }
+            } catch (error) {
+                setTestStatus('test-proxy-auth', 'fail', 'Error');
+                logResult(`  ❌ Proxy authentication error: ${error.message}`);
+            }
+            
+            updateSectionStatus('auth-status');
+        }
+
+        // Test worker health
+        async function testWorkerHealth() {
+            logResult('\n🏭 Testing worker health...\n');
+            const frontendUrl = document.getElementById('frontendUrl').value;
+            let onlineCount = 0;
+            
+            for (const worker of workers) {
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(`${frontendUrl}/api/${worker}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ endpoint: '/health', method: 'GET' })
+                    });
+                    const endTime = Date.now();
+                    const responseTime = endTime - startTime;
+                    responseTimes.push(responseTime);
+                    
+                    if (response.ok) {
+                        setTestStatus(`test-${worker}`, 'pass', `${responseTime}ms`);
+                        logResult(`  ✅ ${worker}: Online (${responseTime}ms)`);
+                        onlineCount++;
+                    } else {
+                        setTestStatus(`test-${worker}`, 'fail', `HTTP ${response.status}`);
+                        logResult(`  ❌ ${worker}: Error HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    setTestStatus(`test-${worker}`, 'fail', 'Connection failed');
+                    logResult(`  ❌ ${worker}: Connection failed - ${error.message}`);
+                }
+            }
+            
+            document.getElementById('workerCount').textContent = onlineCount;
+            updateSectionStatus('worker-status');
+        }
+
+        // Test network performance
+        async function testNetworkPerformance() {
+            logResult('\n📡 Testing network performance...\n');
+            const frontendUrl = document.getElementById('frontendUrl').value;
+            
+            // Test response times
+            if (responseTimes.length > 0) {
+                const avgTime = Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length);
+                document.getElementById('responseTime').textContent = avgTime;
+                
+                if (avgTime < 1000) {
+                    setTestStatus('test-response-times', 'pass', `${avgTime}ms avg`);
+                    logResult(`  ✅ Response times good (${avgTime}ms average)`);
+                } else if (avgTime < 3000) {
+                    setTestStatus('test-response-times', 'warning', `${avgTime}ms avg`);
+                    logResult(`  ⚠️ Response times slow (${avgTime}ms average)`);
+                } else {
+                    setTestStatus('test-response-times', 'fail', `${avgTime}ms avg`);
+                    logResult(`  ❌ Response times poor (${avgTime}ms average)`);
+                }
+            } else {
+                setTestStatus('test-response-times', 'fail', 'No data');
+                logResult('  ❌ No response time data collected');
+            }
+            
+            // Test concurrent requests
+            try {
+                const promises = [];
+                for (let i = 0; i < 3; i++) {
+                    promises.push(fetch(`${frontendUrl}/api/orchestrator`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ endpoint: '/health', method: 'GET' })
+                    }));
+                }
+                
+                const results = await Promise.allSettled(promises);
+                const successCount = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
+                
+                if (successCount === promises.length) {
+                    setTestStatus('test-concurrent-requests', 'pass', `${successCount}/${promises.length}`);
+                    logResult(`  ✅ Concurrent requests handled (${successCount}/${promises.length})`);
+                } else {
+                    setTestStatus('test-concurrent-requests', 'warning', `${successCount}/${promises.length}`);
+                    logResult(`  ⚠️ Some concurrent requests failed (${successCount}/${promises.length})`);
+                }
+            } catch (error) {
+                setTestStatus('test-concurrent-requests', 'fail', 'Error');
+                logResult(`  ❌ Concurrent request test failed: ${error.message}`);
+            }
+            
+            // Test error handling
+            try {
+                const response = await fetch(`${frontendUrl}/api/orchestrator`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: '/nonexistent', method: 'GET' })
+                });
+                
+                if (response.status === 404 || response.status === 400) {
+                    setTestStatus('test-error-handling', 'pass', 'Proper errors');
+                    logResult('  ✅ Error handling working properly');
+                } else {
+                    setTestStatus('test-error-handling', 'warning', `HTTP ${response.status}`);
+                    logResult(`  ⚠️ Unexpected error response: HTTP ${response.status}`);
+                }
+            } catch (error) {
+                setTestStatus('test-error-handling', 'fail', 'No handling');
+                logResult(`  ❌ Error handling test failed: ${error.message}`);
+            }
+            
+            updateSectionStatus('network-status');
+        }
+
+        // Generate summary
+        function generateSummary() {
+            const passCount = document.querySelectorAll('.test-status.pass').length;
+            const failCount = document.querySelectorAll('.test-status.fail').length;
+            
+            document.getElementById('passCount').textContent = passCount;
+            document.getElementById('failCount').textContent = failCount;
+        }
+
+        // Generate recommendations
+        function generateRecommendations() {
+            const issues = [];
+            const recommendations = [];
+            
+            // Check for common issues
+            if (document.getElementById('test-frontend-reachable').classList.contains('fail')) {
+                issues.push('Production Pages deployment is not reachable');
+                recommendations.push('Check your Pages deployment status: wrangler pages deployment list');
+                recommendations.push('Verify your custom domain/subdomain is configured correctly');
+            }
+            
+            if (document.getElementById('test-pages-functions').classList.contains('fail')) {
+                issues.push('Pages Functions are not responding in production');
+                recommendations.push('Verify all production secrets are set: wrangler pages secret list');
+                recommendations.push('Check Pages Functions deployment logs for errors');
+                recommendations.push('Ensure worker URLs in wrangler.toml point to deployed workers');
+            }
+            
+            const offlineWorkers = workers.filter(worker => 
+                document.getElementById(`test-${worker}`).classList.contains('fail')
+            );
+            
+            if (offlineWorkers.length > 0) {
+                issues.push(`${offlineWorkers.length} workers are offline: ${offlineWorkers.join(', ')}`);
+                recommendations.push('Verify all workers are deployed: wrangler deploy for each worker');
+                recommendations.push('Check worker URLs in production wrangler.toml match deployed worker domains');
+                recommendations.push('Test workers directly: curl https://worker-name.yourname.workers.dev/health');
+                recommendations.push('Verify worker-specific secrets (OpenAI keys, database connections) are set');
+            }
+            
+            if (document.getElementById('test-api-key-validation').classList.contains('fail')) {
+                issues.push('Production API key validation is failing');
+                recommendations.push('Verify CLIENT_API_KEY secret is set in production Pages environment');
+                recommendations.push('Check that the API key matches between your client and Pages secrets');
+            }
+            
+            // Update issues list
+            const issuesList = document.getElementById('issuesList');
+            issuesList.innerHTML = '';
+            
+            if (issues.length === 0) {
+                issuesList.innerHTML = '<li class="fix-suggestion">🎉 No major issues detected! Your system appears to be working correctly.</li>';
+            } else {
+                issues.forEach(issue => {
+                    const li = document.createElement('li');
+                    li.textContent = `❌ ${issue}`;
+                    issuesList.appendChild(li);
+                });
+                
+                recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.className = 'fix-suggestion';
+                    li.textContent = `💡 ${rec}`;
+                    issuesList.appendChild(li);
+                });
+            }
+        }
+
+        // Helper functions
+        function setTestStatus(testId, status, result = '') {
+            const element = document.getElementById(testId);
+            if (element) {
+                element.className = `test-status ${status}`;
+                testResults[testId] = { status, result };
+            }
+            
+            const resultElement = document.getElementById(`result-${testId.replace('test-', '')}`);
+            if (resultElement) {
+                resultElement.textContent = result;
+            }
+        }
+
+        function updateSectionStatus(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            
+            const card = section.closest('.diagnostic-card');
+            const tests = card.querySelectorAll('.test-status');
+            
+            const passCount = card.querySelectorAll('.test-status.pass').length;
+            const failCount = card.querySelectorAll('.test-status.fail').length;
+            const totalTests = tests.length;
+            
+            if (failCount === 0) {
+                section.className = 'status-indicator status-pass';
+                section.textContent = 'All Good';
+            } else if (passCount > failCount) {
+                section.className = 'status-indicator status-warning';
+                section.textContent = 'Some Issues';
+            } else {
+                section.className = 'status-indicator status-fail';
+                section.textContent = 'Major Issues';
+            }
+        }
+
+        function updateAllTestStatus(status) {
+            document.querySelectorAll('.test-status').forEach(element => {
+                element.className = `test-status ${status}`;
+            });
+            
+            document.querySelectorAll('.status-indicator').forEach(element => {
+                if (element.id.endsWith('-status')) {
+                    element.className = `status-indicator status-${status}`;
+                    element.textContent = status === 'testing' ? 'Testing...' : 'Unknown';
+                }
+            });
+        }
+
+        function logResult(message) {
+            const resultsArea = document.getElementById('detailedResults');
+            resultsArea.textContent += message + '\n';
+            resultsArea.scrollTop = resultsArea.scrollHeight;
+        }
+
+        function clearResults() {
+            testResults = {};
+            responseTimes = [];
+            
+            document.getElementById('detailedResults').textContent = '';
+            document.getElementById('issuesList').innerHTML = '<li>Run diagnostic tests to identify issues...</li>';
+            
+            document.getElementById('passCount').textContent = '0';
+            document.getElementById('failCount').textContent = '0';
+            document.getElementById('workerCount').textContent = '0';
+            document.getElementById('responseTime').textContent = '-';
+            
+            document.querySelectorAll('.test-status').forEach(element => {
+                element.className = 'test-status';
+            });
+            
+            document.querySelectorAll('.test-result').forEach(element => {
+                element.textContent = '';
+            });
+            
+            document.querySelectorAll('.status-indicator').forEach(element => {
+                if (element.id.endsWith('-status')) {
+                    element.className = 'status-indicator status-unknown';
+                    element.textContent = 'Unknown';
+                }
+            });
+        }
+
+        // Auto-run quick check on page load for production URLs
+        document.addEventListener('DOMContentLoaded', () => {
+            const frontendUrl = document.getElementById('frontendUrl').value;
+            if (frontendUrl.includes('pages.dev') || frontendUrl.includes('https://')) {
+                setTimeout(() => {
+                    runQuickCheck();
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+</html>

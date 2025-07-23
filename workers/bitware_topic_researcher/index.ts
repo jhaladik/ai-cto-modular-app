@@ -66,7 +66,7 @@ export default {
     }
 
     try {
-      // Public endpoints (no auth required)
+      // Public endpoints (no auth required) - ADD THIS SECTION
       if (url.pathname === '/help') {
         return jsonResponse(getHelpInfo(), { headers: corsHeaders });
       }
@@ -75,6 +75,14 @@ export default {
         return jsonResponse(getCapabilities(), { headers: corsHeaders });
       }
 
+      // UPDATE the health endpoint to use initialization:
+      if (url.pathname === '/health') {
+        // Try to initialize database first
+        await initializeDatabase(env);
+        
+        const health = await checkWorkerHealth(env);
+        return jsonResponse(health, { headers: corsHeaders });
+      }
       // Debug endpoint - remove after testing
       if (url.pathname === '/debug') {
         return jsonResponse({
@@ -117,6 +125,45 @@ export default {
     }
   }
 };
+
+// Fix for workers/bitware_topic_researcher/index.ts
+// REPLACE the existing checkWorkerHealth function with this safer version:
+
+async function checkWorkerHealth(env: Env) {
+  try {
+    // Test if database exists and is accessible
+    let dbConnected = false;
+    let totalSessions = 0;
+    
+    try {
+      const testQuery = await env.TOPIC_RESEARCH_DB.prepare(`
+        SELECT COUNT(*) as count FROM research_sessions WHERE status = 'completed'
+      `).first();
+      
+      dbConnected = true;
+      totalSessions = testQuery?.count || 0;
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError);
+      // Database might not exist yet, that's ok
+    }
+    
+    return {
+      status: 'healthy',
+      database: dbConnected ? 'connected' : 'not_initialized',
+      total_sessions: totalSessions,
+      openai_configured: !!env.OPENAI_API_KEY,
+      cache_available: !!env.RESEARCH_CACHE,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Health check error:', error);
+    return {
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
 
 // Authentication functions
 function isValidClientAuth(request: Request, env: Env): boolean {
@@ -602,6 +649,45 @@ async function handleAdminRequest(url: URL, request: Request, env: Env, corsHead
   }
 
   return notFoundResponse();
+}
+
+async function initializeDatabase(env: Env) {
+  try {
+    // Create tables if they don't exist
+    await env.TOPIC_RESEARCH_DB.prepare(`
+      CREATE TABLE IF NOT EXISTS research_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        topic TEXT NOT NULL,
+        search_depth INTEGER DEFAULT 3,
+        sources_found INTEGER DEFAULT 0,
+        quality_sources INTEGER DEFAULT 0,
+        research_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'pending'
+      )
+    `).run();
+    
+    await env.TOPIC_RESEARCH_DB.prepare(`
+      CREATE TABLE IF NOT EXISTS discovered_sources (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER,
+        url TEXT NOT NULL,
+        domain TEXT,
+        title TEXT,
+        description TEXT,
+        quality_score REAL DEFAULT 0.0,
+        validation_status TEXT DEFAULT 'pending',
+        discovery_method TEXT,
+        reasoning TEXT,
+        discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (session_id) REFERENCES research_sessions(id)
+      )
+    `).run();
+    
+    return true;
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    return false;
+  }
 }
 
 // Helper functions

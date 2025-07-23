@@ -54,56 +54,92 @@ interface WorkerOutput {
 }
 
 export default {
-  async fetch(request: Request, env: any): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    
-    // Public endpoints (no auth required)
-    if (url.pathname === '/help') {
-      return await handleHelp(env);
-    }
-    
-    if (url.pathname === '/topics') {
-      return await handleTopics(env);
-    }
+    const method = request.method;
 
-    // Admin endpoints (worker auth required)
-    if (url.pathname === '/admin/add-source' && request.method === 'POST') {
-      if (!validateWorkerAuth(request, env)) {
-        return unauthorizedResponse('Worker authentication required for admin functions');
-      }
-      return await handleAddSource(request, env);
-    }
-
-    if (url.pathname === '/admin/stats') {
-      if (!validateWorkerAuth(request, env)) {
-        return unauthorizedResponse('Worker authentication required for admin functions');
-      }
-      return await handleStats(env);
-    }
-
-    // Main functionality (client or worker auth required)
-    if (!validateClientAuth(request, env) && !validateWorkerAuth(request, env)) {
-      return unauthorizedResponse('Authentication required: provide X-API-Key or valid worker credentials');
-    }
-
-    // Main RSS discovery endpoint
-    const topic = url.searchParams.get('topic');
-    if (!topic) {
-      return errorResponse('Missing topic parameter');
-    }
-
-    const config: WorkerConfig = {
-      maxFeeds: parseInt(url.searchParams.get('maxFeeds') || '20'),
-      language: url.searchParams.get('language') || 'en',
-      cacheHours: parseInt(url.searchParams.get('cacheHours') || '24'),
-      minQualityScore: parseFloat(url.searchParams.get('minQualityScore') || '0.5')
+    // CORS headers
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Worker-ID',
     };
 
+    if (method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+
     try {
-      const result = await findRSSFeeds({ topic, config }, env);
-      return jsonResponse(result);
-    } catch (error) {
-      return errorResponse(error.message);
+      // Public endpoints (no auth required)
+      if (url.pathname === '/help') {
+        return jsonResponse(getHelpInfo(), { headers: corsHeaders });
+      }
+
+      if (url.pathname === '/health') {
+        try {
+          const health = await checkWorkerHealth(env);
+          return new Response(JSON.stringify(health), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        } catch (e) {
+          console.error('Health check failed:', e);
+          return new Response(JSON.stringify({
+            status: 'error', 
+            error: `Health check error: ${e.message || e.toString()}`
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+      }
+      
+      if (url.pathname === '/capabilities') {
+        return jsonResponse(getCapabilities(), { headers: corsHeaders });
+      }
+
+      // Admin endpoints (worker auth required)
+      if (url.pathname === '/admin/add-source' && request.method === 'POST') {
+        if (!validateWorkerAuth(request, env)) {
+          return unauthorizedResponse('Worker authentication required for admin functions');
+        }
+        return await handleAddSource(request, env);
+      }
+
+      if (url.pathname === '/admin/stats') {
+        if (!validateWorkerAuth(request, env)) {
+          return unauthorizedResponse('Worker authentication required for admin functions');
+        }
+        return await handleStats(env);
+      }
+
+      // Main functionality (client or worker auth required)
+      if (!validateClientAuth(request, env) && !validateWorkerAuth(request, env)) {
+        return unauthorizedResponse('Authentication required: provide X-API-Key or valid worker credentials');
+      }
+
+      // Main RSS discovery endpoint
+      const topic = url.searchParams.get('topic');
+      if (!topic) {
+        return errorResponse('Missing topic parameter');
+      }
+
+      const config: WorkerConfig = {
+        maxFeeds: parseInt(url.searchParams.get('maxFeeds') || '20'),
+        language: url.searchParams.get('language') || 'en',
+        cacheHours: parseInt(url.searchParams.get('cacheHours') || '24'),
+        minQualityScore: parseFloat(url.searchParams.get('minQualityScore') || '0.5'),
+      };
+
+      try {
+        const result = await findRSSFeeds({ topic, config }, env);
+        return jsonResponse(result);
+      } catch (error) {
+        return errorResponse(error.message);
+      }
+
+    } catch (err) {
+      return errorResponse('Unexpected error');
     }
   }
 };
@@ -310,6 +346,69 @@ async function handleAddSource(request: Request, env: any) {
     }
     return errorResponse(`Failed to add source: ${error.message}`);
   }
+}
+
+// ALSO ADD THESE HELPER FUNCTIONS AT THE END:
+
+async function checkWorkerHealth(env: Env) {
+  try {
+    // Test database connection
+    const testQuery = await env.RSS_SOURCES_DB.prepare(`
+      SELECT COUNT(*) as count FROM rss_sources WHERE quality_score > 0.7
+    `).first();
+    
+    return {
+      status: 'healthy',
+      database: 'connected',
+      total_sources: testQuery.count || 0,
+      cache_available: !!env.RSS_SOURCE_CACHE,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    return {
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+function getHelpInfo() {
+  return {
+    worker: 'bitware_rss_source_finder',
+    version: '1.0.0',
+    description: 'Curated RSS source discovery and management',
+    endpoints: {
+      public: {
+        'GET /help': 'This help information',
+        'GET /capabilities': 'Worker capabilities and specifications', 
+        'GET /health': 'Worker health status'
+      },
+      main: {
+        'GET /?topic=<topic>': 'Get RSS sources for topic',
+        'GET /sources': 'List all sources',
+        'GET /topics': 'List available topics'
+      },
+      admin: {
+        'GET /admin/stats': 'Source statistics',
+        'POST /admin/sources': 'Add new source'
+      }
+    }
+  };
+}
+
+function getCapabilities() {
+  return {
+    worker_type: 'CuratedRepository',
+    role: 'Serve curated RSS sources from verified database collection',
+    capabilities: {
+      total_sources: 31,
+      supported_topics: 9,
+      quality_scoring: true,
+      caching_enabled: true,
+      max_feeds_per_topic: 20
+    }
+  };
 }
 
 async function handleStats(env: any) {
