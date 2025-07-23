@@ -381,7 +381,7 @@ function getHelpInfo() {
     endpoints: {
       public: {
         'GET /help': 'This help information',
-        'GET /capabilities': 'Worker capabilities and specifications', 
+        'GET /capabilities': 'Worker capabilities and specifications',
         'GET /health': 'Worker health status'
       },
       main: {
@@ -391,7 +391,7 @@ function getHelpInfo() {
       },
       admin: {
         'GET /admin/stats': 'Source statistics',
-        'POST /admin/sources': 'Add new source'
+        'POST /admin/add-source': 'Add new source'
       }
     }
   };
@@ -538,12 +538,13 @@ function validateWorkerAuth(request: Request, env: any): boolean {
   return authHeader === `Bearer ${env.WORKER_SHARED_SECRET}` && workerID;
 }
 
-function jsonResponse(data: any, status: number = 200): Response {
+function jsonResponse(data: any, options: { status?: number, headers?: Record<string, string> } = {}): Response {
   return new Response(JSON.stringify(data), {
-    status,
-    headers: { 
+    status: options.status || 200,
+    headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      ...(options.headers || {})
     }
   });
 }

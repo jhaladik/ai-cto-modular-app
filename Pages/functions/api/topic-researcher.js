@@ -1,9 +1,15 @@
-// =============================================================================
-// functions/api/topic-researcher.js - FIXED VERSION
-// =============================================================================
+// functions/api/orchestrator.js - PROPERLY FIXED
 export async function onRequestPost(context) {
   const { request, env } = context;
   
+  let sessionToken = null; // Define first
+  
+  // Debug logging (now sessionToken is defined)
+  console.log('Environment check:', {
+    hasBitwareSessionStore: !!env.BITWARE_SESSION_STORE,
+    allEnvKeys: Object.keys(env)
+  });
+
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -14,13 +20,12 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const { endpoint, method, data } = body;
     
-    // Public endpoints that don't need authentication
     const publicEndpoints = ['/health', '/help', '/capabilities'];
     const isPublicEndpoint = publicEndpoints.includes(endpoint);
     
-    // Only check session for non-public endpoints
     if (!isPublicEndpoint) {
-      const sessionToken = request.headers.get('X-Session-Token') || request.headers.get('x-session-token');
+      // ASSIGN (don't declare new const)
+      sessionToken = request.headers.get('X-Session-Token') || request.headers.get('x-session-token');
       
       if (!sessionToken) {
         return new Response(JSON.stringify({
@@ -32,7 +37,8 @@ export async function onRequestPost(context) {
         });
       }
       
-      const sessionData = await env.SESSION_STORE.get(sessionToken);
+      // FIX: Use correct key format
+      const sessionData = await env.BITWARE_SESSION_STORE.get(`session:${sessionToken}`);
       if (!sessionData) {
         return new Response(JSON.stringify({
           success: false,
@@ -44,7 +50,9 @@ export async function onRequestPost(context) {
       }
     }
     
+    // Rest of your code...
     const workerHeaders = { 'Content-Type': 'application/json' };
+    
     if (!isPublicEndpoint) {
       workerHeaders['X-API-Key'] = env.CLIENT_API_KEY;
     }
@@ -53,7 +61,7 @@ export async function onRequestPost(context) {
     if (!workerUrl) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Topic researcher worker URL not configured'
+        error: 'Orchestrator worker URL not configured'
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -79,6 +87,7 @@ export async function onRequestPost(context) {
     });
     
   } catch (error) {
+    console.error('Orchestrator proxy error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: 'Internal server error',

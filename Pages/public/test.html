@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Factory Worker Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .auth-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .worker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .worker-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .worker-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .worker-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .worker-icon {
+            font-size: 32px;
+            margin-right: 15px;
+        }
+
+        .worker-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .endpoint-group {
+            margin-bottom: 20px;
+        }
+
+        .endpoint-group h4 {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .endpoint-btn {
+            display: block;
+            width: 100%;
+            background: #f8f9fa;
+            border: 1px solid #e1e8ed;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .endpoint-btn:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+
+        .endpoint-btn.main-endpoint {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .endpoint-btn.main-endpoint:hover {
+            opacity: 0.9;
+        }
+
+        .response-area {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .error-message {
+            background: #fff5f5;
+            color: #e53e3e;
+            border: 1px solid #feb2b2;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .success-message {
+            background: #f0fff4;
+            color: #38a169;
+            border: 1px solid #9ae6b4;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online { background: #48bb78; }
+        .status-offline { background: #f56565; }
+        .status-loading { 
+            background: #ed8936; 
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @media (max-width: 768px) {
+            .worker-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .auth-status {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏭 AI Factory Worker Test Suite</h1>
+            <p>Test and interact with all backend workers through authenticated proxy</p>
+            
+            <div class="auth-status">
+                <div id="user-info" class="hidden">
+                    <span>Welcome, <strong id="username"></strong> (<span id="user-role"></span>)</span>
+                </div>
+                <div>
+                    <button id="logout-btn" class="btn hidden">Logout</button>
+                    <button id="debug-session-btn" class="btn hidden" style="margin-left: 10px; background: #orange;">Debug Session</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-section" class="login-form">
+            <h2>🔐 Authentication Required</h2>
+            <p>Please login to access the worker test interface</p>
+            
+            <div id="login-error" class="error-message hidden"></div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username-input" value="admin" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password-input" value="admin123" required>
+                </div>
+                
+                <button type="submit" class="btn" id="login-btn">Login</button>
+            </form>
+            
+            <p style="margin-top: 15px; font-size: 14px; color: #666;">
+                <strong>Default credentials:</strong><br>
+                Admin: admin / admin123<br>
+                User: user / user123
+            </p>
+        </div>
+
+        <!-- Worker Test Interface -->
+        <div id="test-interface" class="hidden">
+            <div class="worker-grid">
+                <!-- Orchestrator -->
+                <div class="worker-card">
+                    <div class="worker-header">
+                        <div class="worker-icon">🎯</div>
+                        <div class="worker-title">Orchestrator</div>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Public Endpoints</h4>
+                        <button class="endpoint-btn" onclick="testEndpoint('orchestrator', '/health', 'GET')">GET /health</button>
+                        <button class="endpoint-btn" onclick="testEndpoint('orchestrator', '/help', 'GET')">GET /help</button>
+                        <button class="endpoint-btn" onclick="testEndpoint('orchestrator', '/capabilities', 'GET')">GET /capabilities</button>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Main Endpoints (Authenticated)</h4>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('orchestrator', '/orchestrate', 'POST', {topic: 'AI research', strategy: 'balanced'})">POST /orchestrate</button>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('orchestrator', '/pipeline-health', 'GET')">GET /pipeline-health</button>
+                    </div>
+                    
+                    <div id="orchestrator-response" class="response-area hidden"></div>
+                </div>
+
+                <!-- Topic Researcher -->
+                <div class="worker-card">
+                    <div class="worker-header">
+                        <div class="worker-icon">🔍</div>
+                        <div class="worker-title">Topic Researcher</div>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Public Endpoints</h4>
+                        <button class="endpoint-btn" onclick="testEndpoint('topic-researcher', '/health', 'GET')">GET /health</button>
+                        <button class="endpoint-btn" onclick="testEndpoint('topic-researcher', '/help', 'GET')">GET /help</button>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Main Endpoints (Authenticated)</h4>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('topic-researcher', '/research', 'POST', {topic: 'artificial intelligence', depth: 3})">POST /research</button>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('topic-researcher', '/?topic=technology&depth=2', 'GET')">GET /?topic=technology</button>
+                    </div>
+                    
+                    <div id="topic-researcher-response" class="response-area hidden"></div>
+                </div>
+
+                <!-- RSS Librarian -->
+                <div class="worker-card">
+                    <div class="worker-header">
+                        <div class="worker-icon">📚</div>
+                        <div class="worker-title">RSS Librarian</div>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Public Endpoints</h4>
+                        <button class="endpoint-btn" onclick="testEndpoint('rss-librarian', '/health', 'GET')">GET /health</button>
+                        <button class="endpoint-btn" onclick="testEndpoint('rss-librarian', '/help', 'GET')">GET /help</button>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Main Endpoints (Authenticated)</h4>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('rss-librarian', '/?topic=technology', 'GET')">GET /?topic=technology</button>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('rss-librarian', '/sources', 'GET')">GET /sources</button>
+                    </div>
+                    
+                    <div id="rss-librarian-response" class="response-area hidden"></div>
+                </div>
+
+                <!-- Feed Fetcher -->
+                <div class="worker-card">
+                    <div class="worker-header">
+                        <div class="worker-icon">📡</div>
+                        <div class="worker-title">Feed Fetcher</div>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Public Endpoints</h4>
+                        <button class="endpoint-btn" onclick="testEndpoint('feed-fetcher', '/health', 'GET')">GET /health</button>
+                        <button class="endpoint-btn" onclick="testEndpoint('feed-fetcher', '/help', 'GET')">GET /help</button>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Main Endpoints (Authenticated)</h4>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('feed-fetcher', '/fetch', 'POST', {feed_url: 'https://feeds.feedburner.com/TechCrunch/', max_articles: 5})">POST /fetch</button>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('feed-fetcher', '/status', 'GET')">GET /status</button>
+                    </div>
+                    
+                    <div id="feed-fetcher-response" class="response-area hidden"></div>
+                </div>
+
+                <!-- Content Classifier -->
+                <div class="worker-card">
+                    <div class="worker-header">
+                        <div class="worker-icon">🧠</div>
+                        <div class="worker-title">Content Classifier</div>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Public Endpoints</h4>
+                        <button class="endpoint-btn" onclick="testEndpoint('content-classifier', '/health', 'GET')">GET /health</button>
+                        <button class="endpoint-btn" onclick="testEndpoint('content-classifier', '/help', 'GET')">GET /help</button>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Main Endpoints (Authenticated)</h4>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('content-classifier', '/analyze', 'POST', {articles: [{title: 'Test', content: 'Sample content for AI analysis'}]})">POST /analyze</button>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('content-classifier', '/results', 'GET')">GET /results</button>
+                    </div>
+                    
+                    <div id="content-classifier-response" class="response-area hidden"></div>
+                </div>
+
+                <!-- Report Builder -->
+                <div class="worker-card">
+                    <div class="worker-header">
+                        <div class="worker-icon">📊</div>
+                        <div class="worker-title">Report Builder</div>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Public Endpoints</h4>
+                        <button class="endpoint-btn" onclick="testEndpoint('report-builder', '/health', 'GET')">GET /health</button>
+                        <button class="endpoint-btn" onclick="testEndpoint('report-builder', '/help', 'GET')">GET /help</button>
+                    </div>
+                    
+                    <div class="endpoint-group">
+                        <h4>Main Endpoints (Authenticated)</h4>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('report-builder', '/generate', 'POST', {report_type: 'executive_summary', topic_filters: ['AI']})">POST /generate</button>
+                        <button class="endpoint-btn main-endpoint" onclick="testEndpoint('report-builder', '/reports', 'GET')">GET /reports</button>
+                    </div>
+                    
+                    <div id="report-builder-response" class="response-area hidden"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Authentication Client
+        class AuthClient {
+            constructor() {
+                this.sessionToken = localStorage.getItem('bitware-session-token');
+                this.userInfo = JSON.parse(localStorage.getItem('bitware-user-info') || 'null');
+                console.log('AuthClient initialized:', {
+                    hasToken: !!this.sessionToken,
+                    tokenPrefix: this.sessionToken ? this.sessionToken.substring(0, 8) + '...' : 'none',
+                    userInfo: this.userInfo
+                });
+            }
+
+            async login(username, password) {
+                try {
+                    console.log('🔑 Attempting login for:', username);
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const data = await response.json();
+                    console.log('Login response:', { success: data.success, hasToken: !!data.sessionToken });
+
+                    if (data.success) {
+                        this.sessionToken = data.sessionToken;
+                        this.userInfo = {
+                            username: data.username,
+                            role: data.role
+                        };
+                        
+                        localStorage.setItem('bitware-session-token', this.sessionToken);
+                        localStorage.setItem('bitware-user-info', JSON.stringify(this.userInfo));
+                        
+                        console.log('Session token stored:', this.sessionToken.substring(0, 8) + '...');
+                        return { success: true, user: this.userInfo };
+                    } else {
+                        return { success: false, error: data.error };
+                    }
+                    
+                } catch (error) {
+                    console.error('Login error:', error);
+                    return { success: false, error: 'Login failed' };
+                }
+            }
+
+            async logout() {
+                try {
+                    console.log('Logging out...');
+                    if (this.sessionToken) {
+                        await fetch('/api/auth/logout', {
+                            method: 'POST',
+                            headers: {
+                                'x-bitware-session-token': this.sessionToken
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                } finally {
+                    this.sessionToken = null;
+                    this.userInfo = null;
+                    localStorage.removeItem('bitware-session-token');
+                    localStorage.removeItem('bitware-user-info');
+                    console.log('Session cleared');
+                }
+            }
+
+            async validateSession() {
+                if (!this.sessionToken) {
+                    console.log('No session token to validate');
+                    return { valid: false, error: 'No session token' };
+                }
+
+                try {
+                    console.log('Validating session token:', {
+                        token: this.sessionToken.substring(0, 8) + '...',
+                        fullToken: this.sessionToken,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    const response = await fetch('/api/auth/validate', {
+                        method: 'GET',
+                        headers: {
+                            'x-bitware-session-token': this.sessionToken
+                        }
+                    });
+
+                    const data = await response.json();
+                    console.log('Session validation result:', {
+                        status: response.status,
+                        data: data,
+                        responseHeaders: Object.fromEntries(response.headers.entries())
+                    });
+
+                    if (data.valid) {
+                        this.userInfo = {
+                            username: data.username,
+                            role: data.role
+                        };
+                        localStorage.setItem('bitware-user-info', JSON.stringify(this.userInfo));
+                        return { valid: true, user: this.userInfo };
+                    } else {
+                        console.log('Session invalid, clearing:', data.error);
+                        // DON'T auto-logout here - let's see what's happening first
+                        return { valid: false, error: data.error };
+                    }
+                    
+                } catch (error) {
+                    console.error('Session validation error:', error);
+                    return { valid: false, error: 'Validation failed' };
+                }
+            }
+
+            isAuthenticated() {
+                return !!this.sessionToken;
+            }
+        }
+
+        // API Client - UPDATED to match your proxy structure
+        class APIClient {
+            constructor(authClient) {
+                this.authClient = authClient;
+            }
+
+            async callWorker(workerName, endpoint, method = 'GET', data = null) {
+                console.log('🚀 API CALL START');
+                console.log('Token before call:', this.authClient.sessionToken?.substring(0, 8) + '...');
+                
+                if (!this.authClient.sessionToken) {
+                    throw new Error('No session token');
+                }
+
+                // Your proxy expects POST with JSON body structure
+                const proxyUrl = `/api/${workerName}`;
+                
+                const requestBody = {
+                    endpoint: endpoint,
+                    method: method,
+                    data: data
+                };
+
+                const config = {
+                    method: 'POST', // Always POST to your proxy
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-Token': this.authClient.sessionToken  // Capital S to match your proxy
+                    },
+                    body: JSON.stringify(requestBody)
+                };
+
+                console.log('API Request to proxy:', {
+                    url: proxyUrl,
+                    method: 'POST',
+                    hasToken: !!this.authClient.sessionToken,
+                    tokenPrefix: this.authClient.sessionToken ? this.authClient.sessionToken.substring(0, 8) + '...' : 'none',
+                    requestBody: requestBody,
+                    headers: config.headers
+                });
+
+                const response = await fetch(proxyUrl, config);
+                
+                console.log('Token after call:', this.authClient.sessionToken?.substring(0, 8) + '...');
+                console.log('Token in localStorage after call:', localStorage.getItem('bitware-session-token')?.substring(0, 8) + '...');
+                
+                console.log('API Response:', {
+                    status: response.status,
+                    ok: response.ok,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        console.log('401 Unauthorized - session may be expired');
+                        throw new Error('Session expired - please login again');
+                    }
+                    
+                    // Try to get error details
+                    try {
+                        const errorData = await response.json();
+                        console.log('Error response data:', errorData);
+                        throw new Error(errorData.error || `Request failed: ${response.status}`);
+                    } catch (parseError) {
+                        console.log('Could not parse error response:', parseError);
+                        throw new Error(`Request failed: ${response.status}`);
+                    }
+                }
+
+                const result = await response.json();
+                console.log('API Success result preview:', JSON.stringify(result).substring(0, 200) + '...');
+                console.log('🏁 API CALL END');
+                return result;
+            }
+        }
+
+        // UI Management
+        class UIManager {
+            constructor() {
+                this.authClient = new AuthClient();
+                this.apiClient = new APIClient(this.authClient);
+                this.init();
+            }
+
+            async init() {
+                this.setupEventListeners();
+                
+                // Check if user is already authenticated
+                if (this.authClient.isAuthenticated()) {
+                    const validation = await this.authClient.validateSession();
+                    if (validation.valid) {
+                        this.showTestInterface();
+                    } else {
+                        this.showLogin();
+                    }
+                } else {
+                    this.showLogin();
+                }
+            }
+
+            setupEventListeners() {
+                // Login form
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.handleLogin();
+                });
+
+                // Logout button
+                document.getElementById('logout-btn').addEventListener('click', async () => {
+                    await this.handleLogout();
+                });
+
+                // Debug session button
+                document.getElementById('debug-session-btn').addEventListener('click', async () => {
+                    await this.debugSession();
+                });
+            }
+
+            async handleLogin() {
+                const username = document.getElementById('username-input').value;
+                const password = document.getElementById('password-input').value;
+                const loginBtn = document.getElementById('login-btn');
+                const errorDiv = document.getElementById('login-error');
+                
+                errorDiv.classList.add('hidden');
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Logging in...';
+                
+                try {
+                    const loginStartTime = Date.now();
+                    console.log('🔑 LOGIN START at timestamp:', loginStartTime, new Date(loginStartTime).toISOString());
+                    
+                    const result = await this.authClient.login(username, password);
+                    
+                    if (result.success) {
+                        console.log('✅ Login successful:', result.user);
+                        console.log('🎫 Session token received:', this.authClient.sessionToken);
+                        
+                        // Immediately test validation after login
+                        console.log('🧪 Testing validation immediately after login...');
+                        const immediateValidation = await this.authClient.validateSession();
+                        console.log('Immediate validation result:', immediateValidation);
+                        
+                        this.showTestInterface();
+                    } else {
+                        errorDiv.textContent = result.error;
+                        errorDiv.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    errorDiv.textContent = 'Login failed. Please try again.';
+                    errorDiv.classList.remove('hidden');
+                } finally {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
+                }
+            }
+
+            async handleLogout() {
+                await this.authClient.logout();
+                this.showLogin();
+            }
+
+            showLogin() {
+                document.getElementById('login-section').classList.remove('hidden');
+                document.getElementById('test-interface').classList.add('hidden');
+                document.getElementById('user-info').classList.add('hidden');
+                document.getElementById('logout-btn').classList.add('hidden');
+                document.getElementById('debug-session-btn').classList.add('hidden');
+            }
+
+            async debugSession() {
+                console.log('=== SESSION DEBUG START ===');
+                console.log('Current timestamp:', new Date().toISOString());
+                console.log('Current timestamp (ms):', Date.now());
+                console.log('Local storage session token:', localStorage.getItem('bitware-session-token'));
+                console.log('AuthClient session token:', this.authClient.sessionToken);
+                console.log('Are they equal?', localStorage.getItem('bitware-session-token') === this.authClient.sessionToken);
+                
+                if (this.authClient.sessionToken) {
+                    try {
+                        // Test 1: Direct validation endpoint (uses old auth system)
+                        console.log('🔍 TEST 1: Direct validation endpoint...');
+                        const validationResponse = await fetch('/api/auth/validate', {
+                            method: 'GET',
+                            headers: {
+                                'x-bitware-session-token': this.authClient.sessionToken
+                            }
+                        });
+                        const validationResult = await validationResponse.json();
+                        console.log('✅ Direct validation result:', {
+                            status: validationResponse.status,
+                            ok: validationResponse.ok,
+                            result: validationResult
+                        });
+
+                        // Test 2: Worker proxy with health endpoint (public - no auth needed)
+                        console.log('🔍 TEST 2: Worker proxy (orchestrator health - public)...');
+                        const healthResponse = await fetch('/api/orchestrator', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Session-Token': this.authClient.sessionToken
+                            },
+                            body: JSON.stringify({
+                                endpoint: '/health',
+                                method: 'GET'
+                            })
+                        });
+                        const healthResult = await healthResponse.json();
+                        console.log('🏥 Health proxy result:', {
+                            status: healthResponse.status,
+                            ok: healthResponse.ok,
+                            result: healthResult
+                        });
+
+                        // Test 3: Worker proxy with authenticated endpoint
+                        console.log('🔍 TEST 3: Worker proxy (orchestrator main endpoint - authenticated)...');
+                        const orchestrateResponse = await fetch('/api/orchestrator', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Session-Token': this.authClient.sessionToken
+                            },
+                            body: JSON.stringify({
+                                endpoint: '/orchestrate',
+                                method: 'POST',
+                                data: { topic: 'test', strategy: 'balanced' }
+                            })
+                        });
+                        const orchestrateResult = await orchestrateResponse.json();
+                        console.log('🎯 Orchestrate proxy result:', {
+                            status: orchestrateResponse.status,
+                            ok: orchestrateResponse.ok,
+                            result: orchestrateResult
+                        });
+
+                        // Test 4: Validate again after worker calls (check if session still exists)
+                        console.log('🔍 TEST 4: Validation after worker calls...');
+                        const revalidationResponse = await fetch('/api/auth/validate', {
+                            method: 'GET',
+                            headers: {
+                                'x-bitware-session-token': this.authClient.sessionToken
+                            }
+                        });
+                        const revalidationResult = await revalidationResponse.json();
+                        console.log('🔄 Re-validation result:', {
+                            status: revalidationResponse.status,
+                            ok: revalidationResponse.ok,
+                            result: revalidationResult
+                        });
+
+                        // SUMMARY
+                        console.log('📊 SUMMARY:');
+                        console.log('Direct validation works:', validationResponse.ok);
+                        console.log('Health proxy works:', healthResponse.ok);
+                        console.log('Main proxy works:', orchestrateResponse.ok);
+                        console.log('Re-validation works:', revalidationResponse.ok);
+                        
+                        if (validationResponse.ok && !orchestrateResponse.ok) {
+                            console.log('🚨 MISMATCH CONFIRMED: Direct validation works but worker proxy fails!');
+                            console.log('Validation result:', validationResult);
+                            console.log('Worker proxy error:', orchestrateResult);
+                        }
+
+                        if (healthResponse.ok && !orchestrateResponse.ok) {
+                            console.log('🎯 AUTH ISSUE: Public endpoints work but authenticated endpoints fail!');
+                            console.log('This suggests a session validation mismatch between auth systems');
+                        }
+
+                    } catch (error) {
+                        console.log('❌ Debug session failed:', error);
+                    }
+                }
+
+                console.log('=== SESSION DEBUG END ===');
+            }
+
+            showTestInterface() {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('test-interface').classList.remove('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+                document.getElementById('logout-btn').classList.remove('hidden');
+                document.getElementById('debug-session-btn').classList.remove('hidden');
+                
+                // Update user info
+                if (this.authClient.userInfo) {
+                    document.getElementById('username').textContent = this.authClient.userInfo.username;
+                    document.getElementById('user-role').textContent = this.authClient.userInfo.role;
+                }
+            }
+        }
+
+        // Test endpoint function
+        async function testEndpoint(workerName, endpoint, method = 'GET', data = null) {
+            const responseArea = document.getElementById(`${workerName}-response`);
+            const button = event.target;
+            
+            // Show loading state
+            button.disabled = true;
+            const originalText = button.textContent;
+            button.textContent = 'Testing...';
+            responseArea.classList.remove('hidden');
+            responseArea.textContent = 'Loading...';
+            
+            const startTime = Date.now();
+            
+            try {
+                // All endpoints go through authenticated proxy
+                const result = await uiManager.apiClient.callWorker(workerName, endpoint, method, data);
+                
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                responseArea.innerHTML = `<strong>✅ Success (${duration}ms)</strong>\n\n${JSON.stringify(result, null, 2)}`;
+                
+            } catch (error) {
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                responseArea.innerHTML = `<strong>❌ Error (${duration}ms)</strong>\n\n${error.message}`;
+                
+                if (error.message.includes('Session expired') || error.message.includes('please login again')) {
+                    setTimeout(() => {
+                        uiManager.showLogin();
+                    }, 2000);
+                }
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        // Initialize UI Manager
+        let uiManager;
+        document.addEventListener('DOMContentLoaded', () => {
+            uiManager = new UIManager();
+        });
+    </script>
+</body>
+</html>
