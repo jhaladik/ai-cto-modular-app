@@ -1,3 +1,6 @@
+# workers/bitware_orchestrator/wrangler.toml
+# ✅ UPDATED WITH SERVICE BINDINGS
+
 name = "bitware-orchestrator"
 main = "index.ts"
 compatibility_date = "2024-07-22"
@@ -18,10 +21,26 @@ binding = "PIPELINE_CACHE"
 id = "192f5800664048949d39a0acc3a0afa4"          # Set during deployment
 preview_id = "b15317a13f6c40b5ac323d15af2f5dd5"    # For staging
 
-# R2 Storage (optional - for storing large pipeline results)
-# [[r2_buckets]]
-# binding = "PIPELINE_STORAGE"
-# bucket_name = "bitware-pipeline-results"
+# ✅ SERVICE BINDINGS FOR DIRECT WORKER-TO-WORKER COMMUNICATION
+[[services]]
+binding = "TOPIC_RESEARCHER"
+service = "bitware-topic-researcher"
+
+[[services]]
+binding = "RSS_LIBRARIAN"
+service = "bitware-rss-source-finder"
+
+[[services]]
+binding = "FEED_FETCHER"
+service = "bitware-feed-fetcher"
+
+[[services]]
+binding = "CONTENT_CLASSIFIER"
+service = "bitware-content-classifier"
+
+[[services]]
+binding = "REPORT_BUILDER"
+service = "bitware-report-builder"
 
 # Environment variables
 [vars]
@@ -48,9 +67,9 @@ COST_OPTIMIZED_TIMEOUT_MS = 180000       # 3 minutes for cost mode
 QUALITY_OPTIMIZED_TIMEOUT_MS = 300000    # 5 minutes for quality mode
 BALANCED_TIMEOUT_MS = 150000             # 2.5 minutes for balanced mode
 
-# Worker Integration URLs (Production)
+# Worker Integration URLs (kept for documentation/fallback)
 TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.jhaladik.workers.dev"
-RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"  
+RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"
 FEED_FETCHER_URL = "https://bitware-feed-fetcher.jhaladik.workers.dev"
 CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier.jhaladik.workers.dev"
 REPORT_BUILDER_URL = "https://bitware-report-builder.jhaladik.workers.dev"
@@ -65,45 +84,4 @@ COST_ALERT_THRESHOLD_USD = 1.5           # Alert if cost > $1.50
 # Optimization Features
 ENABLE_INTELLIGENT_CACHING = true
 ENABLE_PARTIAL_RECOVERY = true
-ENABLE_ADAPTIVE_TIMEOUT = true
-ENABLE_RESOURCE_POOLING = true
-
-# Rate Limiting and Capacity
-MAX_CONCURRENT_PIPELINES = 10
-MAX_DAILY_PIPELINES = 1000
-MAX_HOURLY_COST_USD = 50.0
-WORKER_REQUEST_TIMEOUT_MS = 60000
-
-# Health Monitoring
-WORKER_HEALTH_CHECK_INTERVAL_SECONDS = 60
-PIPELINE_HEALTH_RETENTION_DAYS = 30
-PERFORMANCE_METRICS_RETENTION_DAYS = 90
-
-# Development and Debugging
-ENABLE_DEBUG_LOGGING = false
-ENABLE_PERFORMANCE_PROFILING = true
-LOG_WORKER_REQUESTS = false
-LOG_PIPELINE_DETAILS = true
-
-# Secrets that need to be set via wrangler secret put:
-# wrangler secret put WORKER_SHARED_SECRET  
-# wrangler secret put CLIENT_API_KEY
-
-# Optional monitoring and alerting secrets:
-# wrangler secret put SLACK_WEBHOOK_URL (for alerts)
-# wrangler secret put DATADOG_API_KEY (for metrics)
-# wrangler secret put PAGERDUTY_API_KEY (for critical alerts)
-
-# Database setup commands:
-# wrangler d1 create bitware-orchestration-db
-# wrangler d1 execute bitware-orchestration-db --file=schema.sql
-
-# KV namespace setup:
-# wrangler kv:namespace create "PIPELINE_CACHE"
-# wrangler kv:namespace create "PIPELINE_CACHE" --preview
-
-# Deployment commands for each environment:
-# wrangler deploy --env development
-# wrangler deploy --env staging  
-# wrangler deploy --env production
-# wrangler deploy --env enterprise
+ENABLE_ADAPTIVE_TIMEOUTS = true
