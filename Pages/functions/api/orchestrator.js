@@ -1,4 +1,4 @@
-// functions/api/orchestrator.js - COMPLETE WORKING VERSION
+// functions/api/orchestrator.js - FIXED AUTHENTICATION
 export async function onRequestPost(context) {
   const { request, env } = context;
   
@@ -17,7 +17,9 @@ export async function onRequestPost(context) {
     console.log('Request body:', { endpoint, method, data });
     
     const publicEndpoints = ['/health', '/help', '/capabilities'];
+    const adminEndpoints = ['/admin/stats', '/admin/performance', '/admin/costs'];
     const isPublicEndpoint = publicEndpoints.includes(endpoint);
+    const isAdminEndpoint = adminEndpoints.some(ep => endpoint.startsWith(ep.split('?')[0]));
     
     if (!isPublicEndpoint) {
       const sessionToken = request.headers.get('X-Session-Token') || request.headers.get('x-session-token');
@@ -48,40 +50,53 @@ export async function onRequestPost(context) {
       console.log('Session validated successfully');
     }
     
+    // Prepare headers based on endpoint type
     const workerHeaders = { 'Content-Type': 'application/json' };
     
-    if (!isPublicEndpoint) {
+    if (isAdminEndpoint) {
+      // Use worker authentication for admin endpoints
+      workerHeaders['Authorization'] = `Bearer ${env.WORKER_SHARED_SECRET}`;
+      workerHeaders['X-Worker-ID'] = 'ai_factory_frontend';
+      console.log('Using worker auth for admin endpoint');
+    } else if (!isPublicEndpoint) {
+      // Use client authentication for regular endpoints
       workerHeaders['X-API-Key'] = env.CLIENT_API_KEY;
+      console.log('Using client auth for regular endpoint');
     }
     
-    const workerUrl = env.ORCHESTRATOR_URL;
-    if (!workerUrl) {
-      console.log('ORCHESTRATOR_URL not configured');
+    // Check if service binding is available
+    if (!env.ORCHESTRATOR) {
+      console.log('ORCHESTRATOR service binding not available');
       return new Response(JSON.stringify({
         success: false,
-        error: 'Orchestrator worker URL not configured'
+        error: 'Orchestrator service binding not configured'
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
     
-    const fullUrl = `${workerUrl}${endpoint}`;
-    const requestOptions = {
+    // Create request for orchestrator via service binding
+    const orchestratorRequest = new Request(`https://orchestrator${endpoint}`, {
       method: method || 'GET',
-      headers: workerHeaders
-    };
+      headers: workerHeaders,
+      body: ((method === 'POST' || method === 'PUT') && data) ? JSON.stringify(data) : undefined
+    });
     
-    if ((method === 'POST' || method === 'PUT') && data) {
-      requestOptions.body = JSON.stringify(data);
-    }
+    console.log('Calling orchestrator via service binding:', { 
+      endpoint, 
+      method: orchestratorRequest.method,
+      authType: isAdminEndpoint ? 'worker' : (isPublicEndpoint ? 'none' : 'client')
+    });
     
-    console.log('Calling backend:', { fullUrl, method: requestOptions.method });
-    
-    const response = await fetch(fullUrl, requestOptions);
+    // Use service binding instead of HTTP fetch
+    const response = await env.ORCHESTRATOR.fetch(orchestratorRequest);
     const responseData = await response.text();
     
-    console.log('Backend response:', { status: response.status, hasData: !!responseData });
+    console.log('Orchestrator response:', { 
+      status: response.status, 
+      hasData: !!responseData 
+    });
     
     return new Response(responseData, {
       status: response.status,

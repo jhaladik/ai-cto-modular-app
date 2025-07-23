@@ -244,10 +244,11 @@ async function executeWorkerViaBinding(
       method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+        'X-API-Key': env.CLIENT_API_KEY,  // ← NEW LINE
         'X-Worker-ID': 'bitware_orchestrator'
       }
     };
+    console.log(`🔍 Headers being sent to ${workerName}:`, requestOptions.headers); // ← ADD HERE
     
     if (method === 'GET' && payload) {
       const params = new URLSearchParams();
@@ -473,7 +474,7 @@ async function handleOrchestration(request: Request, env: Env, corsHeaders: any)
     const researcherResult = await executeWorkerViaBinding(
       env.TOPIC_RESEARCHER,
       'topic_researcher',
-      '/research',
+      '/',  // ← CHANGE TO '/'
       {
         topic: orchestrationRequest.topic,
         depth: orchestrationRequest.source_discovery_depth || 3,

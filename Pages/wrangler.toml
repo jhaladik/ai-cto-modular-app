@@ -6,6 +6,10 @@ pages_build_output_dir = "public"
 binding = "BITWARE_SESSION_STORE"
 id = "4581e54c54184e3686b3e70f2f61936b"
 
+[[services]]
+binding = "ORCHESTRATOR"
+service = "bitware-orchestrator"
+
 [vars]
 ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"
 TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.jhaladik.workers.dev"

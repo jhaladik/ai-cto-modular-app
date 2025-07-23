@@ -1409,13 +1409,15 @@
             }
 
             openWorkerInterface(workerName) {
-                if (workerName === 'orchestrator') {
-                    window.location.href = './orchestrator/';
-                    return;
-                }
+                    if (workerName === 'orchestrator') {
+                        window.location.href = './orchestrator/';
+                    } else if (workerName === 'topic-researcher') {
+                        window.location.href = './topic-researcher/';
+                    } else {
                 
                 // For other workers, show coming soon message
                 alert(`${workerName.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} interface coming in Phase 2!\n\nFor now, you can:\n• Use the Orchestrator to run full pipelines\n• Test the API endpoints directly\n• Monitor worker health from this dashboard`);
+                }
             }
 
             async testWorker(workerName) {
