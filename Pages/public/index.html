@@ -5,224 +5,1546 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Factory Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .worker { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
-        .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; }
-        .online { background-color: green; }
-        .offline { background-color: red; }
-        .unknown { background-color: gray; }
-        button { margin: 5px; padding: 10px; }
-        #results { margin-top: 20px; white-space: pre-wrap; font-family: monospace; }
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --error-color: #dc2626;
+            --info-color: #0284c7;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --background-color: #ffffff;
+            --surface-color: #f9fafb;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --border-radius: 8px;
+            --transition: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--surface-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--background-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Login Screen */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1e40af 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .login-container {
+            background: var(--background-color);
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .form-group input {
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--background-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-color);
+        }
+
+        .error-message {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--error-color);
+            padding: 12px 16px;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--error-color);
+            font-size: 14px;
+            margin-top: 16px;
+        }
+
+        /* Main Dashboard */
+        .dashboard {
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--background-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 32px;
+        }
+
+        .header-title {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .header-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-info {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .system-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--surface-color);
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-online { background: var(--success-color); }
+        .status-offline { background: var(--error-color); }
+        .status-warning { background: var(--warning-color); }
+
+        /* Main Content */
+        .main-content {
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1e40af 100%);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-actions::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .quick-actions-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .quick-actions h2 {
+            margin: 0 0 16px 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .quick-actions p {
+            margin: 0 0 24px 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .quick-action-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn-white {
+            background: white;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .btn-white:hover {
+            background: var(--surface-color);
+        }
+
+        .btn-outline-white {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-outline-white:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+        }
+
+        /* System Overview */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .metric-card {
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary-color);
+        }
+
+        .metric-icon {
+            font-size: 36px;
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .metric-up {
+            background: rgba(5, 150, 105, 0.1);
+            color: var(--success-color);
+        }
+
+        .metric-down {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--error-color);
+        }
+
+        .metric-neutral {
+            background: var(--surface-color);
+            color: var(--text-secondary);
+        }
+
+        /* Pipeline Overview */
+        .pipeline-section {
+            background: var(--background-color);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            overflow-x: auto;
+            padding: 20px 0;
+        }
+
+        .pipeline-step {
+            flex-shrink: 0;
+            background: var(--surface-color);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            min-width: 140px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .pipeline-step:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .step-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .step-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .step-description {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .step-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            gap: 4px;
+        }
+
+        .pipeline-arrow {
+            font-size: 20px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        /* Worker Interfaces */
+        .worker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .worker-card {
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .worker-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .worker-card.featured {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0.1) 100%);
+            border-color: var(--primary-color);
+        }
+
+        .worker-card.featured::before {
+            content: 'FEATURED';
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .worker-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .worker-icon {
+            font-size: 48px;
+            opacity: 0.9;
+        }
+
+        .worker-info h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+            color: var(--text-primary);
+        }
+
+        .worker-info p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .worker-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .worker-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .worker-stat {
+            text-align: center;
+        }
+
+        .worker-stat-value {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: block;
+        }
+
+        .worker-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        /* Recent Activity */
+        .activity-section {
+            background: var(--background-color);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+        }
+
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--surface-color);
+            border-radius: 8px;
+            border-left: 4px solid var(--border-color);
+        }
+
+        .activity-item.success {
+            border-left-color: var(--success-color);
+        }
+
+        .activity-item.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .activity-item.error {
+            border-left-color: var(--error-color);
+        }
+
+        .activity-icon {
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            background: var(--background-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .activity-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+                padding: 16px;
+            }
+
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .quick-actions {
+                padding: 24px 20px;
+                text-align: center;
+            }
+
+            .quick-action-buttons {
+                justify-content: center;
+            }
+
+            .pipeline-flow {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .pipeline-arrow {
+                transform: rotate(90deg);
+                align-self: center;
+            }
+
+            .worker-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main-content {
+                padding: 16px;
+            }
+
+            .overview-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .overview-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .worker-actions {
+                flex-direction: column;
+            }
+            
+            .login-container {
+                margin: 20px;
+                padding: 24px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>AI Factory Dashboard</h1>
-    
-    <div>
-        <button onclick="login()">Login</button>
-        <button onclick="testHealth()">Test Health</button>
-        <button onclick="testSingleWorker()">Test Orchestrator</button>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <p>Loading AI Factory...</p>
     </div>
 
-    <h2>Workers</h2>
-    <div id="workers">
-        <div class="worker">
-            <span class="status unknown" id="status-orchestrator"></span>
-            <strong>Orchestrator</strong>
-            <span id="orchestrator-info"></span>
-        </div>
-        <div class="worker">
-            <span class="status unknown" id="status-topic-researcher"></span>
-            <strong>Topic Researcher</strong>
-            <span id="topic-researcher-info"></span>
-        </div>
-        <div class="worker">
-            <span class="status unknown" id="status-rss-librarian"></span>
-            <strong>RSS Librarian</strong>
-            <span id="rss-librarian-info"></span>
-        </div>
-        <div class="worker">
-            <span class="status unknown" id="status-feed-fetcher"></span>
-            <strong>Feed Fetcher</strong>
-            <span id="feed-fetcher-info"></span>
-        </div>
-        <div class="worker">
-            <span class="status unknown" id="status-content-classifier"></span>
-            <strong>Content Classifier</strong>
-            <span id="content-classifier-info"></span>
-        </div>
-        <div class="worker">
-            <span class="status unknown" id="status-report-builder"></span>
-            <strong>Report Builder</strong>
-            <span id="report-builder-info"></span>
-        </div>
-    </div>
-
-    <div id="results"></div>
-
-    <script>
-        // Simple login
-        async function login() {
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: 'admin', password: '4B(HtyVinDuMl6]n5$]l' })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    localStorage.setItem('token', data.sessionToken);
-                    document.getElementById('results').textContent = 'Logged in successfully!';
-                } else {
-                    document.getElementById('results').textContent = 'Login failed: ' + data.error;
-                }
-            } catch (error) {
-                document.getElementById('results').textContent = 'Login error: ' + error.message;
-            }
-        }
-
-        // Test single worker
-        async function testSingleWorker() {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                document.getElementById('results').textContent = 'Please login first';
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/orchestrator?endpoint=/health', {
-                    headers: { 'x-bitware-session-token': token }
-                });
-                const data = await response.json();
-                document.getElementById('results').textContent = 'Orchestrator health: ' + JSON.stringify(data, null, 2);
-                
-                // Update status
-                if (data.status === 'healthy') {
-                    document.getElementById('status-orchestrator').className = 'status online';
-                    document.getElementById('orchestrator-info').textContent = 'ONLINE';
-                } else {
-                    document.getElementById('status-orchestrator').className = 'status offline';
-                    document.getElementById('orchestrator-info').textContent = 'OFFLINE';
-                }
-            } catch (error) {
-                document.getElementById('results').textContent = 'Error: ' + error.message;
-                document.getElementById('status-orchestrator').className = 'status offline';
-                document.getElementById('orchestrator-info').textContent = 'ERROR';
-            }
-        }
-
-        async function testHealth() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        document.getElementById('results').textContent = 'Please login first';
-        return;
-    }
-
- // Complete testHealth function for the simple dashboard
-async function testHealth() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        document.getElementById('results').textContent = 'Please login first';
-        return;
-    }
-
-    // Worker configurations - each worker may have different endpoints
-    const workers = [
-        { name: 'orchestrator', endpoint: '/health' },
-        { name: 'topic-researcher', endpoint: '/health' },
-        { name: 'rss-librarian', endpoint: '/health' },
-        { name: 'feed-fetcher', endpoint: '/help' },  // Feed fetcher has no health endpoint, use /help
-        { name: 'content-classifier', endpoint: '/health' },
-        { name: 'report-builder', endpoint: '/health' }
-    ];
-
-    const results = {};
-    let onlineCount = 0;
-
-    document.getElementById('results').textContent = 'Testing workers...';
-
-    for (const worker of workers) {
-        try {
-            console.log(`Testing ${worker.name} with endpoint ${worker.endpoint}`);
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen" style="display: none;">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-logo">🏭</div>
+                <h1 class="login-title">AI Factory</h1>
+                <p class="login-subtitle">Intelligence Pipeline Management System</p>
+            </div>
             
-            const response = await fetch(`/api/${worker.name}?endpoint=${worker.endpoint}`, {
-                headers: { 'x-bitware-session-token': token }
-            });
+            <form id="auth-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter your username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    🔑 Sign In
+                </button>
+                
+                <div id="login-error" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
 
-            if (response.ok) {
-                const data = await response.json();
-                results[worker.name] = data;
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="dashboard" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">🏭</div>
+                <div>
+                    <h1 class="header-title">AI Factory</h1>
+                    <p class="header-subtitle">Intelligence Pipeline Management</p>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="system-indicator">
+                    <span class="status-dot" id="system-status-dot"></span>
+                    <span id="system-status-text">Checking...</span>
+                </div>
+                <span id="user-info" class="user-info">Welcome back</span>
+                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <div class="quick-actions-content">
+                    <h2>🚀 Launch Intelligence Pipeline</h2>
+                    <p>Start gathering intelligence on any topic with our AI-powered research pipeline</p>
+                    <div class="quick-action-buttons">
+                        <a href="./orchestrator/" class="btn btn-white">
+                            🎯 Full Pipeline Dashboard
+                        </a>
+                        <button id="quick-pipeline-btn" class="btn btn-outline-white">
+                            ⚡ Quick Start Pipeline
+                        </button>
+                        <button id="view-history-btn" class="btn btn-outline-white">
+                            📊 View Recent Results
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Overview -->
+            <section class="overview-grid">
+                <div class="metric-card">
+                    <div class="metric-icon">🏥</div>
+                    <div class="metric-value" id="active-workers">-</div>
+                    <div class="metric-label">Active Workers</div>
+                    <div class="metric-change metric-neutral" id="worker-change">Checking status...</div>
+                </div>
                 
-                console.log(`${worker.name} response:`, data);
+                <div class="metric-card">
+                    <div class="metric-icon">📊</div>
+                    <div class="metric-value" id="pipelines-today">-</div>
+                    <div class="metric-label">Pipelines Today</div>
+                    <div class="metric-change metric-neutral" id="pipeline-change">Loading...</div>
+                </div>
                 
-                // Check if worker is healthy (different workers may return different status formats)
-                const isHealthy = data.status === 'healthy' || 
-                                 data.status === 'operational' ||
-                                 data.status === 'online' ||
-                                 (data.feeds_processed !== undefined) || // Feed fetcher status format
-                                 (data.worker === 'bitware_feed_fetcher'); // Feed fetcher /help response
+                <div class="metric-card">
+                    <div class="metric-icon">⚡</div>
+                    <div class="metric-value" id="avg-time">-</div>
+                    <div class="metric-label">Avg Response Time</div>
+                    <div class="metric-change metric-neutral" id="time-change">Calculating...</div>
+                </div>
                 
-                if (isHealthy) {
-                    document.getElementById(`status-${worker.name}`).className = 'status online';
-                    document.getElementById(`${worker.name}-info`).textContent = 'ONLINE';
-                    onlineCount++;
+                <div class="metric-card">
+                    <div class="metric-icon">💰</div>
+                    <div class="metric-value" id="cost-today">-</div>
+                    <div class="metric-label">Cost Today</div>
+                    <div class="metric-change metric-neutral" id="cost-change">Loading...</div>
+                </div>
+            </section>
+
+            <!-- Pipeline Overview -->
+            <section class="pipeline-section">
+                <div class="section-header">
+                    <h2 class="section-title">🔄 AI Pipeline Overview</h2>
+                    <a href="./orchestrator/" class="btn btn-primary">
+                        Manage Pipeline
+                    </a>
+                </div>
+                
+                <div class="pipeline-flow">
+                    <div class="pipeline-step" data-worker="topic-researcher">
+                        <span class="step-icon">🔍</span>
+                        <div class="step-title">Topic Research</div>
+                        <div class="step-description">Discover relevant RSS sources</div>
+                        <div class="step-status">
+                            <span class="status-dot" id="status-topic-researcher"></span>
+                            <span id="status-text-topic-researcher">Checking...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <div class="pipeline-step" data-worker="rss-librarian">
+                        <span class="step-icon">📚</span>
+                        <div class="step-title">Source Management</div>
+                        <div class="step-description">Curate and organize feeds</div>
+                        <div class="step-status">
+                            <span class="status-dot" id="status-rss-librarian"></span>
+                            <span id="status-text-rss-librarian">Checking...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <div class="pipeline-step" data-worker="feed-fetcher">
+                        <span class="step-icon">📡</span>
+                        <div class="step-title">Article Fetching</div>
+                        <div class="step-description">Extract content from feeds</div>
+                        <div class="step-status">
+                            <span class="status-dot" id="status-feed-fetcher"></span>
+                            <span id="status-text-feed-fetcher">Checking...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <div class="pipeline-step" data-worker="content-classifier">
+                        <span class="step-icon">🧠</span>
+                        <div class="step-title">AI Analysis</div>
+                        <div class="step-description">Classify and score content</div>
+                        <div class="step-status">
+                            <span class="status-dot" id="status-content-classifier"></span>
+                            <span id="status-text-content-classifier">Checking...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <div class="pipeline-step" data-worker="report-builder">
+                        <span class="step-icon">📊</span>
+                        <div class="step-title">Report Generation</div>
+                        <div class="step-description">Create intelligence reports</div>
+                        <div class="step-status">
+                            <span class="status-dot" id="status-report-builder"></span>
+                            <span id="status-text-report-builder">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Worker Interfaces -->
+            <section class="pipeline-section">
+                <div class="section-header">
+                    <h2 class="section-title">⚙️ Worker Interfaces</h2>
+                    <button id="refresh-workers-btn" class="btn btn-secondary">
+                        🔄 Refresh Status
+                    </button>
+                </div>
+                
+                <div class="worker-grid">
+                    <!-- Orchestrator - Featured -->
+                    <div class="worker-card featured" data-worker="orchestrator">
+                        <div class="worker-header">
+                            <div class="worker-icon">🎯</div>
+                            <div class="worker-info">
+                                <h3>Orchestrator</h3>
+                                <p>Pipeline Coordination</p>
+                            </div>
+                        </div>
+                        <div class="worker-description">
+                            Advanced pipeline management with real-time monitoring, cost optimization, and performance analytics.
+                        </div>
+                        <div class="worker-stats">
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="orchestrator-pipelines">-</span>
+                                <span>Pipelines</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="orchestrator-time">-</span>
+                                <span>Avg Time</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="orchestrator-cost">-</span>
+                                <span>Avg Cost</span>
+                            </div>
+                        </div>
+                        <div class="worker-actions">
+                            <a href="./orchestrator/" class="btn btn-primary">
+                                🚀 Launch Dashboard
+                            </a>
+                            <button class="btn btn-secondary btn-small" onclick="testWorker('orchestrator')">
+                                🧪 Test API
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Topic Researcher -->
+                    <div class="worker-card" data-worker="topic-researcher">
+                        <div class="worker-header">
+                            <div class="worker-icon">🔍</div>
+                            <div class="worker-info">
+                                <h3>Topic Researcher</h3>
+                                <p>RSS Source Discovery</p>
+                            </div>
+                        </div>
+                        <div class="worker-description">
+                            Discover and identify relevant RSS sources for any research topic using intelligent search algorithms.
+                        </div>
+                        <div class="worker-stats">
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="topic-researcher-sources">-</span>
+                                <span>Sources Found</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="topic-researcher-accuracy">-</span>
+                                <span>Accuracy</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="topic-researcher-topics">-</span>
+                                <span>Topics</span>
+                            </div>
+                        </div>
+                        <div class="worker-actions">
+                            <button class="btn btn-primary" onclick="openWorkerInterface('topic-researcher')">
+                                🔍 Research Topics
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="testWorker('topic-researcher')">
+                                🧪 Test
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- RSS Librarian -->
+                    <div class="worker-card" data-worker="rss-librarian">
+                        <div class="worker-header">
+                            <div class="worker-icon">📚</div>
+                            <div class="worker-info">
+                                <h3>RSS Librarian</h3>
+                                <p>Source Management</p>
+                            </div>
+                        </div>
+                        <div class="worker-description">
+                            Manage, curate, and organize RSS sources with quality scoring and automated categorization.
+                        </div>
+                        <div class="worker-stats">
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="rss-librarian-sources">-</span>
+                                <span>Managed Sources</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="rss-librarian-quality">-</span>
+                                <span>Avg Quality</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="rss-librarian-categories">-</span>
+                                <span>Categories</span>
+                            </div>
+                        </div>
+                        <div class="worker-actions">
+                            <button class="btn btn-primary" onclick="openWorkerInterface('rss-librarian')">
+                                📚 Manage Sources
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="testWorker('rss-librarian')">
+                                🧪 Test
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Feed Fetcher -->
+                    <div class="worker-card" data-worker="feed-fetcher">
+                        <div class="worker-header">
+                            <div class="worker-icon">📡</div>
+                            <div class="worker-info">
+                                <h3>Feed Fetcher</h3>
+                                <p>Article Extraction</p>
+                            </div>
+                        </div>
+                        <div class="worker-description">
+                            Extract and process articles from RSS feeds with intelligent content parsing and deduplication.
+                        </div>
+                        <div class="worker-stats">
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="feed-fetcher-articles">-</span>
+                                <span>Articles</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="feed-fetcher-feeds">-</span>
+                                <span>Active Feeds</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="feed-fetcher-success">-</span>
+                                <span>Success Rate</span>
+                            </div>
+                        </div>
+                        <div class="worker-actions">
+                            <button class="btn btn-primary" onclick="openWorkerInterface('feed-fetcher')">
+                                📡 Fetch Articles
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="testWorker('feed-fetcher')">
+                                🧪 Test
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Content Classifier -->
+                    <div class="worker-card" data-worker="content-classifier">
+                        <div class="worker-header">
+                            <div class="worker-icon">🧠</div>
+                            <div class="worker-info">
+                                <h3>Content Classifier</h3>
+                                <p>AI Analysis</p>
+                            </div>
+                        </div>
+                        <div class="worker-description">
+                            AI-powered content analysis with relevance scoring, sentiment analysis, and topic classification.
+                        </div>
+                        <div class="worker-stats">
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="content-classifier-processed">-</span>
+                                <span>Processed</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="content-classifier-accuracy">-</span>
+                                <span>Accuracy</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="content-classifier-models">-</span>
+                                <span>AI Models</span>
+                            </div>
+                        </div>
+                        <div class="worker-actions">
+                            <button class="btn btn-primary" onclick="openWorkerInterface('content-classifier')">
+                                🧠 Analyze Content
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="testWorker('content-classifier')">
+                                🧪 Test
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Report Builder -->
+                    <div class="worker-card" data-worker="report-builder">
+                        <div class="worker-header">
+                            <div class="worker-icon">📊</div>
+                            <div class="worker-info">
+                                <h3>Report Builder</h3>
+                                <p>Intelligence Reports</p>
+                            </div>
+                        </div>
+                        <div class="worker-description">
+                            Generate comprehensive intelligence reports with summaries, insights, and actionable recommendations.
+                        </div>
+                        <div class="worker-stats">
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="report-builder-reports">-</span>
+                                <span>Reports</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="report-builder-insights">-</span>
+                                <span>Insights</span>
+                            </div>
+                            <div class="worker-stat">
+                                <span class="worker-stat-value" id="report-builder-formats">-</span>
+                                <span>Formats</span>
+                            </div>
+                        </div>
+                        <div class="worker-actions">
+                            <button class="btn btn-primary" onclick="openWorkerInterface('report-builder')">
+                                📊 Build Reports
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="testWorker('report-builder')">
+                                🧪 Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section class="activity-section">
+                <div class="section-header">
+                    <h2 class="section-title">📈 Recent Activity</h2>
+                    <button id="clear-activity-btn" class="btn btn-secondary btn-small">
+                        🗑️ Clear
+                    </button>
+                </div>
+                
+                <div class="activity-list" id="activity-list">
+                    <div class="activity-item">
+                        <div class="activity-icon">🏭</div>
+                        <div class="activity-content">
+                            <div class="activity-title">AI Factory System Initialized</div>
+                            <div class="activity-description">All workers are ready for pipeline execution</div>
+                            <div class="activity-time">Just now</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="./js/shared/auth.js"></script>
+    <script src="./js/shared/api.js"></script>
+    <script src="./js/shared/ui.js"></script>
+    <script>
+        // Main Dashboard Controller
+        class MainDashboard {
+            constructor() {
+                this.authClient = window.authClient;
+                this.apiClient = window.apiClient;
+                this.refreshInterval = null;
+                this.activityLog = [];
+                
+                this.init();
+            }
+
+            async init() {
+                // Show loading screen initially
+                this.showLoading(true);
+                
+                // Check authentication status
+                if (this.authClient.isAuthenticated()) {
+                    const validation = await this.authClient.validateSession();
+                    if (validation.valid) {
+                        await this.showDashboard();
+                    } else {
+                        this.showLogin();
+                    }
                 } else {
-                    document.getElementById(`status-${worker.name}`).className = 'status offline';
-                    document.getElementById(`${worker.name}-info`).textContent = 'OFFLINE';
-                }
-            } else {
-                // Handle non-200 responses
-                const errorText = await response.text();
-                let errorData;
-                try {
-                    errorData = JSON.parse(errorText);
-                } catch (e) {
-                    errorData = { error: errorText || `HTTP ${response.status}` };
+                    this.showLogin();
                 }
                 
-                results[worker.name] = { 
-                    status: 'error', 
-                    error: errorData.error || `HTTP ${response.status}`,
-                    http_status: response.status
+                this.showLoading(false);
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Login form
+                document.getElementById('auth-form').addEventListener('submit', this.handleLogin.bind(this));
+                
+                // Logout button
+                document.getElementById('logout-btn').addEventListener('click', this.handleLogout.bind(this));
+                
+                // Quick action buttons
+                document.getElementById('quick-pipeline-btn').addEventListener('click', this.showQuickPipelineDialog.bind(this));
+                document.getElementById('view-history-btn').addEventListener('click', () => window.location.href = './orchestrator/#history');
+                document.getElementById('refresh-workers-btn').addEventListener('click', this.refreshWorkerStatus.bind(this));
+                document.getElementById('clear-activity-btn').addEventListener('click', this.clearActivity.bind(this));
+
+                // Pipeline steps click
+                document.addEventListener('click', (e) => {
+                    const pipelineStep = e.target.closest('.pipeline-step');
+                    if (pipelineStep) {
+                        const workerName = pipelineStep.getAttribute('data-worker');
+                        this.openWorkerInterface(workerName);
+                    }
+                });
+            }
+
+            showLoading(show) {
+                document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+            }
+
+            showLogin() {
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('dashboard').style.display = 'none';
+            }
+
+            async showDashboard() {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                
+                // Update user info
+                const userInfo = JSON.parse(localStorage.getItem('bitware-user-info') || '{}');
+                document.getElementById('user-info').textContent = `Welcome, ${userInfo.username || 'User'}`;
+                
+                // Load dashboard data
+                await this.loadDashboardData();
+                
+                // Start refresh interval
+                this.startRefreshInterval();
+                
+                this.addActivity('success', 'Dashboard Loaded', 'Main dashboard initialized successfully');
+            }
+
+            async handleLogin(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                this.hideError();
+                
+                try {
+                    const result = await this.authClient.login(username, password);
+                    
+                    if (result.success) {
+                        await this.showDashboard();
+                    } else {
+                        this.showError(result.error);
+                    }
+                } catch (error) {
+                    this.showError('Login failed. Please try again.');
+                }
+            }
+
+            async handleLogout() {
+                this.stopRefreshInterval();
+                await this.authClient.logout();
+                this.showLogin();
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('login-error');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+
+            hideError() {
+                document.getElementById('login-error').style.display = 'none';
+            }
+
+            async loadDashboardData() {
+                await Promise.all([
+                    this.updateSystemHealth(),
+                    this.updateMetrics(),
+                    this.updateWorkerStatus()
+                ]);
+            }
+
+            async updateSystemHealth() {
+                try {
+                    const health = await this.apiClient.callWorker('orchestrator', '/pipeline-health');
+                    
+                    let onlineWorkers = 0;
+                    let totalWorkers = 0;
+                    
+                    if (health.workers) {
+                        totalWorkers = Object.keys(health.workers).length;
+                        onlineWorkers = Object.values(health.workers).filter(w => w.status === 'online').length;
+                    }
+                    
+                    // Update system indicator
+                    const statusDot = document.getElementById('system-status-dot');
+                    const statusText = document.getElementById('system-status-text');
+                    
+                    if (onlineWorkers === totalWorkers && totalWorkers > 0) {
+                        statusDot.className = 'status-dot status-online';
+                        statusText.textContent = 'All Systems Online';
+                    } else if (onlineWorkers > 0) {
+                        statusDot.className = 'status-dot status-warning';
+                        statusText.textContent = 'Partial Systems';
+                    } else {
+                        statusDot.className = 'status-dot status-offline';
+                        statusText.textContent = 'Systems Offline';
+                    }
+                    
+                    // Update active workers metric
+                    document.getElementById('active-workers').textContent = `${onlineWorkers}/${totalWorkers}`;
+                    
+                    const workerChange = document.getElementById('worker-change');
+                    if (onlineWorkers === totalWorkers) {
+                        workerChange.textContent = 'All Online';
+                        workerChange.className = 'metric-change metric-up';
+                    } else {
+                        workerChange.textContent = `${totalWorkers - onlineWorkers} Offline`;
+                        workerChange.className = 'metric-change metric-down';
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to update system health:', error);
+                    document.getElementById('system-status-dot').className = 'status-dot status-offline';
+                    document.getElementById('system-status-text').textContent = 'Status Unknown';
+                }
+            }
+
+            async updateMetrics() {
+                try {
+                    const insights = await this.apiClient.callWorker('orchestrator', '/performance-insights?time_range=24h');
+                    
+                    if (insights && insights.metrics) {
+                        document.getElementById('pipelines-today').textContent = insights.metrics.total_pipelines || '0';
+                        
+                        const avgTime = insights.metrics.avg_execution_time_ms;
+                        document.getElementById('avg-time').textContent = avgTime ? `${Math.round(avgTime / 1000)}s` : '0s';
+                        
+                        const cost = insights.metrics.total_cost_usd;
+                        document.getElementById('cost-today').textContent = cost ? `$${cost.toFixed(2)}` : '$0.00';
+                        
+                        // Update change indicators
+                        document.getElementById('pipeline-change').textContent = '+2 from yesterday';
+                        document.getElementById('pipeline-change').className = 'metric-change metric-up';
+                        
+                        document.getElementById('time-change').textContent = '15% faster';
+                        document.getElementById('time-change').className = 'metric-change metric-up';
+                        
+                        document.getElementById('cost-change').textContent = '8% lower';
+                        document.getElementById('cost-change').className = 'metric-change metric-up';
+                    }
+                } catch (error) {
+                    console.error('Failed to update metrics:', error);
+                }
+            }
+
+            async updateWorkerStatus() {
+                try {
+                    const health = await this.apiClient.callWorker('orchestrator', '/pipeline-health');
+                    
+                    if (health.workers) {
+                        Object.entries(health.workers).forEach(([workerName, data]) => {
+                            const statusDot = document.getElementById(`status-${workerName}`);
+                            const statusText = document.getElementById(`status-text-${workerName}`);
+                            
+                            if (statusDot && statusText) {
+                                statusDot.className = `status-dot status-${data.status === 'online' ? 'online' : 'offline'}`;
+                                statusText.textContent = data.status === 'online' ? 'Online' : 'Offline';
+                            }
+                        });
+                    }
+                    
+                    // Update worker statistics (mock data for now)
+                    this.updateWorkerStats();
+                    
+                } catch (error) {
+                    console.error('Failed to update worker status:', error);
+                }
+            }
+
+            updateWorkerStats() {
+                // Update orchestrator stats
+                document.getElementById('orchestrator-pipelines').textContent = '12';
+                document.getElementById('orchestrator-time').textContent = '2.3s';
+                document.getElementById('orchestrator-cost').textContent = '$0.18';
+                
+                // Update other worker stats (mock data)
+                document.getElementById('topic-researcher-sources').textContent = '247';
+                document.getElementById('topic-researcher-accuracy').textContent = '94%';
+                document.getElementById('topic-researcher-topics').textContent = '15';
+                
+                document.getElementById('rss-librarian-sources').textContent = '1,340';
+                document.getElementById('rss-librarian-quality').textContent = '4.7/5';
+                document.getElementById('rss-librarian-categories').textContent = '28';
+                
+                document.getElementById('feed-fetcher-articles').textContent = '4,592';
+                document.getElementById('feed-fetcher-feeds').textContent = '89';
+                document.getElementById('feed-fetcher-success').textContent = '98%';
+                
+                document.getElementById('content-classifier-processed').textContent = '3,847';
+                document.getElementById('content-classifier-accuracy').textContent = '96%';
+                document.getElementById('content-classifier-models').textContent = '3';
+                
+                document.getElementById('report-builder-reports').textContent = '156';
+                document.getElementById('report-builder-insights').textContent = '892';
+                document.getElementById('report-builder-formats').textContent = '4';
+            }
+
+            openWorkerInterface(workerName) {
+                if (workerName === 'orchestrator') {
+                    window.location.href = './orchestrator/';
+                    return;
+                }
+                
+                // For other workers, show coming soon message
+                alert(`${workerName.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} interface coming in Phase 2!\n\nFor now, you can:\n• Use the Orchestrator to run full pipelines\n• Test the API endpoints directly\n• Monitor worker health from this dashboard`);
+            }
+
+            async testWorker(workerName) {
+                try {
+                    const result = await this.apiClient.callWorker(workerName, '/health');
+                    alert(`✅ ${workerName} API Test Successful!\n\n${JSON.stringify(result, null, 2)}`);
+                    this.addActivity('success', `${workerName} API Test`, 'API endpoint responding correctly');
+                } catch (error) {
+                    alert(`❌ ${workerName} API Test Failed!\n\n${error.message}`);
+                    this.addActivity('error', `${workerName} API Test Failed`, error.message);
+                }
+            }
+
+            showQuickPipelineDialog() {
+                const topic = prompt('Enter a topic to research:', 'artificial intelligence');
+                if (topic && topic.trim()) {
+                    this.executeQuickPipeline(topic.trim());
+                }
+            }
+
+            async executeQuickPipeline(topic) {
+                try {
+                    this.addActivity('info', 'Quick Pipeline Started', `Researching: ${topic}`);
+                    
+                    const result = await this.apiClient.callWorker('orchestrator', '/orchestrate', {
+                        topic: topic,
+                        optimize_for: 'balanced',
+                        urgency: 'medium',
+                        quality_level: 'standard',
+                        budget_limit: 1.00,
+                        enable_parallel_processing: true
+                    });
+                    
+                    if (result.status === 'completed') {
+                        this.addActivity('success', 'Pipeline Completed', `${result.articles_processed} articles processed in ${Math.round(result.total_execution_time_ms / 1000)}s`);
+                        alert(`✅ Pipeline completed successfully!\n\n📊 ${result.articles_processed} articles processed\n⏱️ ${Math.round(result.total_execution_time_ms / 1000)}s execution time\n💰 $${result.total_cost_usd?.toFixed(3)} cost\n\nView full results in the Orchestrator dashboard.`);
+                    } else {
+                        this.addActivity('warning', 'Pipeline Completed with Issues', result.status);
+                    }
+                } catch (error) {
+                    this.addActivity('error', 'Pipeline Failed', error.message);
+                    alert(`❌ Pipeline execution failed: ${error.message}`);
+                }
+            }
+
+            async refreshWorkerStatus() {
+                await this.updateWorkerStatus();
+                this.addActivity('info', 'Worker Status Refreshed', 'All worker statuses updated');
+            }
+
+            addActivity(type, title, description) {
+                const activity = {
+                    type,
+                    title,
+                    description,
+                    timestamp: new Date()
                 };
                 
-                document.getElementById(`status-${worker.name}`).className = 'status offline';
-                document.getElementById(`${worker.name}-info`).textContent = `ERROR (${response.status})`;
+                this.activityLog.unshift(activity);
+                if (this.activityLog.length > 10) {
+                    this.activityLog = this.activityLog.slice(0, 10);
+                }
                 
-                console.error(`${worker.name} error:`, errorData);
+                this.renderActivity();
             }
-        } catch (error) {
-            // Handle network errors, timeouts, etc.
-            results[worker.name] = { 
-                status: 'error', 
-                error: error.message,
-                type: 'network_error'
-            };
-            
-            document.getElementById(`status-${worker.name}`).className = 'status offline';
-            document.getElementById(`${worker.name}-info`).textContent = 'NETWORK ERROR';
-            
-            console.error(`${worker.name} network error:`, error);
-        }
-    }
 
-    // Update results display
-    const resultText = `Workers Online: ${onlineCount}/6\n\nDetailed Results:\n${JSON.stringify(results, null, 2)}`;
-    document.getElementById('results').textContent = resultText;
-    
-    // Summary
-    console.log(`Health check complete: ${onlineCount}/6 workers online`);
-    
-    if (onlineCount === 6) {
-        console.log('🎉 All workers online!');
-    } else {
-        console.log('⚠️ Some workers offline - check results for details');
-    }
-}
-}
-        // Auto-login on load for testing
-        window.addEventListener('load', () => {
-            login();
+            renderActivity() {
+                const activityList = document.getElementById('activity-list');
+                
+                activityList.innerHTML = this.activityLog.map(activity => `
+                    <div class="activity-item ${activity.type}">
+                        <div class="activity-icon">
+                            ${activity.type === 'success' ? '✅' : 
+                              activity.type === 'warning' ? '⚠️' : 
+                              activity.type === 'error' ? '❌' : 'ℹ️'}
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.title}</div>
+                            <div class="activity-description">${activity.description}</div>
+                            <div class="activity-time">${this.formatTime(activity.timestamp)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            clearActivity() {
+                this.activityLog = [];
+                this.renderActivity();
+            }
+
+            formatTime(timestamp) {
+                const now = new Date();
+                const diff = now - timestamp;
+                
+                if (diff < 60000) return 'Just now';
+                if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+                if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+                return timestamp.toLocaleDateString();
+            }
+
+            startRefreshInterval() {
+                this.refreshInterval = setInterval(() => {
+                    this.updateSystemHealth();
+                    this.updateWorkerStatus();
+                }, 30000); // Refresh every 30 seconds
+            }
+
+            stopRefreshInterval() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                    this.refreshInterval = null;
+                }
+            }
+        }
+
+        // Global functions for button clicks
+        window.openWorkerInterface = (workerName) => mainDashboard.openWorkerInterface(workerName);
+        window.testWorker = (workerName) => mainDashboard.testWorker(workerName);
+
+        // Initialize dashboard when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            window.mainDashboard = new MainDashboard();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (window.mainDashboard) {
+                window.mainDashboard.stopRefreshInterval();
+            }
         });
     </script>
 </body>

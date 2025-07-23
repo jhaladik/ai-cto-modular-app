@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Orchestrator API Issues</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; }
+        .success { color: #00ff00; }
+        .error { color: #ff4444; }
+        .info { color: #4444ff; }
+        button { padding: 10px 20px; margin: 10px; background: #333; color: white; border: none; cursor: pointer; }
+        button:hover { background: #555; }
+        pre { background: #222; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .output { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Orchestrator API Issues</h1>
+    
+    <div class="test-section">
+        <h2>Step 1: Test Direct Worker Call (Bypass Proxy)</h2>
+        <p>This should work if your orchestrator worker is deployed correctly:</p>
+        <button onclick="testDirectWorker()">Test Direct Orchestrator Worker</button>
+        <div id="direct-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 2: Test Proxy Function</h2>
+        <p>This tests your Pages Function proxy:</p>
+        <button onclick="testProxyFunction()">Test Proxy Function</button>
+        <div id="proxy-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 3: Test API Client</h2>
+        <p>This tests your dashboard's API client:</p>
+        <button onclick="testAPIClient()">Test API Client</button>
+        <div id="api-client-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 4: Test Authentication</h2>
+        <p>This tests session authentication:</p>
+        <input type="text" id="username" placeholder="Username" value="admin">
+        <input type="password" id="password" placeholder="Password" value="">
+        <button onclick="testAuthentication()">Test Login & API Call</button>
+        <div id="auth-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 5: Raw Network Analysis</h2>
+        <p>Check browser Network tab for these requests:</p>
+        <button onclick="analyzeNetwork()">Make Traced Network Calls</button>
+        <div id="network-output" class="output"></div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toISOString();
+            const className = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info');
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        async function testDirectWorker() {
+            clearLog('direct-output');
+            log('direct-output', '🔍 Testing direct orchestrator worker call...');
+            
+            // You need to replace this with your actual orchestrator worker URL
+            const workerUrl = prompt('Enter your orchestrator worker URL:', 'https://bitware-orchestrator.yourname.workers.dev');
+            
+            if (!workerUrl) {
+                log('direct-output', '❌ No worker URL provided', 'error');
+                return;
+            }
+
+            try {
+                log('direct-output', `📡 Calling: ${workerUrl}/health`);
+                
+                const response = await fetch(`${workerUrl}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log('direct-output', `📊 Response status: ${response.status} ${response.statusText}`);
+                log('direct-output', `📋 Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+
+                const text = await response.text();
+                log('direct-output', `📄 Response body: ${text}`);
+
+                if (response.ok) {
+                    const data = JSON.parse(text);
+                    log('direct-output', '✅ Direct worker call SUCCESS!', 'success');
+                    log('direct-output', `📊 Health data: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    log('direct-output', `❌ Direct worker call failed: ${response.status}`, 'error');
+                }
+
+            } catch (error) {
+                log('direct-output', `❌ Direct worker call error: ${error.message}`, 'error');
+                log('direct-output', `🔍 Error details: ${error.stack}`);
+            }
+        }
+
+        async function testProxyFunction() {
+            clearLog('proxy-output');
+            log('proxy-output', '🔍 Testing proxy function...');
+
+            try {
+                // Test without authentication first
+                log('proxy-output', '📡 Calling: /api/orchestrator?endpoint=/health (no auth)');
+                
+                const response = await fetch('/api/orchestrator?endpoint=/health', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log('proxy-output', `📊 Response status: ${response.status} ${response.statusText}`);
+                log('proxy-output', `📋 Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+
+                const text = await response.text();
+                log('proxy-output', `📄 Response body: ${text}`);
+
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(text);
+                        log('proxy-output', '✅ Proxy function SUCCESS!', 'success');
+                        log('proxy-output', `📊 Health data: ${JSON.stringify(data, null, 2)}`);
+                    } catch (parseError) {
+                        log('proxy-output', '⚠️ Got response but not JSON - this is the issue!', 'error');
+                        log('proxy-output', `🔍 Received HTML instead of JSON: ${text.substring(0, 200)}...`);
+                    }
+                } else {
+                    log('proxy-output', `❌ Proxy function failed: ${response.status}`, 'error');
+                    if (text.includes('<html>') || text.includes('<!DOCTYPE')) {
+                        log('proxy-output', '🚨 FOUND THE ISSUE: Getting HTML error page instead of JSON!', 'error');
+                        log('proxy-output', `🔍 HTML content: ${text.substring(0, 500)}...`);
+                    }
+                }
+
+            } catch (error) {
+                log('proxy-output', `❌ Proxy function error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAPIClient() {
+            clearLog('api-client-output');
+            log('api-client-output', '🔍 Testing API client...');
+
+            // Check if API client exists
+            if (!window.apiClient) {
+                log('api-client-output', '❌ API client not found - need to load auth.js and api.js first', 'error');
+                return;
+            }
+
+            try {
+                log('api-client-output', '📡 Calling apiClient.testOrchestratorHealth()...');
+                
+                const health = await window.apiClient.testOrchestratorHealth();
+                log('api-client-output', '✅ API client SUCCESS!', 'success');
+                log('api-client-output', `📊 Health data: ${JSON.stringify(health, null, 2)}`);
+
+            } catch (error) {
+                log('api-client-output', `❌ API client error: ${error.message}`, 'error');
+                
+                if (error.message.includes('Unexpected token')) {
+                    log('api-client-output', '🚨 CONFIRMED: Getting HTML instead of JSON!', 'error');
+                    log('api-client-output', '🔧 This means the proxy routing is wrong');
+                }
+            }
+        }
+
+        async function testAuthentication() {
+            clearLog('auth-output');
+            log('auth-output', '🔍 Testing authentication flow...');
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                log('auth-output', '❌ Please enter username and password', 'error');
+                return;
+            }
+
+            try {
+                // Test login
+                log('auth-output', '📡 Testing login...');
+                
+                const loginResponse = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const loginText = await loginResponse.text();
+                log('auth-output', `📊 Login response: ${loginResponse.status} - ${loginText}`);
+
+                if (loginResponse.ok) {
+                    const loginData = JSON.parse(loginText);
+                    if (loginData.success) {
+                        log('auth-output', '✅ Login successful!', 'success');
+                        
+                        // Now test orchestrator with session
+                        log('auth-output', '📡 Testing orchestrator with session...');
+                        
+                        const orchResponse = await fetch('/api/orchestrator?endpoint=/pipeline-health', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-bitware-session-token': loginData.sessionToken
+                            }
+                        });
+
+                        const orchText = await orchResponse.text();
+                        log('auth-output', `📊 Orchestrator response: ${orchResponse.status} - ${orchText}`);
+
+                        if (orchResponse.ok) {
+                            log('auth-output', '✅ Authenticated orchestrator call SUCCESS!', 'success');
+                        } else {
+                            log('auth-output', '❌ Authenticated orchestrator call failed', 'error');
+                        }
+                    } else {
+                        log('auth-output', `❌ Login failed: ${loginData.error}`, 'error');
+                    }
+                } else {
+                    log('auth-output', `❌ Login request failed: ${loginResponse.status}`, 'error');
+                }
+
+            } catch (error) {
+                log('auth-output', `❌ Authentication test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function analyzeNetwork() {
+            clearLog('network-output');
+            log('network-output', '🔍 Making traced network calls...');
+            log('network-output', '📋 Open browser Network tab to see detailed requests/responses');
+
+            // Make several different types of calls to see which fails
+            const tests = [
+                { name: 'Direct health (if CORS allows)', url: 'https://bitware-orchestrator.yourname.workers.dev/health' },
+                { name: 'Proxy health (GET)', url: '/api/orchestrator?endpoint=/health' },
+                { name: 'Proxy health (POST)', url: '/api/orchestrator', method: 'POST', body: { endpoint: '/health' } },
+                { name: 'Proxy capabilities', url: '/api/orchestrator?endpoint=/capabilities' },
+            ];
+
+            for (const test of tests) {
+                try {
+                    log('network-output', `📡 Testing: ${test.name}`);
+                    
+                    const options = {
+                        method: test.method || 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    };
+                    
+                    if (test.body) {
+                        options.body = JSON.stringify(test.body);
+                    }
+
+                    const response = await fetch(test.url, options);
+                    const text = await response.text();
+                    
+                    log('network-output', `${test.name}: ${response.status} - ${text.substring(0, 100)}...`);
+                    
+                } catch (error) {
+                    log('network-output', `${test.name}: ERROR - ${error.message}`, 'error');
+                }
+            }
+
+            log('network-output', '✅ Network analysis complete - check Network tab for details', 'success');
+        }
+
+        // Auto-load API client if available
+        window.addEventListener('load', () => {
+            if (window.apiClient) {
+                log('api-client-output', '✅ API client loaded and ready');
+            } else {
+                log('api-client-output', '⚠️ API client not found - load dashboard first');
+            }
+        });
+    </script>
+</body>
+</html>
