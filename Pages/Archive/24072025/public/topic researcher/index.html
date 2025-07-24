@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Topic Researcher - AI Factory</title>
+    <link rel="stylesheet" href="../css/shared.css">
+    <style>
+        /* Topic Researcher Specific Styles */
+        :root {
+            --researcher-primary: #3B82F6;
+            --researcher-secondary: #1E40AF;
+            --researcher-accent: #60A5FA;
+            --discovery-success: #10B981;
+            --quality-gold: #F59E0B;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, var(--researcher-primary), var(--researcher-secondary));
+            color: white;
+            padding: 24px;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header-left h1 {
+            margin: 0 0 4px 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .header-subtitle {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .orchestrator-link {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .orchestrator-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--background-color);
+            min-height: calc(100vh - 200px);
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 24px;
+        }
+
+        .nav-tab {
+            padding: 16px 24px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            transition: var(--transition);
+        }
+
+        .nav-tab.active {
+            color: var(--researcher-primary);
+            border-bottom-color: var(--researcher-primary);
+        }
+
+        .nav-tab:hover {
+            color: var(--researcher-primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 32px 24px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Research Form */
+        .research-card {
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .research-form {
+            display: grid;
+            gap: 24px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 200px 200px;
+            gap: 16px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--researcher-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .research-btn {
+            background: linear-gradient(135deg, var(--researcher-primary), var(--researcher-secondary));
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .research-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .research-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Results Section */
+        .results-container {
+            margin-top: 32px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .results-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .results-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .source-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .source-card {
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            transition: var(--transition);
+        }
+
+        .source-card:hover {
+            border-color: var(--researcher-accent);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        }
+
+        .source-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .source-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .source-url {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .quality-badge {
+            background: linear-gradient(135deg, var(--quality-gold), #F97316);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .source-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .source-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .discovery-method {
+            background: var(--surface-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* Status Cards */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .status-card {
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            text-align: center;
+        }
+
+        .status-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .status-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .status-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Activity Log */
+        .activity-log {
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .activity-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--discovery-success);
+        }
+
+        .activity-info {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--researcher-primary);
+        }
+
+        .activity-text {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-tabs {
+                padding: 0 16px;
+                overflow-x: auto;
+            }
+
+            .tab-content {
+                padding: 24px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>🔍 Topic Researcher</h1>
+                <div class="header-subtitle">AI-Powered RSS Source Discovery</div>
+            </div>
+            <div class="header-right">
+                <a href="../orchestrator/" class="orchestrator-link">
+                    🎯 Orchestrator Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="research">🔍 Research</button>
+            <button class="nav-tab" data-tab="status">📊 Status</button>
+            <button class="nav-tab" data-tab="history">📋 History</button>
+        </nav>
+
+        <!-- Research Tab -->
+        <div class="tab-content active" id="research-tab">
+            <div class="research-card">
+                <h2 style="margin-bottom: 24px; color: var(--text-primary);">Discover RSS Sources</h2>
+                
+                <form class="research-form" id="researchForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="topic">Research Topic</label>
+                            <input 
+                                type="text" 
+                                id="topic" 
+                                name="topic" 
+                                placeholder="e.g., artificial intelligence, climate change, blockchain technology..."
+                                required
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="depth">Search Depth</label>
+                            <select id="depth" name="depth">
+                                <option value="1">Quick (1)</option>
+                                <option value="2">Standard (2)</option>
+                                <option value="3" selected>Deep (3)</option>
+                                <option value="4">Comprehensive (4)</option>
+                                <option value="5">Exhaustive (5)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="minQuality">Min Quality</label>
+                            <select id="minQuality" name="minQuality">
+                                <option value="0.5">Low (0.5)</option>
+                                <option value="0.6">Fair (0.6)</option>
+                                <option value="0.7" selected>Good (0.7)</option>
+                                <option value="0.8">High (0.8)</option>
+                                <option value="0.9">Excellent (0.9)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="research-btn" id="researchBtn">
+                        <span id="research-btn-text">🚀 Start Research</span>
+                        <span id="research-btn-spinner" class="loading-spinner hidden"></span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="results-container" id="resultsContainer" style="display: none;">
+                <div class="results-header">
+                    <h3 class="results-title">Research Results</h3>
+                    <div class="results-meta">
+                        <span id="results-count">0 sources found</span>
+                        <span id="results-time">Completed in 0s</span>
+                    </div>
+                </div>
+                <div class="source-grid" id="sourceGrid">
+                    <!-- Sources will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Tab -->
+        <div class="tab-content" id="status-tab">
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-icon">🎯</div>
+                    <div class="status-value" id="total-research">0</div>
+                    <div class="status-label">Total Research Sessions</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">📡</div>
+                    <div class="status-value" id="sources-discovered">0</div>
+                    <div class="status-label">Sources Discovered</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">⭐</div>
+                    <div class="status-value" id="avg-quality">0.0</div>
+                    <div class="status-label">Average Quality Score</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">⚡</div>
+                    <div class="status-value" id="cache-hit-rate">0%</div>
+                    <div class="status-label">Cache Hit Rate</div>
+                </div>
+            </div>
+
+            <div class="research-card">
+                <h3 style="margin-bottom: 16px;">Worker Health Status</h3>
+                <div id="health-status">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div class="status-dot status-online" id="health-dot"></div>
+                        <span id="health-text">Checking worker health...</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">
+                        Last checked: <span id="health-timestamp">Never</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div class="tab-content" id="history-tab">
+            <div class="research-card">
+                <h3 style="margin-bottom: 24px;">Recent Activity</h3>
+                <div class="activity-log" id="activityLog">
+                    <div class="activity-item">
+                        <div class="activity-content">
+                            <div class="activity-icon activity-info">🔍</div>
+                            <div class="activity-text">Topic Researcher interface initialized</div>
+                        </div>
+                        <div class="activity-time">Just now</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/shared/auth.js"></script>
+    <script src="../js/shared/api.js"></script>
+    <script>
+        class TopicResearcherInterface {
+            constructor() {
+                this.authClient = window.authClient;
+                
+                // Check authentication first
+                if (!this.authClient || !this.authClient.isAuthenticated()) {
+                    window.location.href = '../index.html';
+                    return;
+                }
+                
+                this.apiClient = new APIClient(this.authClient);
+                this.currentResults = [];
+                
+                this.initializeTabs();
+                this.initializeForm();
+                this.loadInitialData();
+                this.startHealthCheck();
+            }
+
+            initializeTabs() {
+                const tabButtons = document.querySelectorAll('.nav-tab');
+                const tabContents = document.querySelectorAll('.tab-content');
+
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const tabName = button.dataset.tab;
+                        
+                        // Update active tab button
+                        tabButtons.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+                        
+                        // Update active tab content
+                        tabContents.forEach(content => content.classList.remove('active'));
+                        document.getElementById(`${tabName}-tab`).classList.add('active');
+                        
+                        // Load tab-specific data
+                        if (tabName === 'status') {
+                            this.loadStatusData();
+                        } else if (tabName === 'history') {
+                            this.loadHistoryData();
+                        }
+                    });
+                });
+            }
+
+            initializeForm() {
+                const form = document.getElementById('researchForm');
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.performResearch();
+                });
+            }
+
+            async performResearch() {
+                const topic = document.getElementById('topic').value.trim();
+                const depth = parseInt(document.getElementById('depth').value);
+                const minQuality = parseFloat(document.getElementById('minQuality').value);
+
+                if (!topic) {
+                    alert('Please enter a research topic');
+                    return;
+                }
+
+                this.setResearchingState(true);
+                const startTime = Date.now();
+
+                try {
+                    // Call orchestrator to manage topic research
+                    const result = await this.apiClient.callWorker('orchestrator', '/orchestrate', {
+                        topic: topic,
+                        source_discovery_depth: depth,
+                        quality_level: 'standard',
+                        optimize_for: 'quality'
+                    }, 'POST');
+
+                    const endTime = Date.now();
+                    const duration = Math.round((endTime - startTime) / 1000);
+
+                    // Extract topic researcher results from orchestrator response
+                    const researcherResult = result.worker_results?.find(r => r.worker_name === 'topic_researcher');
+                    
+                    if (researcherResult && researcherResult.success) {
+                        this.displayResults(researcherResult.data, duration);
+                        this.addActivity('success', `Research completed for "${topic}"`, `Found ${researcherResult.data?.sources?.length || 0} sources`);
+                    } else {
+                        throw new Error(researcherResult?.error || 'Research failed');
+                    }
+
+                } catch (error) {
+                    console.error('Research failed:', error);
+                    alert(`Research failed: ${error.message}`);
+                    this.addActivity('error', `Research failed for "${topic}"`, error.message);
+                } finally {
+                    this.setResearchingState(false);
+                }
+            }
+
+            setResearchingState(isResearching) {
+                const btn = document.getElementById('researchBtn');
+                const btnText = document.getElementById('research-btn-text');
+                const btnSpinner = document.getElementById('research-btn-spinner');
+
+                if (isResearching) {
+                    btn.disabled = true;
+                    btnText.textContent = '🔍 Researching...';
+                    btnSpinner.classList.remove('hidden');
+                } else {
+                    btn.disabled = false;
+                    btnText.textContent = '🚀 Start Research';
+                    btnSpinner.classList.add('hidden');
+                }
+            }
+
+            displayResults(data, duration) {
+                const sources = data?.sources || [];
+                const resultsContainer = document.getElementById('resultsContainer');
+                const resultsCount = document.getElementById('results-count');
+                const resultsTime = document.getElementById('results-time');
+                const sourceGrid = document.getElementById('sourceGrid');
+
+                // Update results metadata
+                resultsCount.textContent = `${sources.length} sources found`;
+                resultsTime.textContent = `Completed in ${duration}s`;
+
+                // Clear and populate source grid
+                sourceGrid.innerHTML = '';
+                sources.forEach(source => {
+                    sourceGrid.appendChild(this.createSourceCard(source));
+                });
+
+                // Show results container
+                resultsContainer.style.display = 'block';
+                this.currentResults = sources;
+            }
+
+            createSourceCard(source) {
+                const card = document.createElement('div');
+                card.className = 'source-card';
+
+                const qualityScore = (source.quality_score * 100).toFixed(0);
+
+                card.innerHTML = `
+                    <div class="source-header">
+                        <div>
+                            <div class="source-title">${source.title || source.domain}</div>
+                            <div class="source-url">${source.url}</div>
+                        </div>
+                        <div class="quality-badge">
+                            ⭐ ${qualityScore}%
+                        </div>
+                    </div>
+                    <div class="source-description">
+                        ${source.description || 'No description available'}
+                    </div>
+                    <div class="source-meta">
+                        <span class="discovery-method">${source.discovery_method || 'AI Discovery'}</span>
+                        <span>${source.validation_status || 'Validated'}</span>
+                    </div>
+                `;
+
+                return card;
+            }
+
+            async loadStatusData() {
+                try {
+                    // Get stats through orchestrator
+                    const stats = await this.apiClient.callWorker('orchestrator', '/admin/stats');
+                    
+                    // Update status cards with actual data
+                    document.getElementById('total-research').textContent = stats.total_sessions || '0';
+                    document.getElementById('sources-discovered').textContent = stats.total_sources || '0';
+                    document.getElementById('avg-quality').textContent = (stats.avg_quality || 0).toFixed(1);
+                    document.getElementById('cache-hit-rate').textContent = `${stats.cache_hit_rate || 0}%`;
+
+                } catch (error) {
+                    console.error('Failed to load status data:', error);
+                }
+            }
+
+            async loadHistoryData() {
+                // In a real implementation, this would load from the orchestrator's session history
+                // For now, we'll keep the activity log as is
+            }
+
+            async loadInitialData() {
+                this.loadStatusData();
+            }
+
+            async startHealthCheck() {
+                const checkHealth = async () => {
+                    try {
+                        const health = await this.apiClient.callWorker('orchestrator', '/pipeline-health', null, 'GET');
+                        const researcherHealth = health.workers?.topic_researcher;
+                        
+                        const healthDot = document.getElementById('health-dot');
+                        const healthText = document.getElementById('health-text');
+                        const healthTimestamp = document.getElementById('health-timestamp');
+
+                        if (researcherHealth?.status === 'online') {
+                            healthDot.className = 'status-dot status-online';
+                            healthText.textContent = 'Topic Researcher is online and ready';
+                        } else {
+                            healthDot.className = 'status-dot status-offline';
+                            healthText.textContent = 'Topic Researcher is offline';
+                        }
+
+                        healthTimestamp.textContent = new Date().toLocaleTimeString();
+
+                    } catch (error) {
+                        console.error('Health check failed:', error);
+                        document.getElementById('health-dot').className = 'status-dot status-offline';
+                        document.getElementById('health-text').textContent = 'Health check failed';
+                    }
+                };
+
+                // Initial health check
+                checkHealth();
+                
+                // Regular health checks every 30 seconds
+                setInterval(checkHealth, 30000);
+            }
+
+            addActivity(type, action, details = '') {
+                const activityLog = document.getElementById('activityLog');
+                const activityItem = document.createElement('div');
+                activityItem.className = 'activity-item';
+
+                const iconClass = type === 'success' ? 'activity-success' : 
+                                 type === 'error' ? 'activity-error' : 'activity-info';
+                const icon = type === 'success' ? '✅' : 
+                            type === 'error' ? '❌' : '🔍';
+
+                const detailsHtml = details ? `<br><small style="color: var(--text-secondary);">${details}</small>` : '';
+
+                activityItem.innerHTML = `
+                    <div class="activity-content">
+                        <div class="activity-icon ${iconClass}">${icon}</div>
+                        <div class="activity-text">
+                            ${action}
+                            ${detailsHtml}
+                        </div>
+                    </div>
+                    <div class="activity-time">${new Date().toLocaleTimeString()}</div>
+                `;
+
+                // Add to top of log
+                activityLog.insertBefore(activityItem, activityLog.firstChild);
+
+                // Keep only last 10 items
+                while (activityLog.children.length > 10) {
+                    activityLog.removeChild(activityLog.lastChild);
+                }
+            }
+        }
+
+        // Initialize the interface when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new TopicResearcherInterface();
+        });
+    </script>
+</body>
+</html>

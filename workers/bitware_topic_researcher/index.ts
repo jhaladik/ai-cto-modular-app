@@ -137,10 +137,12 @@ interface Env {
   
     try {
       const topic = url.searchParams.get('topic');
-      const depth = parseInt(url.searchParams.get('depth') || '3');
-      const excludeDomains = url.searchParams.get('exclude_domains')?.split(',') || [];
-      const minQuality = parseFloat(url.searchParams.get('min_quality') || '0.6');
-      const maxSources = parseInt(url.searchParams.get('max_sources') || '10');
+      const depthParam = url.searchParams.get('depth');
+      const depth = (depthParam && depthParam !== 'undefined') ? parseInt(depthParam) : 3;      const excludeDomains = url.searchParams.get('exclude_domains')?.split(',') || [];
+      const minQualityParam = url.searchParams.get('min_quality');
+      const minQuality = (minQualityParam && minQualityParam !== 'undefined') ? parseFloat(minQualityParam) : 0.6;
+      const maxSourcesParam = url.searchParams.get('max_sources');
+      const maxSources = (maxSourcesParam && maxSourcesParam !== 'undefined') ? parseInt(maxSourcesParam) : 10;
   
       if (!topic) {
         return errorResponse('Topic parameter required', 400);
