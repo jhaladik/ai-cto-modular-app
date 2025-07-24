@@ -13,3 +13,118 @@ database_id = "cfe96e96-0c70-4918-9c7d-92d1b236e531" # Replace with actual D1 da
 binding = "RESEARCH_CACHE"
 id = "9f36993b564143468c36ce9819301efe" # Replace with actual KV namespace ID
 preview_id = "your-kv-preview-id"
+
+# Environment variables
+[vars]
+
+# Worker Configuration
+WORKER_NAME = "bitware_topic_researcher"
+VERSION = "1.1.0"  # Updated for analytics features
+
+# AI Configuration
+AI_MODEL = "gpt-4o-mini"
+MAX_AI_SOURCES = 6
+DEFAULT_SEARCH_DEPTH = 3
+DEFAULT_MIN_QUALITY = 0.6
+DEFAULT_MAX_SOURCES = 10
+
+# Performance Settings
+REQUEST_TIMEOUT_MS = 60000      # 60 seconds for AI processing
+AI_TIMEOUT_MS = 45000           # 45 seconds for OpenAI API calls
+VALIDATION_TIMEOUT_MS = 5000    # 5 seconds per source validation
+RETRY_ATTEMPTS = 2
+RETRY_DELAY_MS = 1000
+
+# Caching Configuration  
+CACHE_TTL_HOURS = 1             # 1 hour cache for research results
+PERFORMANCE_CACHE_TTL = 900     # 15 minutes for analytics data
+MAX_CACHE_SIZE_KB = 500         # Maximum cache entry size
+
+# Cost Management
+MAX_COST_PER_REQUEST = 0.5      # USD - Maximum cost per research request
+DAILY_COST_LIMIT = 20.0         # USD - Daily spending limit
+TOKEN_RATE_LIMIT = 20000        # OpenAI tokens per hour limit
+
+# Analytics Configuration
+ENABLE_PERFORMANCE_TRACKING = true
+ENABLE_DETAILED_ANALYTICS = true
+ANALYTICS_RETENTION_DAYS = 90   # How long to keep detailed analytics
+HOURLY_AGGREGATION = true       # Enable hourly performance aggregation
+
+# Quality Control
+MIN_SOURCES_FOR_SUCCESS = 3     # Minimum sources to consider request successful
+MAX_VALIDATION_FAILURES = 2     # Maximum failed validations before skipping
+DUPLICATE_DETECTION = true      # Enable duplicate source detection
+
+# Rate Limiting and Throttling
+MAX_CONCURRENT_VALIDATIONS = 3  # Parallel source validations
+VALIDATION_DELAY_MS = 500       # Delay between validations
+RESPECTFUL_CRAWLING = true      # Enable polite crawling delays
+
+# Feature Flags
+ENABLE_WEB_SEARCH = true        # Enable web search discovery
+ENABLE_AI_DISCOVERY = true      # Enable AI-powered source suggestions
+ENABLE_HYBRID_MODE = true       # Combine web search + AI discovery
+ENABLE_QUALITY_REASONING = true # Include AI reasoning for quality scores
+
+# Development and Debugging
+DEBUG_MODE = false              # Enable detailed logging
+VERBOSE_ANALYTICS = false       # Log all analytics operations
+SIMULATION_MODE = false         # For testing without external API calls
+
+# Secrets that need to be set via `wrangler secret put`:
+# 
+# Required secrets:
+# wrangler secret put OPENAI_API_KEY
+# wrangler secret put CLIENT_API_KEY  
+# wrangler secret put WORKER_SHARED_SECRET
+#
+# Example values (set these during deployment):
+# OPENAI_API_KEY = "sk-..." (Your OpenAI API key)
+# CLIENT_API_KEY = "external-client-api-key-2024" (For client authentication)
+# WORKER_SHARED_SECRET = "internal-worker-auth-token-2024" (For worker-to-worker auth)
+
+# Database setup commands:
+# 1. Create database:
+#    wrangler d1 create topic-research-db
+# 2. Update database_id above with returned ID
+# 3. Run schema setup:
+#    wrangler d1 execute topic-research-db --file=schema.sql
+# 4. Verify tables created:
+#    wrangler d1 execute topic-research-db --command="SELECT name FROM sqlite_master WHERE type='table';"
+
+# KV namespace setup:
+# 1. Create namespace:
+#    wrangler kv:namespace create "RESEARCH_CACHE"
+# 2. Create preview namespace:
+#    wrangler kv:namespace create "RESEARCH_CACHE" --preview
+# 3. Update id and preview_id above with returned IDs
+
+# Analytics Views Creation (run after schema.sql):
+# wrangler d1 execute topic-research-db --command="
+# CREATE VIEW IF NOT EXISTS v_recent_performance AS
+# SELECT 
+#   date(research_date) as date,
+#   COUNT(*) as sessions,
+#   AVG(research_time_ms) as avg_time_ms,
+#   COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful
+# FROM research_sessions 
+# WHERE research_date > datetime('now', '-7 days')
+# GROUP BY date(research_date);
+# "
+
+# Testing Commands:
+# 1. Local development:
+#    wrangler dev
+# 2. Run test suite:
+#    ./test.sh
+# 3. Deploy to staging:
+#    wrangler deploy --env preview
+# 4. Deploy to production:
+#    wrangler deploy
+
+# Performance Monitoring:
+# Monitor analytics endpoints:
+# - GET /admin/analytics?time_range=24h
+# - GET /admin/performance  
+# - GET /admin/stats

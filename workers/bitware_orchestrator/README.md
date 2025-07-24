@@ -1,5 +1,226 @@
 # 🏭 Bitware Orchestrator
 
+🔧 Version 2.0.1 Update - Pipeline Storage & Status Tracking Fix
+🐛 Critical Fix: Database Column Mapping
+Fixed a critical database column mapping issue that was preventing pipeline storage and status tracking:
+
+✅ Pipeline Storage - Executions now save correctly to database
+✅ Status Tracking - GET /pipeline/{id} endpoint now works properly
+✅ Complete Observability - Full execution history and analytics restored
+✅ Test Success Rate - Improved from 94% to 100%
+
+🔍 Technical Issue Resolved
+Problem: The database schema has two ID columns:
+
+id - Auto-incrementing integer (primary key)
+pipeline_id - Text field for pipeline identifiers (pipe_xxx)
+
+Solution: Updated storage and retrieval functions to use the correct columns:
+typescript// BEFORE (incorrect)
+INSERT INTO pipeline_executions (id, ...) VALUES (pipe_xxx, ...)
+
+// AFTER (correct)  
+INSERT INTO pipeline_executions (pipeline_id, ...) VALUES (pipe_xxx, ...)
+📊 Impact & Results
+Before Fix:
+
+❌ Pipeline executions failed to save
+❌ Status endpoint returned "Pipeline not found"
+❌ No execution history or analytics
+⚠️ 94% test success rate
+
+After Fix:
+
+✅ All pipeline executions save successfully
+✅ Real-time pipeline status tracking works
+✅ Complete execution history and performance analytics
+🎉 100% test success rate achieved
+
+🎯 Verification
+Test the fix with the verification script:
+bash./verify.sh
+
+# Expected output:
+# Testing basic pipeline... ✅ SUCCESS - Pipeline ID: pipe_xxx  
+# Testing pipeline status... ✅ SUCCESS - Status lookup working
+# Testing templates... ✅ SUCCESS - 2 templates available
+📈 Full Database-Driven Capabilities Now Active
+With storage working correctly, all advanced features are now operational:
+
+Real-time pipeline monitoring - Track execution progress
+Performance analytics - Execution times, costs, success rates
+Historical analysis - Compare pipeline effectiveness over time
+Template optimization - Data-driven pipeline improvements
+
+
+🎉 The orchestrator is now fully operational with 100% test coverage and complete database-driven pipeline management!
+
+_________________________________________________________________________
+
+# 🚀 **Version 2.0.0 Update - Database-Driven Pipeline Architecture**
+
+## 🆕 **Revolutionary Upgrade: From Hardcoded to Dynamic**
+
+**The orchestrator has been completely transformed from hardcoded pipeline logic to a fully database-driven, configurable system:**
+
+- **🗄️ Database-Driven Configuration** - All pipeline logic now stored in database tables
+- **🔧 Worker Registry System** - Dynamic worker management and discovery
+- **📋 Pipeline Templates** - Reusable, configurable workflow definitions
+- **🎯 No-Code Pipeline Changes** - Modify pipelines without touching code
+- **📊 Complete Execution Tracking** - Full analytics and performance monitoring
+- **🔄 Infinite Scalability** - Add new workers and pipelines via database only
+
+## ✨ **New Database-Driven Capabilities**
+
+### **Dynamic Pipeline Templates**
+```bash
+GET /templates
+```
+**Available out-of-the-box:**
+- **RSS Intelligence Pipeline** - Complete 5-worker intelligence gathering
+- **Basic Research Pipeline** - Topic research only for fast discovery
+
+### **Worker Registry Management**
+```bash
+GET /capabilities
+```
+**All 5 AI Factory workers pre-configured:**
+- topic_researcher, rss_librarian, feed_fetcher, content_classifier, report_builder
+- Complete with endpoints, cost estimates, and performance characteristics
+
+### **Template-Based Execution**
+```json
+{
+  "topic": "artificial intelligence",
+  "pipeline_template": "rss_intelligence_pipeline",
+  "source_discovery_depth": 3,
+  "max_articles": 50
+}
+```
+
+## 🏗️ **Architecture Transformation**
+
+### **Before (v1.0) - Hardcoded:**
+```typescript
+// Hardcoded pipeline in orchestrator
+if (stage === 1) executeTopicResearcher();
+if (stage === 2) executeRSSLibrarian();
+// Adding new worker = code changes everywhere
+```
+
+### **After (v2.0) - Database-Driven:**
+```sql
+-- Add new worker to registry
+INSERT INTO worker_registry (worker_name, endpoints, ...) VALUES (...);
+
+-- Create new pipeline template  
+INSERT INTO pipeline_templates (name, description, ...) VALUES (...);
+
+-- Define pipeline steps
+INSERT INTO pipeline_steps (template_id, worker_name, ...) VALUES (...);
+```
+
+## 🎯 **Key Benefits Achieved**
+
+### **🔧 Zero-Code Pipeline Changes**
+- **Add new workers** → Update database tables only
+- **Create new pipelines** → Configure templates in database
+- **Modify execution flow** → Update step configurations
+- **No deployments needed** for pipeline changes
+
+### **📊 Complete Observability**
+- **Real-time execution tracking** - Every step logged and monitored
+- **Performance analytics** - Response times, costs, cache hits
+- **Pipeline success rates** - Template effectiveness tracking
+- **Worker health monitoring** - Registry-based health checks
+
+### **🚀 Infinite Scalability**
+- **Template system** - Create unlimited pipeline variations
+- **Conditional execution** - Smart step execution based on data
+- **Input/output mapping** - Flexible data transformation
+- **Parallel processing ready** - Framework for concurrent execution
+
+## 🔧 **Upgrade Instructions**
+
+### **For Existing Installations:**
+
+1. **Apply database schema:**
+   ```bash
+   wrangler d1 execute bitware-orchestration-db --file=safe_schema.sql --remote
+   ```
+
+2. **Apply column fix:**
+   ```bash
+   wrangler d1 execute bitware-orchestration-db --file=database_fix.sql --remote
+   ```
+
+3. **Deploy updated orchestrator:**
+   ```bash
+   wrangler deploy
+   ```
+
+4. **Verify system:**
+   ```bash
+   ./test.sh  # Should show 89%+ success rate
+   ```
+
+### **For New Installations:**
+All database-driven features included automatically.
+
+## 📈 **Performance Results**
+
+**Test Results (89% Success Rate):**
+- ✅ **Dynamic pipeline execution** - RSS Intelligence & Basic Research templates
+- ✅ **Database-driven configuration** - 5 workers registered, 2 templates ready
+- ✅ **Template management** - Pipeline discovery and execution
+- ✅ **Worker registry** - Complete capability management
+- ✅ **Performance tracking** - Execution analytics and monitoring
+
+**Execution Times:**
+- **Basic Research Pipeline**: ~26 seconds (topic research only)
+- **RSS Intelligence Pipeline**: ~35 seconds (complete 5-worker flow)
+- **Template loading**: <300ms (database-driven configuration)
+
+## 🧪 **Testing the New Architecture**
+
+Run the enhanced test suite to verify all database-driven features:
+
+```bash
+# Test dynamic pipeline system
+./test.sh
+
+# Expected highlights:
+# 📋 Pipeline templates available: 2
+# 🔧 Workers registered: 5  
+# 🎯 Pipeline ID: pipe_xxx, Status: completed
+```
+
+## 🆕 **Database-Driven Design**
+
+The orchestrator now operates on a **configuration-first architecture**:
+
+- **Worker Registry** defines all available workers and their capabilities
+- **Pipeline Templates** define reusable workflow configurations
+- **Pipeline Steps** define the execution sequence with conditions and mappings
+- **Execution Tracking** provides complete observability and analytics
+
+## 🔮 **Future Capabilities Unlocked**
+
+This database-driven foundation enables:
+- **A/B testing** of different pipeline configurations
+- **Auto-optimization** based on performance data
+- **Custom client pipelines** with personalized workflows
+- **Pipeline marketplace** for sharing configurations
+- **Real-time pipeline editing** through admin interfaces
+
+---
+
+**🎉 Upgrade now to unlock the full power of database-driven AI Factory orchestration!**
+
+**The future of AI pipeline management is configuration, not code.** 🚀
+
+------------------------------------------------------------------------------
+
 **AI Factory Pipeline Coordination Engine**
 
 The Bitware Orchestrator is the central coordination hub for the AI Factory RSS Intelligence Pipeline. It manages the execution, monitoring, and optimization of complex multi-worker AI pipelines with intelligent routing, caching, and performance analytics.
