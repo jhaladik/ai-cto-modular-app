@@ -3,247 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Factory Orchestrator</title>
+    <title>AI Factory Orchestrator - Enhanced Dashboard</title>
     <link rel="stylesheet" href="../css/shared.css">
     <style>
-        :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --success-color: #059669;
-            --warning-color: #d97706;
-            --error-color: #dc2626;
-            --info-color: #0284c7;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --border-color: #e5e7eb;
-            --background-color: #ffffff;
-            --surface-color: #f9fafb;
-            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --border-radius: 8px;
-            --transition: all 0.2s ease;
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--surface-color);
-            color: var(--text-primary);
-            line-height: 1.5;
-        }
-
-        /* Loading Screen */
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--background-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid var(--border-color);
-            border-top: 4px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Header */
         .header {
-            background: var(--background-color);
-            border-bottom: 1px solid var(--border-color);
-            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: var(--shadow);
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--text-primary);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2rem;
+            font-weight: 700;
         }
 
-        .breadcrumb {
-            background: var(--surface-color);
-            padding: 12px 24px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .breadcrumb a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .breadcrumb a:hover {
-            text-decoration: underline;
-        }
-
-        .header-right {
+        .tab-navigation {
             display: flex;
-            align-items: center;
-            gap: 16px;
+            gap: 10px;
+            margin-bottom: 30px;
         }
 
-        /* Navigation Tabs */
-        .nav-tabs {
-            display: flex;
-            background: var(--background-color);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0 24px;
-        }
-
-        .nav-tab {
+        .tab-btn {
             padding: 12px 24px;
             border: none;
-            background: none;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            border-bottom: 2px solid transparent;
-            transition: var(--transition);
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.7);
+            color: #667eea;
         }
 
-        .nav-tab.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .nav-tab:hover {
-            color: var(--primary-color);
-        }
-
-        /* Main Content */
-        .main-content {
-            padding: 24px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Grid Layouts */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-
-        .full-width-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-
-        .two-column-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-
-        /* Cards */
         .card {
-            background: var(--background-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: 24px;
-            box-shadow: var(--shadow);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
 
         .card h2 {
-            margin: 0 0 16px 0;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .card h3 {
-            margin: 0 0 12px 0;
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        /* Pipeline Execution Form */
-        .pipeline-form {
-            display: grid;
-            gap: 20px;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .form-group {
-            display: flex;
-            flex-direction: column;
+            margin-bottom: 20px;
         }
 
         .form-group label {
-            font-weight: 500;
-            margin-bottom: 6px;
-            color: var(--text-primary);
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
         }
 
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            font-size: 14px;
-            transition: var(--transition);
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
         }
 
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
+        .form-control:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            border-color: #667eea;
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 20px;
         }
 
-        /* Buttons */
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-size: 14px;
-            font-weight: 500;
+        .template-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .template-card {
+            padding: 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 15px;
             cursor: pointer;
-            transition: var(--transition);
+            transition: all 0.3s ease;
+            background: white;
+            position: relative;
+        }
+
+        .template-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .template-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .template-card h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .template-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .template-meta span {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+
+        .strategy-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .strategy-card {
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            background: white;
+        }
+
+        .strategy-card:hover {
+            border-color: #667eea;
+        }
+
+        .strategy-card.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .strategy-card .icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .strategy-card .title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .strategy-card .description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
@@ -251,583 +209,403 @@
         }
 
         .btn-primary {
-            background: var(--primary-color);
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-hover);
         }
 
         .btn-secondary {
-            background: var(--background-color);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid #667eea;
         }
 
-        .btn-secondary:hover {
-            background: var(--surface-color);
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .btn-success {
-            background: var(--success-color);
-            color: white;
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        .btn-warning {
-            background: var(--warning-color);
-            color: white;
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
-        .btn-error {
-            background: var(--error-color);
-            color: white;
-        }
-
-        /* Status Indicators */
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-
-        .status-online { background: var(--success-color); }
-        .status-offline { background: var(--error-color); }
-        .status-warning { background: var(--warning-color); }
-
-        /* Metrics Cards */
-        .metric-card {
+        .stat-card {
             text-align: center;
             padding: 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 15px;
         }
 
-        .metric-value {
-            font-size: 32px;
+        .stat-card .number {
+            font-size: 2rem;
             font-weight: 700;
-            margin-bottom: 4px;
-            color: var(--primary-color);
+            color: #667eea;
         }
 
-        .metric-label {
-            font-size: 14px;
-            color: var(--text-secondary);
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
         }
 
-        .metric-change {
-            font-size: 12px;
-            margin-top: 4px;
-            padding: 2px 8px;
-            border-radius: 12px;
+        .pipeline-history {
+            max-height: 400px;
+            overflow-y: auto;
         }
 
-        .metric-up {
-            background: rgba(5, 150, 105, 0.1);
-            color: var(--success-color);
-        }
-
-        .metric-down {
-            background: rgba(220, 38, 38, 0.1);
-            color: var(--error-color);
-        }
-
-        /* Pipeline History */
-        .pipeline-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-        }
-
-        .pipeline-table th,
-        .pipeline-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .pipeline-table th {
-            font-weight: 600;
-            background: var(--surface-color);
-        }
-
-        .pipeline-table tr:hover {
-            background: var(--surface-color);
-        }
-
-        /* Pipeline Status Badges */
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status-completed { background: rgba(5, 150, 105, 0.1); color: var(--success-color); }
-        .status-running { background: rgba(2, 132, 199, 0.1); color: var(--info-color); }
-        .status-failed { background: rgba(220, 38, 38, 0.1); color: var(--error-color); }
-        .status-partial { background: rgba(217, 119, 6, 0.1); color: var(--warning-color); }
-
-        /* Worker Health Grid */
-        .worker-health-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-top: 16px;
-        }
-
-        .worker-health-card {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: 16px;
-            text-align: center;
-        }
-
-        .worker-icon {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-
-        .worker-name {
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .worker-status {
+        .pipeline-item {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            font-size: 14px;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
         }
 
-        /* Progress Bars */
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: var(--border-color);
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 8px 0;
+        .pipeline-item:hover {
+            background-color: rgba(102, 126, 234, 0.05);
         }
 
-        .progress-fill {
-            height: 100%;
-            background: var(--primary-color);
-            transition: width 0.3s ease;
+        .pipeline-info h4 {
+            color: #333;
+            margin-bottom: 5px;
         }
 
-        /* Alert Messages */
-        .alert {
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            margin-bottom: 16px;
-            border-left: 4px solid;
+        .pipeline-info .meta {
+            font-size: 0.9rem;
+            color: #666;
         }
 
-        .alert-success {
-            background: rgba(5, 150, 105, 0.1);
-            border-color: var(--success-color);
-            color: var(--success-color);
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
         }
 
-        .alert-error {
-            background: rgba(220, 38, 38, 0.1);
-            border-color: var(--error-color);
-            color: var(--error-color);
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
         }
 
-        .alert-warning {
-            background: rgba(217, 119, 6, 0.1);
-            border-color: var(--warning-color);
-            color: var(--warning-color);
+        .status-running {
+            background: #d1ecf1;
+            color: #0c5460;
         }
 
-        .alert-info {
-            background: rgba(2, 132, 199, 0.1);
-            border-color: var(--info-color);
-            color: var(--info-color);
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
         }
 
-        /* Responsive Design */
+        .status-partial {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
         @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 16px;
-                align-items: flex-start;
-            }
-
-            .nav-tabs {
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-
-            .dashboard-grid,
-            .two-column-grid {
-                grid-template-columns: 1fr;
-            }
-
             .form-row {
                 grid-template-columns: 1fr;
             }
-
-            .main-content {
-                padding: 16px;
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
             }
-        }
-
-        /* Pipeline Visualization */
-        .pipeline-viz {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            overflow-x: auto;
-            padding: 16px;
-            background: var(--surface-color);
-            border-radius: var(--border-radius);
-            margin-top: 16px;
-        }
-
-        .viz-step {
-            flex-shrink: 0;
-            background: var(--background-color);
-            border: 2px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: 16px;
-            text-align: center;
-            min-width: 120px;
-            transition: var(--transition);
-        }
-
-        .viz-step.active {
-            border-color: var(--primary-color);
-            background: rgba(37, 99, 235, 0.05);
-        }
-
-        .viz-step.completed {
-            border-color: var(--success-color);
-            background: rgba(5, 150, 105, 0.05);
-        }
-
-        .viz-step.failed {
-            border-color: var(--error-color);
-            background: rgba(220, 38, 38, 0.05);
-        }
-
-        .viz-arrow {
-            font-size: 16px;
-            color: var(--text-secondary);
+            
+            .tab-navigation {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-screen">
-        <div class="loading-spinner"></div>
-        <p>Loading AI Factory Orchestrator...</p>
-    </div>
-
-    <!-- Main Application -->
-    <div id="app" style="display: none;">
+    <div class="dashboard-container">
         <!-- Header -->
-        <header class="header">
-            <div class="header-left">
-                <h1>🎯 AI Factory Orchestrator</h1>
+        <div class="header">
+            <h1>🎯 AI Factory Orchestrator</h1>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <span id="user-info">Welcome, User</span>
+                <button class="btn btn-secondary" onclick="window.location.href='../'">🏠 Dashboard</button>
             </div>
-            <div class="header-right">
-                <span id="user-info" class="text-secondary">Welcome back</span>
-                <button id="logout-btn" class="btn btn-secondary">Logout</button>
-            </div>
-        </header>
+        </div>
 
-        <!-- Breadcrumb Navigation -->
-        <nav class="breadcrumb">
-            <a href="../">← Back to Main Dashboard</a>
-        </nav>
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTab('pipeline')">🚀 Pipeline Creation</button>
+            <button class="tab-btn" onclick="switchTab('monitoring')">📊 System Monitoring</button>
+            <button class="tab-btn" onclick="switchTab('analytics')">📈 Performance Analytics</button>
+        </div>
 
-        <!-- Navigation -->
-        <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="pipeline">Pipeline Execution</button>
-            <button class="nav-tab" data-tab="monitoring">System Monitoring</button>
-            <button class="nav-tab" data-tab="history">Pipeline History</button>
-            <button class="nav-tab" data-tab="analytics">Analytics</button>
-        </nav>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Pipeline Execution Tab -->
-            <div id="tab-pipeline" class="tab-content active">
-                <div class="dashboard-grid">
-                    <!-- Pipeline Execution Form -->
-                    <div class="card">
-                        <h2>🚀 Start New Pipeline</h2>
-                        <form id="pipeline-form" class="pipeline-form">
-                            <div class="form-group">
-                                <label for="topic">Research Topic *</label>
-                                <input type="text" id="topic" name="topic" placeholder="e.g., artificial intelligence, renewable energy" required>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="strategy">Execution Strategy</label>
-                                    <select id="strategy" name="optimize_for">
-                                        <option value="balanced">🎯 Balanced (Recommended)</option>
-                                        <option value="speed">⚡ Speed Optimized</option>
-                                        <option value="cost">💰 Cost Optimized</option>
-                                        <option value="quality">🎓 Quality Optimized</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="urgency">Urgency Level</label>
-                                    <select id="urgency" name="urgency">
-                                        <option value="low">🐌 Low (5+ minutes)</option>
-                                        <option value="medium" selected>🚶 Medium (2-3 minutes)</option>
-                                        <option value="high">🏃 High (< 1 minute)</option>
-                                        <option value="critical">🚨 Critical (Emergency)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="quality_level">Quality Level</label>
-                                    <select id="quality_level" name="quality_level">
-                                        <option value="basic">📝 Basic</option>
-                                        <option value="standard" selected>📊 Standard</option>
-                                        <option value="premium">⭐ Premium</option>
-                                        <option value="enterprise">💎 Enterprise</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="budget_limit">Budget Limit (USD)</label>
-                                    <input type="number" id="budget_limit" name="budget_limit" min="0.10" max="10.00" step="0.10" value="2.00">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>
-                                    <input type="checkbox" id="parallel_processing" name="enable_parallel_processing" checked>
-                                    Enable Parallel Processing (Faster execution)
-                                </label>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary">
-                                🚀 Launch Pipeline
-                            </button>
-                        </form>
+        <!-- Pipeline Creation Tab -->
+        <div id="tab-pipeline" class="tab-content">
+            <!-- Template Selection -->
+            <div class="card">
+                <h2>📋 Select Pipeline Template</h2>
+                
+                <div id="error-container"></div>
+                <div id="success-container"></div>
+                
+                <div class="template-selector" id="template-selector">
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+                        <div class="loading"></div>
+                        <p style="margin-top: 15px;">Loading pipeline templates...</p>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Real-time Pipeline Status -->
-                    <div class="card">
-                        <h2>📊 Current Pipeline Status</h2>
-                        <div id="current-pipeline-status">
-                            <p class="text-secondary">No active pipeline</p>
+            <!-- Pipeline Configuration -->
+            <div class="card">
+                <h2>⚙️ Pipeline Configuration</h2>
+                
+                <form id="pipeline-form">
+                    <!-- Basic Configuration -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="topic">Research Topic *</label>
+                            <input type="text" id="topic" class="form-control" placeholder="e.g., artificial intelligence" required>
                         </div>
-
-                        <!-- Pipeline Visualization -->
-                        <div id="pipeline-visualization" style="display: none;">
-                            <h3>Pipeline Progress</h3>
-                            <div class="pipeline-viz">
-                                <div class="viz-step" id="step-topic-researcher">
-                                    <div>🔍</div>
-                                    <div>Topic Research</div>
-                                </div>
-                                <div class="viz-arrow">→</div>
-                                <div class="viz-step" id="step-rss-librarian">
-                                    <div>📚</div>
-                                    <div>Source Management</div>
-                                </div>
-                                <div class="viz-arrow">→</div>
-                                <div class="viz-step" id="step-feed-fetcher">
-                                    <div>📡</div>
-                                    <div>Article Fetching</div>
-                                </div>
-                                <div class="viz-arrow">→</div>
-                                <div class="viz-step" id="step-content-classifier">
-                                    <div>🧠</div>
-                                    <div>AI Analysis</div>
-                                </div>
-                                <div class="viz-arrow">→</div>
-                                <div class="viz-step" id="step-report-builder">
-                                    <div>📊</div>
-                                    <div>Report Generation</div>
-                                </div>
-                            </div>
+                        
+                        <div class="form-group">
+                            <label for="urgency">Urgency Level</label>
+                            <select id="urgency" class="form-control">
+                                <option value="low">Low - 5+ minutes allowed</option>
+                                <option value="medium" selected>Medium - 2-3 minute target</option>
+                                <option value="high">High - Sub-minute priority</option>
+                                <option value="critical">Critical - Emergency fast-track</option>
+                            </select>
                         </div>
                     </div>
-                </div>
-
-                <!-- Recent Pipeline Results -->
-                <div class="card">
-                    <h2>📈 Recent Pipeline Results</h2>
-                    <div id="recent-results">
-                        <p class="text-secondary">No recent pipelines executed</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- System Monitoring Tab -->
-            <div id="tab-monitoring" class="tab-content">
-                <div class="dashboard-grid">
-                    <!-- System Overview -->
-                    <div class="card metric-card">
-                        <div class="metric-value" id="active-workers">-</div>
-                        <div class="metric-label">Active Workers</div>
-                        <div class="metric-change metric-up" id="worker-change">All Online</div>
-                    </div>
-
-                    <div class="card metric-card">
-                        <div class="metric-value" id="pipelines-today">-</div>
-                        <div class="metric-label">Pipelines Today</div>
-                        <div class="metric-change" id="pipeline-change">-</div>
-                    </div>
-
-                    <div class="card metric-card">
-                        <div class="metric-value" id="avg-execution-time">-</div>
-                        <div class="metric-label">Avg Execution Time</div>
-                        <div class="metric-change" id="time-change">-</div>
-                    </div>
-
-                    <div class="card metric-card">
-                        <div class="metric-value" id="total-cost">-</div>
-                        <div class="metric-label">Cost Today</div>
-                        <div class="metric-change" id="cost-change">-</div>
-                    </div>
-                </div>
-
-                <!-- Worker Health Status -->
-                <div class="card">
-                    <h2>🏥 Worker Health Status</h2>
-                    <div class="worker-health-grid" id="worker-health-grid">
-                        <!-- Worker health cards will be populated here -->
-                    </div>
-                </div>
-
-                <!-- System Alerts -->
-                <div class="card">
-                    <h2>🚨 System Alerts</h2>
-                    <div id="system-alerts">
-                        <p class="text-secondary">No active alerts</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pipeline History Tab -->
-            <div id="tab-history" class="tab-content">
-                <div class="card">
-                    <h2>📊 Pipeline Execution History</h2>
                     
-                    <!-- Filters -->
-                    <div class="form-row" style="margin-bottom: 20px;">
+                    <!-- Execution Strategy -->
+                    <div class="form-group">
+                        <label>Execution Strategy:</label>
+                        <div class="strategy-selector">
+                            <div class="strategy-card" data-strategy="speed_optimized">
+                                <div class="icon">⚡</div>
+                                <div class="title">Speed Optimized</div>
+                                <div class="description">Fastest execution with parallel processing</div>
+                            </div>
+                            <div class="strategy-card selected" data-strategy="balanced">
+                                <div class="icon">⚖️</div>
+                                <div class="title">Balanced</div>
+                                <div class="description">Optimal balance of speed, cost, and quality</div>
+                            </div>
+                            <div class="strategy-card" data-strategy="quality_optimized">
+                                <div class="icon">🎯</div>
+                                <div class="title">Quality Optimized</div>
+                                <div class="description">Highest quality with deep analysis</div>
+                            </div>
+                            <div class="strategy-card" data-strategy="cost_optimized">
+                                <div class="icon">💰</div>
+                                <div class="title">Cost Optimized</div>
+                                <div class="description">Lowest cost with aggressive caching</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Configuration -->
+                    <div class="form-row">
                         <div class="form-group">
-                            <label for="history-filter-status">Filter by Status</label>
-                            <select id="history-filter-status">
-                                <option value="">All Statuses</option>
-                                <option value="completed">Completed</option>
-                                <option value="failed">Failed</option>
-                                <option value="partial">Partial</option>
+                            <label for="quality_level">Quality Level</label>
+                            <select id="quality_level" class="form-control">
+                                <option value="basic">Basic - Essential analysis only</option>
+                                <option value="standard" selected>Standard - Standard depth analysis</option>
+                                <option value="premium">Premium - Enhanced analysis with summaries</option>
+                                <option value="enterprise">Enterprise - Maximum depth with custom insights</option>
                             </select>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="history-filter-strategy">Filter by Strategy</label>
-                            <select id="history-filter-strategy">
-                                <option value="">All Strategies</option>
-                                <option value="balanced">Balanced</option>
-                                <option value="speed_optimized">Speed Optimized</option>
-                                <option value="cost_optimized">Cost Optimized</option>
-                                <option value="quality_optimized">Quality Optimized</option>
+                            <label for="budget_limit">Budget Limit (USD)</label>
+                            <input type="number" id="budget_limit" class="form-control" placeholder="2.00" step="0.10" min="0.10" max="10.00" value="2.00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="max_articles">Max Articles</label>
+                            <input type="number" id="max_articles" class="form-control" placeholder="50" min="10" max="500" value="50">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="time_range">Time Range</label>
+                            <select id="time_range" class="form-control">
+                                <option value="24h">Last 24 hours</option>
+                                <option value="7d" selected>Last 7 days</option>
+                                <option value="30d">Last 30 days</option>
+                                <option value="90d">Last 90 days</option>
                             </select>
                         </div>
                     </div>
+                    
+                    <!-- Advanced Options -->
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="enable_parallel_processing" checked style="margin-right: 8px;">
+                            Enable Parallel Processing
+                        </label>
+                        <small style="display: block; color: #666; margin-top: 5px;">
+                            Improves speed but may increase cost
+                        </small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;">
+                        🚀 Launch Pipeline
+                    </button>
+                </form>
+            </div>
 
-                    <!-- Pipeline History Table -->
-                    <div id="pipeline-history-container">
-                        <table class="pipeline-table">
-                            <thead>
-                                <tr>
-                                    <th>Pipeline ID</th>
-                                    <th>Topic</th>
-                                    <th>Strategy</th>
-                                    <th>Status</th>
-                                    <th>Duration</th>
-                                    <th>Cost</th>
-                                    <th>Articles</th>
-                                    <th>Started</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pipeline-history-tbody">
-                                <tr>
-                                    <td colspan="9" class="text-secondary">Loading pipeline history...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <!-- Pipeline Execution Status -->
+            <div class="card" id="execution-status" style="display: none;">
+                <h2>⏳ Pipeline Execution</h2>
+                <div id="execution-details">
+                    <!-- Pipeline status will be displayed here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- System Monitoring Tab -->
+        <div id="tab-monitoring" class="tab-content hidden">
+            <!-- System Health -->
+            <div class="card">
+                <h2>🏥 System Health</h2>
+                <div class="stats-grid" id="system-health">
+                    <div class="stat-card">
+                        <div class="number" id="active-pipelines">-</div>
+                        <div class="label">Active Pipelines</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="workers-online">-</div>
+                        <div class="label">Workers Online</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="avg-response-time">-</div>
+                        <div class="label">Avg Response (ms)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="cache-hit-rate">-</div>
+                        <div class="label">Cache Hit Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="daily-cost">-</div>
+                        <div class="label">Daily Cost ($)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="success-rate">-</div>
+                        <div class="label">Success Rate (%)</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Analytics Tab -->
-            <div id="tab-analytics" class="tab-content">
-                <div class="dashboard-grid">
-                    <!-- Performance Metrics -->
-                    <div class="card">
-                        <h2>⚡ Performance Insights</h2>
-                        <div id="performance-insights">
-                            <p class="text-secondary">Loading performance data...</p>
-                        </div>
-                    </div>
-
-                    <!-- Cost Analysis -->
-                    <div class="card">
-                        <h2>💰 Cost Analysis</h2>
-                        <div id="cost-analysis">
-                            <p class="text-secondary">Loading cost analysis...</p>
-                        </div>
-                    </div>
-
-                    <!-- Optimization Recommendations -->
-                    <div class="card">
-                        <h2>🎯 Optimization Recommendations</h2>
-                        <div id="optimization-recommendations">
-                            <p class="text-secondary">Loading recommendations...</p>
-                        </div>
-                    </div>
-
-                    <!-- Worker Performance -->
-                    <div class="card">
-                        <h2>👥 Worker Performance</h2>
-                        <div id="worker-performance">
-                            <p class="text-secondary">Loading worker performance...</p>
-                        </div>
+            <!-- Recent Pipeline History -->
+            <div class="card">
+                <h2>📋 Recent Pipeline Executions</h2>
+                <div class="pipeline-history" id="pipeline-history">
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div class="loading"></div>
+                        <p style="margin-top: 15px;">Loading pipeline history...</p>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
+
+        <!-- Performance Analytics Tab -->
+        <div id="tab-analytics" class="tab-content hidden">
+            <!-- Performance Insights -->
+            <div class="card">
+                <h2>📊 Performance Insights</h2>
+                <div id="performance-insights">
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div class="loading"></div>
+                        <p style="margin-top: 15px;">Loading performance insights...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Analysis -->
+            <div class="card">
+                <h2>💰 Cost Analysis</h2>
+                <div id="cost-analysis">
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div class="loading"></div>
+                        <p style="margin-top: 15px;">Loading cost analysis...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->
     <script src="../js/shared/auth.js"></script>
     <script src="../js/shared/api.js"></script>
     <script src="../js/shared/ui.js"></script>
+    <script src="../workers/orchestrator.js"></script>
     <script>
-        // Orchestrator Dashboard Controller
-        class OrchestratorDashboard {
+        // Enhanced Orchestrator Dashboard Controller
+        class EnhancedOrchestratorDashboard {
             constructor() {
                 this.authClient = window.authClient;
                 this.apiClient = window.apiClient;
                 this.activeTab = 'pipeline';
                 this.refreshInterval = null;
+                this.selectedTemplate = null;
+                this.selectedStrategy = 'balanced';
+                this.capabilities = null;
                 this.currentPipelineId = null;
                 
                 this.init();
             }
 
             async init() {
-                // Show loading screen
-                document.getElementById('loading-screen').style.display = 'flex';
-                
                 // Check authentication
                 if (!this.authClient || !this.authClient.isAuthenticated()) {
                     window.location.href = '../';
@@ -840,10 +618,6 @@
                     return;
                 }
 
-                // Hide loading screen and show app
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-
                 // Update user info
                 document.getElementById('user-info').textContent = `Welcome, ${validation.user.username}`;
 
@@ -851,413 +625,319 @@
                 this.setupEventListeners();
 
                 // Load initial data
-                await this.loadDashboardData();
+                await this.loadCapabilities();
+                await this.loadSystemHealth();
 
                 // Start refresh intervals
                 this.startRefreshIntervals();
             }
 
             setupEventListeners() {
-                // Logout button
-                document.getElementById('logout-btn').addEventListener('click', async () => {
-                    await this.authClient.logout();
-                    window.location.href = '../';
-                });
-
-                // Tab navigation
-                document.querySelectorAll('.nav-tab').forEach(tab => {
-                    tab.addEventListener('click', (e) => {
-                        this.switchTab(e.target.dataset.tab);
-                    });
-                });
-
                 // Pipeline form submission
                 document.getElementById('pipeline-form').addEventListener('submit', this.handlePipelineSubmission.bind(this));
 
-                // History filters
-                document.getElementById('history-filter-status').addEventListener('change', this.filterPipelineHistory.bind(this));
-                document.getElementById('history-filter-strategy').addEventListener('change', this.filterPipelineHistory.bind(this));
+                // Strategy selection
+                document.querySelectorAll('.strategy-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+                        this.selectedStrategy = card.dataset.strategy;
+                    });
+                });
+
+                // Template selection (will be set up after templates load)
             }
 
-            switchTab(tabName) {
-                // Update active tab button
-                document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-
-                // Show active tab content
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                document.getElementById(`tab-${tabName}`).classList.add('active');
-
-                this.activeTab = tabName;
-
-                // Load tab-specific data
-                this.loadTabData(tabName);
-            }
-
-            async loadTabData(tabName) {
-                switch (tabName) {
-                    case 'monitoring':
-                        await this.loadMonitoringData();
-                        break;
-                    case 'history':
-                        await this.loadPipelineHistory();
-                        break;
-                    case 'analytics':
-                        await this.loadAnalyticsData();
-                        break;
-                }
-            }
-
-            async loadDashboardData() {
-                // Load basic health data for all tabs
-                await this.updateSystemHealth();
-            }
-
-            async updateSystemHealth() {
+            async loadCapabilities() {
                 try {
-                    // Get pipeline health
-                    const healthData = await this.apiClient.callWorker('orchestrator', '/pipeline-health');
+                    const response = await this.apiClient.getCapabilities();
+                    this.capabilities = response;
                     
-                    const activeWorkers = healthData.workers ? 
-                        Object.values(healthData.workers).filter(w => w.status === 'online').length : 0;
-                    const totalWorkers = healthData.workers ? Object.keys(healthData.workers).length : 6;
-
-                    document.getElementById('active-workers').textContent = `${activeWorkers}/${totalWorkers}`;
-
-                    // Update worker health grid if monitoring tab is active
-                    if (this.activeTab === 'monitoring') {
-                        this.updateWorkerHealthGrid(healthData.workers);
-                    }
-
+                    this.renderTemplates(response.available_templates || []);
+                    
                 } catch (error) {
-                    console.error('Failed to update system health:', error);
-                    document.getElementById('active-workers').textContent = 'Error';
+                    console.error('Failed to load capabilities:', error);
+                    this.showError('Failed to load pipeline templates: ' + error.message);
                 }
             }
 
-            updateWorkerHealthGrid(workers) {
-                const grid = document.getElementById('worker-health-grid');
-                if (!workers || !grid) return;
+            renderTemplates(templates) {
+                const templateSelector = document.getElementById('template-selector');
+                templateSelector.innerHTML = '';
 
-                const workerIcons = {
-                    'orchestrator': '🎯',
-                    'topic-researcher': '🔍',
-                    'rss-librarian': '📚',
-                    'feed-fetcher': '📡',
-                    'content-classifier': '🧠',
-                    'report-builder': '📊'
-                };
-
-                grid.innerHTML = Object.entries(workers).map(([name, data]) => `
-                    <div class="worker-health-card">
-                        <div class="worker-icon">${workerIcons[name] || '⚙️'}</div>
-                        <div class="worker-name">${name.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-                        <div class="worker-status">
-                            <span class="status-dot status-${data.status === 'online' ? 'online' : 'offline'}"></span>
-                            ${data.status || 'Unknown'}
+                if (templates.length === 0) {
+                    templateSelector.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+                            <p>No pipeline templates available. Using default configuration.</p>
                         </div>
-                        ${data.response_time_ms ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">${data.response_time_ms}ms</div>` : ''}
-                    </div>
-                `).join('');
-            }
-
-            async loadMonitoringData() {
-                try {
-                    // Load performance insights
-                    const insights = await this.apiClient.callWorker('orchestrator', '/performance-insights?time_range=24h');
-                    
-                    if (insights.metrics) {
-                        document.getElementById('pipelines-today').textContent = insights.metrics.total_pipelines || '0';
-                        document.getElementById('avg-execution-time').textContent = 
-                            insights.metrics.avg_execution_time_ms ? `${Math.round(insights.metrics.avg_execution_time_ms / 1000)}s` : '-';
-                        document.getElementById('total-cost').textContent = 
-                            insights.metrics.total_cost_usd ? `$${insights.metrics.total_cost_usd.toFixed(2)}` : '$0.00';
-                    }
-
-                } catch (error) {
-                    console.error('Failed to load monitoring data:', error);
-                }
-            }
-
-            async loadPipelineHistory() {
-                const tbody = document.getElementById('pipeline-history-tbody');
-                tbody.innerHTML = '<tr><td colspan="9" class="text-secondary">Loading pipeline history...</td></tr>';
-
-                try {
-                    // For now, we'll use mock data since the API doesn't have a history endpoint
-                    // In production, this would call an actual history endpoint
-                    
-                    const mockHistory = [
-                        {
-                            pipeline_id: 'pipe_1753211374822_5s9fccq3i',
-                            topic: 'artificial intelligence',
-                            strategy: 'quality_optimized',
-                            status: 'completed',
-                            total_execution_time_ms: 2340,
-                            total_cost_usd: 0.23,
-                            articles_processed: 142,
-                            started_at: new Date(Date.now() - 3600000).toISOString()
-                        },
-                        {
-                            pipeline_id: 'pipe_1753211374822_abc123',
-                            topic: 'renewable energy',
-                            strategy: 'balanced',
-                            status: 'completed',
-                            total_execution_time_ms: 1890,
-                            total_cost_usd: 0.18,
-                            articles_processed: 98,
-                            started_at: new Date(Date.now() - 7200000).toISOString()
-                        }
-                    ];
-
-                    this.renderPipelineHistory(mockHistory);
-
-                } catch (error) {
-                    console.error('Failed to load pipeline history:', error);
-                    tbody.innerHTML = '<tr><td colspan="9" class="text-secondary">Failed to load pipeline history</td></tr>';
-                }
-            }
-
-            renderPipelineHistory(pipelines) {
-                const tbody = document.getElementById('pipeline-history-tbody');
-                
-                if (pipelines.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="text-secondary">No pipeline history found</td></tr>';
+                    `;
                     return;
                 }
 
-                tbody.innerHTML = pipelines.map(pipeline => `
-                    <tr>
-                        <td><code>${pipeline.pipeline_id.substring(0, 12)}...</code></td>
-                        <td>${pipeline.topic}</td>
-                        <td>${pipeline.strategy.replace('_', ' ')}</td>
-                        <td><span class="status-badge status-${pipeline.status}">${pipeline.status}</span></td>
-                        <td>${Math.round(pipeline.total_execution_time_ms / 1000)}s</td>
-                        <td>$${pipeline.total_cost_usd.toFixed(3)}</td>
-                        <td>${pipeline.articles_processed}</td>
-                        <td>${new Date(pipeline.started_at).toLocaleString()}</td>
-                        <td>
-                            <button class="btn btn-secondary" onclick="orchestratorDashboard.viewPipelineDetails('${pipeline.pipeline_id}')">
-                                View
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
+                templates.forEach((template, index) => {
+                    const templateCard = document.createElement('div');
+                    templateCard.className = `template-card ${index === 0 ? 'selected' : ''}`;
+                    templateCard.dataset.templateName = template.name;
+                    
+                    templateCard.innerHTML = `
+                        <h4>${template.display_name}</h4>
+                        <p>${template.description}</p>
+                        <div class="template-meta">
+                            <span>📂 ${template.category}</span>
+                            <span>⚡ ${template.complexity_level || 'standard'}</span>
+                            ${template.estimated_cost_usd ? `<span>💰 $${template.estimated_cost_usd.toFixed(2)}</span>` : ''}
+                            ${template.estimated_duration_ms ? `<span>⏱️ ${Math.round(template.estimated_duration_ms / 1000)}s</span>` : ''}
+                        </div>
+                    `;
+
+                    templateCard.addEventListener('click', () => {
+                        document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+                        templateCard.classList.add('selected');
+                        this.selectedTemplate = template;
+                    });
+
+                    templateSelector.appendChild(templateCard);
+                });
+
+                // Select first template by default
+                if (templates.length > 0) {
+                    this.selectedTemplate = templates[0];
+                }
             }
 
-            async loadAnalyticsData() {
+            async loadSystemHealth() {
                 try {
-                    const insights = await this.apiClient.callWorker('orchestrator', '/performance-insights?time_range=7d');
+                    const response = await this.apiClient.getPipelineHealth();
+                    this.updateSystemHealthDisplay(response);
                     
-                    // Performance insights
-                    const perfElement = document.getElementById('performance-insights');
-                    if (insights.performance_trends) {
-                        perfElement.innerHTML = `
-                            <div style="margin-bottom: 16px;">
-                                <h4>Execution Times</h4>
-                                <p>Average: ${insights.performance_trends.avg_execution_time || 'N/A'}</p>
-                                <p>Fastest: ${insights.performance_trends.fastest_time || 'N/A'}</p>
-                                <p>Slowest: ${insights.performance_trends.slowest_time || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <h4>Success Rate</h4>
-                                <p>${insights.performance_trends.success_rate || 'N/A'}% successful pipelines</p>
-                            </div>
-                        `;
-                    } else {
-                        perfElement.innerHTML = '<p class="text-secondary">No performance data available</p>';
-                    }
-
-                    // Cost analysis
-                    const costElement = document.getElementById('cost-analysis');
-                    if (insights.cost_analysis) {
-                        costElement.innerHTML = `
-                            <div style="margin-bottom: 16px;">
-                                <h4>Cost Breakdown</h4>
-                                <p>Total Cost (7d): $${insights.cost_analysis.total_cost || '0.00'}</p>
-                                <p>Average per Pipeline: $${insights.cost_analysis.avg_cost_per_pipeline || '0.00'}</p>
-                                <p>Most Expensive: $${insights.cost_analysis.max_cost || '0.00'}</p>
-                            </div>
-                        `;
-                    } else {
-                        costElement.innerHTML = '<p class="text-secondary">No cost data available</p>';
-                    }
-
-                    // Optimization recommendations
-                    const optElement = document.getElementById('optimization-recommendations');
-                    if (insights.recommendations) {
-                        optElement.innerHTML = insights.recommendations.map(rec => `
-                            <div class="alert alert-info" style="margin-bottom: 8px;">
-                                ${rec}
-                            </div>
-                        `).join('');
-                    } else {
-                        optElement.innerHTML = '<div class="alert alert-success">System is running optimally!</div>';
-                    }
-
                 } catch (error) {
-                    console.error('Failed to load analytics data:', error);
-                    document.getElementById('performance-insights').innerHTML = '<p class="text-secondary">Failed to load analytics</p>';
+                    console.error('Failed to load system health:', error);
+                    this.updateSystemHealthDisplay({
+                        active_pipelines: 0,
+                        workers_online: 0,
+                        avg_response_time_ms: '-',
+                        cache_hit_rate: 0,
+                        daily_cost_usd: 0,
+                        success_rate: 0
+                    });
                 }
+            }
+
+            updateSystemHealthDisplay(healthData) {
+                const elements = {
+                    'active-pipelines': healthData.active_pipelines || 0,
+                    'workers-online': healthData.workers_online || 0,
+                    'avg-response-time': healthData.avg_response_time_ms || '-',
+                    'cache-hit-rate': healthData.cache_hit_rate ? `${Math.round(healthData.cache_hit_rate * 100)}%` : '0%',
+                    'daily-cost': healthData.daily_cost_usd ? `${healthData.daily_cost_usd.toFixed(2)}` : '0.00',
+                    'success-rate': healthData.success_rate ? `${Math.round(healthData.success_rate * 100)}%` : '0%'
+                };
+
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                });
             }
 
             async handlePipelineSubmission(e) {
                 e.preventDefault();
                 
-                const formData = new FormData(e.target);
+                this.clearMessages();
+                
+                // Build pipeline request
                 const pipelineRequest = {
-                    topic: formData.get('topic'),
-                    urgency: formData.get('urgency'),
-                    quality_level: formData.get('quality_level'),
-                    optimize_for: formData.get('optimize_for'),
-                    budget_limit: parseFloat(formData.get('budget_limit')),
-                    enable_parallel_processing: formData.has('enable_parallel_processing')
+                    topic: document.getElementById('topic').value,
+                    urgency: document.getElementById('urgency').value,
+                    quality_level: document.getElementById('quality_level').value,
+                    optimize_for: this.selectedStrategy,
+                    enable_parallel_processing: document.getElementById('enable_parallel_processing').checked,
+                    budget_limit: parseFloat(document.getElementById('budget_limit').value) || 2.0,
+                    max_articles: parseInt(document.getElementById('max_articles').value) || 50,
+                    time_range: document.getElementById('time_range').value
                 };
 
-                // Show pipeline starting status
-                this.showPipelineProgress('Starting pipeline...');
-                
+                // Add template if selected
+                if (this.selectedTemplate) {
+                    pipelineRequest.pipeline_template = this.selectedTemplate.name;
+                }
+
                 try {
-                    const result = await this.apiClient.callWorker('orchestrator', '/orchestrate', pipelineRequest);
-                    
-                    if (result.status === 'completed') {
-                        this.showPipelineResult(result);
-                        this.currentPipelineId = result.pipeline_id;
-                    } else if (result.status === 'partial') {
-                        this.showPipelineWarning(result);
-                    } else {
-                        this.showPipelineError('Pipeline execution failed');
-                    }
+                    const submitButton = e.target.querySelector('button[type="submit"]');
+                    const originalText = submitButton.innerHTML;
+                    submitButton.innerHTML = '<span class="loading"></span> Launching Pipeline...';
+                    submitButton.disabled = true;
+                    await window.orchestratorWorker.executePipeline(pipelineRequest);
+
+                    // Reset form
+                    document.getElementById('pipeline-form').reset();
+
+                    await window.orchestratorWorker.executePipeline(pipelineRequest);
+
+                    // Reset form
+                    document.getElementById('pipeline-form').reset();
+                        
+                    submitButton.innerHTML = originalText;
+                    submitButton.disabled = false;
 
                 } catch (error) {
-                    console.error('Pipeline execution failed:', error);
-                    this.showPipelineError(error.message || 'Pipeline execution failed');
+                    console.error('Pipeline submission failed:', error);
+                    this.showError(`Failed to launch pipeline: ${error.message}`);
+                    
+                    const submitButton = e.target.querySelector('button[type="submit"]');
+                    submitButton.innerHTML = '🚀 Launch Pipeline';
+                    submitButton.disabled = false;
                 }
             }
 
-            showPipelineProgress(message) {
-                const statusDiv = document.getElementById('current-pipeline-status');
-                statusDiv.innerHTML = `
-                    <div class="alert alert-info">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div class="loading-spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>
-                            ${message}
+            showExecutionStatus(pipelineResult) {
+                const statusCard = document.getElementById('execution-status');
+                const detailsContainer = document.getElementById('execution-details');
+                
+                detailsContainer.innerHTML = `
+                    <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                        <h3 style="color: #667eea; margin-bottom: 15px;">Pipeline Execution Results</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <strong>Pipeline ID:</strong><br>
+                                <code>${pipelineResult.pipeline_id}</code>
+                            </div>
+                            <div>
+                                <strong>Strategy:</strong><br>
+                                ${pipelineResult.execution_strategy}
+                            </div>
+                            <div>
+                                <strong>Execution Time:</strong><br>
+                                ${pipelineResult.total_execution_time_ms}ms
+                            </div>
+                            <div>
+                                <strong>Total Cost:</strong><br>
+                                $${pipelineResult.total_cost_usd.toFixed(2)}
+                            </div>
+                            <div>
+                                <strong>Sources Found:</strong><br>
+                                ${pipelineResult.sources_discovered}
+                            </div>
+                            <div>
+                                <strong>Articles Processed:</strong><br>
+                                ${pipelineResult.articles_processed}
+                            </div>
+                        </div>
+                        
+                        ${pipelineResult.optimization_applied && pipelineResult.optimization_applied.length > 0 ? `
+                            <div style="margin-top: 15px;">
+                                <strong>Optimizations Applied:</strong><br>
+                                ${pipelineResult.optimization_applied.map(opt => `<span style="background: rgba(40, 167, 69, 0.1); color: #155724; padding: 4px 8px; border-radius: 12px; margin-right: 8px; font-size: 0.9rem;">${opt}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-secondary" onclick="window.orchestratorDashboard.viewPipelineDetails('${pipelineResult.pipeline_id}')">
+                                📊 View Detailed Results
+                            </button>
                         </div>
                     </div>
                 `;
                 
-                document.getElementById('pipeline-visualization').style.display = 'block';
-                this.animatePipelineSteps();
-            }
-
-            showPipelineResult(result) {
-                const statusDiv = document.getElementById('current-pipeline-status');
-                statusDiv.innerHTML = `
-                    <div class="alert alert-success">
-                        <h4>✅ Pipeline Completed Successfully!</h4>
-                        <p><strong>Pipeline ID:</strong> ${result.pipeline_id}</p>
-                        <p><strong>Execution Time:</strong> ${Math.round(result.total_execution_time_ms / 1000)}s</p>
-                        <p><strong>Articles Processed:</strong> ${result.articles_processed}</p>
-                        <p><strong>Cost:</strong> $${result.total_cost_usd?.toFixed(3) || '0.000'}</p>
-                        <p><strong>Strategy:</strong> ${result.execution_strategy}</p>
-                        ${result.intelligence_report ? `
-                            <div style="margin-top: 16px;">
-                                <h5>Intelligence Report:</h5>
-                                <div style="background: var(--surface-color); padding: 12px; border-radius: 4px; font-size: 14px;">
-                                    ${result.intelligence_report.substring(0, 200)}...
-                                </div>
-                            </div>
-                        ` : ''}
-                        <button class="btn btn-primary" style="margin-top: 12px;" onclick="orchestratorDashboard.viewPipelineDetails('${result.pipeline_id}')">
-                            View Full Report
-                        </button>
-                    </div>
-                `;
-                
-                // Mark all steps as completed
-                document.querySelectorAll('.viz-step').forEach(step => {
-                    step.classList.remove('active');
-                    step.classList.add('completed');
-                });
-            }
-
-            showPipelineWarning(result) {
-                const statusDiv = document.getElementById('current-pipeline-status');
-                statusDiv.innerHTML = `
-                    <div class="alert alert-warning">
-                        <h4>⚠️ Pipeline Completed with Warnings</h4>
-                        <p><strong>Pipeline ID:</strong> ${result.pipeline_id}</p>
-                        <p><strong>Status:</strong> ${result.status}</p>
-                        <p>Some components may have encountered issues. Check the detailed report for more information.</p>
-                    </div>
-                `;
-            }
-
-            showPipelineError(error) {
-                const statusDiv = document.getElementById('current-pipeline-status');
-                statusDiv.innerHTML = `
-                    <div class="alert alert-error">
-                        <h4>❌ Pipeline Execution Failed</h4>
-                        <p>${error}</p>
-                    </div>
-                `;
-                
-                document.getElementById('pipeline-visualization').style.display = 'none';
-            }
-
-            animatePipelineSteps() {
-                const steps = ['topic-researcher', 'rss-librarian', 'feed-fetcher', 'content-classifier', 'report-builder'];
-                let currentStep = 0;
-
-                const animateNext = () => {
-                    if (currentStep > 0) {
-                        document.getElementById(`step-${steps[currentStep - 1]}`).classList.remove('active');
-                        document.getElementById(`step-${steps[currentStep - 1]}`).classList.add('completed');
-                    }
-                    
-                    if (currentStep < steps.length) {
-                        document.getElementById(`step-${steps[currentStep]}`).classList.add('active');
-                        currentStep++;
-                        setTimeout(animateNext, 1000);
-                    }
-                };
-
-                // Reset all steps
-                document.querySelectorAll('.viz-step').forEach(step => {
-                    step.classList.remove('active', 'completed', 'failed');
-                });
-
-                // Start animation
-                setTimeout(animateNext, 500);
+                statusCard.style.display = 'block';
+                statusCard.scrollIntoView({ behavior: 'smooth' });
             }
 
             async viewPipelineDetails(pipelineId) {
                 try {
-                    const details = await this.apiClient.callWorker('orchestrator', `/pipeline/${pipelineId}`);
+                    const response = await this.apiClient.getPipelineStatus(pipelineId);
                     
-                    // For now, just show an alert with basic info
+                    // For now, show results in an alert
                     // In production, this would open a detailed modal or new page
-                    alert(`Pipeline Details:\nID: ${pipelineId}\nStatus: ${details.status || 'Unknown'}\n\nFull pipeline viewer coming soon!`);
+                    const pipeline = response.pipeline;
+                    const workerResults = pipeline.worker_results || [];
+                    
+                    let details = `Pipeline Details:\n`;
+                    details += `ID: ${pipeline.id}\n`;
+                    details += `Topic: ${pipeline.topic}\n`;
+                    details += `Status: ${pipeline.status}\n`;
+                    details += `Total Cost: ${pipeline.total_cost_usd}\n`;
+                    details += `Execution Time: ${pipeline.total_execution_time_ms}ms\n\n`;
+                    
+                    if (workerResults.length > 0) {
+                        details += `Worker Results:\n`;
+                        workerResults.forEach(result => {
+                            details += `- ${result.worker_name}: ${result.success ? 'Success' : 'Failed'} (${result.execution_time_ms}ms)\n`;
+                        });
+                    }
+                    
+                    alert(details);
                     
                 } catch (error) {
-                    alert(`Failed to load pipeline details: ${error.message}`);
+                    console.error('Failed to load pipeline details:', error);
+                    this.showError('Failed to load pipeline details: ' + error.message);
                 }
             }
 
-            filterPipelineHistory() {
-                // Implementation for filtering pipeline history
-                // This would filter the displayed results based on status and strategy
-                console.log('Filtering pipeline history...');
+            async loadPipelineHistory() {
+                try {
+                    // For admin users, try to load from admin endpoint
+                    // For regular users, this will need to be implemented differently
+                    const response = await this.apiClient.getAdminStats();
+                    
+                    if (response.recent_pipelines) {
+                        this.renderPipelineHistory(response.recent_pipelines);
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to load pipeline history:', error);
+                    document.getElementById('pipeline-history').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <p>Pipeline history not available. Admin access may be required.</p>
+                            <p style="font-size: 0.9rem; margin-top: 10px;">Error: ${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            renderPipelineHistory(pipelines) {
+                const historyContainer = document.getElementById('pipeline-history');
+                historyContainer.innerHTML = '';
+
+                if (pipelines.length === 0) {
+                    historyContainer.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <p>No recent pipeline executions found.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                pipelines.forEach(pipeline => {
+                    const pipelineItem = document.createElement('div');
+                    pipelineItem.className = 'pipeline-item';
+                    pipelineItem.innerHTML = `
+                        <div class="pipeline-info">
+                            <h4>${pipeline.topic}</h4>
+                            <div class="meta">
+                                ${pipeline.template_name || 'Default'} • 
+                                ${new Date(pipeline.started_at).toLocaleString()} • 
+                                $${pipeline.total_cost_usd.toFixed(2)} • 
+                                ${pipeline.total_execution_time_ms}ms
+                            </div>
+                        </div>
+                        <span class="status-badge status-${pipeline.status}">${pipeline.status}</span>
+                    `;
+                    
+                    pipelineItem.addEventListener('click', () => this.viewPipelineDetails(pipeline.id));
+                    historyContainer.appendChild(pipelineItem);
+                });
             }
 
             startRefreshIntervals() {
                 // Refresh system health every 30 seconds
                 this.refreshInterval = setInterval(() => {
-                    this.updateSystemHealth();
+                    this.loadSystemHealth();
                     
-                    // Refresh tab-specific data if needed
+                    // Load pipeline history if on monitoring tab
                     if (this.activeTab === 'monitoring') {
-                        this.loadMonitoringData();
+                        this.loadPipelineHistory();
                     }
                 }, 30000);
             }
@@ -1268,11 +948,52 @@
                     this.refreshInterval = null;
                 }
             }
+
+            // Utility methods
+            showError(message) {
+                const container = document.getElementById('error-container');
+                container.innerHTML = `<div class="error-message">${message}</div>`;
+                setTimeout(() => container.innerHTML = '', 5000);
+            }
+
+            showSuccess(message) {
+                const container = document.getElementById('success-container');
+                container.innerHTML = `<div class="success-message">${message}</div>`;
+                setTimeout(() => container.innerHTML = '', 5000);
+            }
+
+            clearMessages() {
+                document.getElementById('error-container').innerHTML = '';
+                document.getElementById('success-container').innerHTML = '';
+            }
+        }
+
+        // Tab switching function
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            
+            // Update active tab in dashboard instance
+            if (window.orchestratorDashboard) {
+                window.orchestratorDashboard.activeTab = tabName;
+                
+                // Load tab-specific data
+                if (tabName === 'monitoring') {
+                    window.orchestratorDashboard.loadPipelineHistory();
+                } else if (tabName === 'analytics') {
+                    // Load analytics data when implemented
+                }
+            }
         }
 
         // Initialize dashboard when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
-            window.orchestratorDashboard = new OrchestratorDashboard();
+            window.orchestratorDashboard = new EnhancedOrchestratorDashboard();
         });
 
         // Cleanup on page unload

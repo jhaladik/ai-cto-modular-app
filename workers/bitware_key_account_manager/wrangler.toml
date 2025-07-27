@@ -1,0 +1,96 @@
+# workers/bitware_key_account_manager/wrangler.toml
+# Key Account Manager Worker Configuration
+
+name = "bitware-key-account-manager"
+main = "index.ts"
+compatibility_date = "2024-07-22"
+compatibility_flags = [ "nodejs_compat" ]
+
+# Worker configuration
+minify = true
+
+# D1 Database binding for client management and analytics
+[[d1_databases]]
+binding = "KEY_ACCOUNT_MANAGEMENT_DB"
+database_name = "key-account-management-db"
+database_id = "3a5628ac-deaf-4232-8a89-0535dd02796e" # Set during deployment: wrangler d1 create key-account-management-db
+
+# KV Storage binding for caching and session extensions
+[[kv_namespaces]]
+binding = "KAM_CACHE"
+id = "008410af8af042f7a7551a6164119924" # Set during deployment: wrangler kv:namespace create "KAM_CACHE"
+preview_id = "fcf99a13f93840a4acdb70e5473de7da" # Set during deployment: wrangler kv:namespace create "KAM_CACHE" --preview
+
+# Service binding for orchestrator integration
+[[services]]
+binding = "ORCHESTRATOR"
+service = "bitware-orchestrator"
+
+# Environment variables
+[vars]
+
+# Worker Configuration
+WORKER_VERSION = "1.0.0"
+DEFAULT_COMMUNICATION_STYLE = "professional"
+MAX_CLIENT_SESSIONS = 1000
+
+# Template and AI Configuration
+TEMPLATE_SYNC_INTERVAL_HOURS = 24
+DEFAULT_TEMPLATE_CONFIDENCE_THRESHOLD = 0.7
+AI_ANALYSIS_TIMEOUT_MS = 10000
+
+# Integration URLs (for documentation/fallback)
+ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"
+
+# Cache Configuration
+CLIENT_CACHE_TTL_SECONDS = 3600      # 1 hour client data caching
+TEMPLATE_CACHE_TTL_SECONDS = 86400   # 24 hours template caching
+COMMUNICATION_CACHE_TTL = 1800       # 30 minutes communication analysis caching
+
+# Performance Configuration
+MAX_COMMUNICATION_LENGTH = 10000     # Maximum characters in communication content
+MAX_TEMPLATES_PER_REQUEST = 50       # Maximum templates to return in lists
+DATABASE_QUERY_TIMEOUT_MS = 5000     # Database query timeout
+
+# Client Management Limits
+MAX_MONTHLY_BUDGET_USD = 10000       # Maximum monthly budget per client
+DEFAULT_TRIAL_BUDGET_USD = 50        # Default budget for trial accounts
+BUDGET_WARNING_THRESHOLD = 0.8       # Warn when 80% of budget used
+
+# Communication Processing
+AUTO_ESCALATION_SENTIMENT_THRESHOLD = -0.7  # Escalate very negative communications
+HIGH_URGENCY_KEYWORDS = "urgent,asap,emergency,critical,immediate"
+SUPPORTED_COMMUNICATION_TYPES = "email_inbound,email_outbound,chat,phone,meeting"
+
+# Analytics and Reporting
+ANALYTICS_LOOKBACK_DAYS = 30         # Default period for analytics
+MIN_INTERACTIONS_FOR_ANALYSIS = 5    # Minimum interactions before behavioral analysis
+CHURN_RISK_THRESHOLD = 0.6           # Threshold for churn risk alerts
+
+# Multi-Environment Support
+[env.development]
+vars.TEMPLATE_SYNC_INTERVAL_HOURS = 1  # Sync more frequently in development
+vars.MAX_CLIENT_SESSIONS = 100
+vars.DATABASE_QUERY_TIMEOUT_MS = 10000
+
+[env.staging] 
+vars.TEMPLATE_SYNC_INTERVAL_HOURS = 6
+vars.MAX_CLIENT_SESSIONS = 500
+vars.DEFAULT_TRIAL_BUDGET_USD = 25
+
+[env.production]
+vars.TEMPLATE_SYNC_INTERVAL_HOURS = 24
+vars.MAX_CLIENT_SESSIONS = 1000
+vars.DEFAULT_TRIAL_BUDGET_USD = 50
+vars.ENABLE_ADVANCED_ANALYTICS = true
+
+[env.enterprise]
+vars.MAX_CLIENT_SESSIONS = 5000
+vars.MAX_MONTHLY_BUDGET_USD = 50000
+vars.DEFAULT_TRIAL_BUDGET_USD = 100
+vars.ENABLE_ADVANCED_ANALYTICS = true
+vars.ENABLE_CUSTOM_TEMPLATES = true
+
+# Logging configuration
+[observability]
+enabled = true
