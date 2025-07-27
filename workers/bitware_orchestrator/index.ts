@@ -155,7 +155,11 @@ interface OrchestrationRequest {
           const pipelineId = url.pathname.split('/')[2];
           return handlePipelineStatus(pipelineId, env, corsHeaders);
         }
-  
+        // Pipeline history endpoint 
+        if (url.pathname === '/pipeline-history' && method === 'GET') {
+          return handlePipelineHistory(url, env, corsHeaders);
+        }
+        
         // Admin endpoints (worker auth required)
         if (url.pathname.startsWith('/admin/')) {
           if (!isValidWorkerAuth(request, env)) {
@@ -179,7 +183,7 @@ interface OrchestrationRequest {
         if (url.pathname === '/orchestrate' && method === 'POST') {
           return handleDynamicOrchestration(request, env, corsHeaders);
         }
-  
+          
         // Pipeline health monitoring
         if (url.pathname === '/pipeline-health' && method === 'GET') {
           return handlePipelineHealthCheck(env, corsHeaders);
@@ -487,6 +491,51 @@ interface OrchestrationRequest {
     } catch (error) {
       console.error('Failed to store pipeline execution:', error);
       // Don't throw - let pipeline continue even if storage fails
+    }
+  }
+
+  async function handlePipelineHistory(url: URL, env: Env, corsHeaders: any): Promise<Response> {
+    try {
+      const params = url.searchParams;
+      const limit = parseInt(params.get('limit') || '50');
+      const offset = parseInt(params.get('offset') || '0');
+      const status = params.get('status');
+      const strategy = params.get('strategy');
+      
+      let query = `
+        SELECT pipeline_id, topic, template_name as strategy, status, 
+               total_execution_time_ms, total_cost_usd, articles_processed, 
+               started_at, completed_at
+        FROM pipeline_executions 
+        WHERE 1=1
+      `;
+      
+      const bindings = [];
+      
+      if (status) {
+        query += ` AND status = ?`;
+        bindings.push(status);
+      }
+      
+      if (strategy) {
+        query += ` AND template_name = ?`;
+        bindings.push(strategy);
+      }
+      
+      query += ` ORDER BY started_at DESC LIMIT ? OFFSET ?`;
+      bindings.push(limit, offset);
+      
+      const result = await env.ORCHESTRATION_DB.prepare(query).bind(...bindings).all();
+      
+      return jsonResponse({
+        status: 'ok',
+        history: result.results || [],
+        total: result.results?.length || 0
+      }, { headers: corsHeaders });
+      
+    } catch (error) {
+      console.error('Failed to fetch pipeline history:', error);
+      return errorResponse('Failed to fetch pipeline history', 500);
     }
   }
 

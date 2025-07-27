@@ -10,26 +10,6 @@ id = "4581e54c54184e3686b3e70f2f61936b"
 binding = "ORCHESTRATOR"
 service = "bitware-orchestrator"
 
-[[services]]
-binding = "TOPIC_RESEARCHER"
-service = "bitware-topic-researcher"
-
-[[services]]
-binding = "RSS_LIBRARIAN"
-service = "bitware-rss-source-finder"
-
-[[services]]
-binding = "FEED_FETCHER"
-service = "bitware-feed-fetcher"
-
-[[services]]
-binding = "CONTENT_CLASSIFIER"
-service = "bitware-content-classifier"
-
-[[services]]
-binding = "REPORT_BUILDER"
-service = "bitware-report-builder"
-
 [vars]
 ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"
 TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.jhaladik.workers.dev"

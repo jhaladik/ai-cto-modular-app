@@ -548,15 +548,55 @@
 
             <!-- Recent Pipeline History -->
             <div class="card">
-                <h2>📋 Recent Pipeline Executions</h2>
-                <div class="pipeline-history" id="pipeline-history">
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <div class="loading"></div>
-                        <p style="margin-top: 15px;">Loading pipeline history...</p>
+                <h2>📋 Pipeline Execution History</h2>
+                
+                <!-- Filters -->
+                <div class="form-row" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="history-filter-status">Filter by Status</label>
+                        <select id="history-filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                            <option value="partial">Partial</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="history-filter-strategy">Filter by Strategy</label>
+                        <select id="history-filter-strategy">
+                            <option value="">All Strategies</option>
+                            <option value="balanced">Balanced</option>
+                            <option value="speed_optimized">Speed Optimized</option>
+                            <option value="cost_optimized">Cost Optimized</option>
+                            <option value="quality_optimized">Quality Optimized</option>
+                        </select>
                     </div>
                 </div>
+            
+                <!-- Pipeline History Table -->
+                <div id="pipeline-history-container">
+                    <table class="pipeline-table">
+                        <thead>
+                            <tr>
+                                <th>Pipeline ID</th>
+                                <th>Topic</th>
+                                <th>Strategy</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Cost</th>
+                                <th>Articles</th>
+                                <th>Started</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pipeline-history-tbody">
+                            <tr>
+                                <td colspan="9" class="text-secondary">Loading pipeline history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
         <!-- Performance Analytics Tab -->
         <div id="tab-analytics" class="tab-content hidden">
@@ -627,6 +667,7 @@
                 // Load initial data
                 await this.loadCapabilities();
                 await this.loadSystemHealth();
+                await this.loadPipelineHistory();
 
                 // Start refresh intervals
                 this.startRefreshIntervals();
@@ -876,67 +917,61 @@
             }
 
             async loadPipelineHistory() {
+                const tbody = document.getElementById('pipeline-history-tbody');
+                if (!tbody) {
+                    console.error('Table element missing - check HTML structure');
+                    return;
+                }
+                
+                tbody.innerHTML = '<tr><td colspan="9" class="text-secondary">Loading pipeline history...</td></tr>';
+
                 try {
-                    // For admin users, try to load from admin endpoint
-                    // For regular users, this will need to be implemented differently
-                    const response = await this.apiClient.getAdminStats();
+                    const historyData = await this.apiClient.callWorker('orchestrator', '/pipeline-history');
                     
-                    if (response.recent_pipelines) {
-                        this.renderPipelineHistory(response.recent_pipelines);
+                    if (historyData.status === 'ok' && historyData.history) {
+                        this.renderPipelineHistory(historyData.history);
+                    } else {
+                        throw new Error('Invalid response format');
                     }
-                    
+
                 } catch (error) {
                     console.error('Failed to load pipeline history:', error);
-                    document.getElementById('pipeline-history').innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #666;">
-                            <p>Pipeline history not available. Admin access may be required.</p>
-                            <p style="font-size: 0.9rem; margin-top: 10px;">Error: ${error.message}</p>
-                        </div>
-                    `;
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-secondary">Failed to load pipeline history</td></tr>';
                 }
             }
-
             renderPipelineHistory(pipelines) {
-                const historyContainer = document.getElementById('pipeline-history');
-                historyContainer.innerHTML = '';
-
+                const tbody = document.getElementById('pipeline-history-tbody');
+                
                 if (pipelines.length === 0) {
-                    historyContainer.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #666;">
-                            <p>No recent pipeline executions found.</p>
-                        </div>
-                    `;
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-secondary">No pipeline history found</td></tr>';
                     return;
                 }
 
-                pipelines.forEach(pipeline => {
-                    const pipelineItem = document.createElement('div');
-                    pipelineItem.className = 'pipeline-item';
-                    pipelineItem.innerHTML = `
-                        <div class="pipeline-info">
-                            <h4>${pipeline.topic}</h4>
-                            <div class="meta">
-                                ${pipeline.template_name || 'Default'} • 
-                                ${new Date(pipeline.started_at).toLocaleString()} • 
-                                $${pipeline.total_cost_usd.toFixed(2)} • 
-                                ${pipeline.total_execution_time_ms}ms
-                            </div>
-                        </div>
-                        <span class="status-badge status-${pipeline.status}">${pipeline.status}</span>
-                    `;
-                    
-                    pipelineItem.addEventListener('click', () => this.viewPipelineDetails(pipeline.id));
-                    historyContainer.appendChild(pipelineItem);
-                });
+                tbody.innerHTML = pipelines.map(pipeline => `
+                    <tr>
+                        <td><code>${pipeline.pipeline_id.substring(0, 12)}...</code></td>
+                        <td>${pipeline.topic}</td>
+                        <td>${pipeline.strategy.replace('_', ' ')}</td>
+                        <td><span class="status-badge status-${pipeline.status}">${pipeline.status}</span></td>
+                        <td>${Math.round(pipeline.total_execution_time_ms / 1000)}s</td>
+                        <td>$${pipeline.total_cost_usd.toFixed(3)}</td>
+                        <td>${pipeline.articles_processed}</td>
+                        <td>${new Date(pipeline.started_at).toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="orchestratorDashboard.viewPipelineDetails('${pipeline.pipeline_id}')">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
             }
 
             startRefreshIntervals() {
-                // Refresh system health every 30 seconds
                 this.refreshInterval = setInterval(() => {
                     this.loadSystemHealth();
                     
-                    // Load pipeline history if on monitoring tab
-                    if (this.activeTab === 'monitoring') {
+                    // ✅ FIXED - only refresh when actually on history tab
+                    if (this.activeTab === 'history') {
                         this.loadPipelineHistory();
                     }
                 }, 30000);
@@ -982,11 +1017,9 @@
             if (window.orchestratorDashboard) {
                 window.orchestratorDashboard.activeTab = tabName;
                 
-                // Load tab-specific data
-                if (tabName === 'monitoring') {
+                // FIX: Call on 'history' tab, not 'monitoring'
+                if (tabName === 'history') {  // <-- Changed this
                     window.orchestratorDashboard.loadPipelineHistory();
-                } else if (tabName === 'analytics') {
-                    // Load analytics data when implemented
                 }
             }
         }
