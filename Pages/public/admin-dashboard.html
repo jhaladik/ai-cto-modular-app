@@ -275,12 +275,14 @@
             </div>
         </div>
     </div>
-
+    <script src="./js/shared/auth.js"></script>
+    <script src="./js/shared/api.js"></script>
     <script>
         // Dashboard components
         class AdminDashboard {
             constructor() {
                 this.user = null;
+                this.apiClient = new APIClient(); // ✅ ADD: Initialize APIClient
                 this.init();
             }
 
@@ -331,40 +333,57 @@
 
             async loadSystemStatus() {
                 try {
-                    const response = await fetch('/api/kam/admin/system-status', {
-                        headers: {
-                            'x-bitware-session-token': localStorage.getItem('bitware-session-token')
-                        }
-                    });
-                    
-                    const data = await response.json();
+                    const healthData = await this.apiClient.callWorker('orchestrator', '/pipeline-health', 'GET');
                     
                     const container = document.getElementById('worker-status');
                     container.innerHTML = '';
                     
-                    // Mock worker status for now
-                    const workers = [
-                        { name: 'Orchestrator', status: 'online' },
-                        { name: 'Topic Researcher', status: 'online' },
-                        { name: 'Content Classifier', status: 'online' },
-                        { name: 'KAM Worker', status: 'online' }
-                    ];
-                    
-                    workers.forEach(worker => {
-                        const div = document.createElement('div');
-                        div.className = 'metric';
-                        div.innerHTML = `
-                            <span class="metric-label">
-                                <span class="status-indicator status-${worker.status}"></span>
-                                ${worker.name}
-                            </span>
-                            <span class="metric-value">${worker.status}</span>
-                        `;
-                        container.appendChild(div);
-                    });
+                    // ✅ Handle actual response format
+                    if (healthData && healthData.status === 'ok') {
+                        const isHealthy = healthData.health === 'all_workers_healthy';
+                        
+                        // Default worker list since API doesn't return individual workers
+                        const workers = [
+                            'orchestrator', 'topic_researcher', 'rss_librarian', 
+                            'feed_fetcher', 'content_classifier', 'report_builder'
+                        ];
+                        
+                        workers.forEach(workerName => {
+                            const div = document.createElement('div');
+                            div.className = 'metric';
+                            
+                            const displayName = this.formatWorkerName(workerName);
+                            
+                            div.innerHTML = `
+                                <span class="metric-label">${displayName}</span>
+                                <span class="metric-value">
+                                    <span class="status-indicator status-${isHealthy ? 'online' : 'offline'}"></span>
+                                    ${isHealthy ? 'Online' : 'Offline'}
+                                </span>
+                            `;
+                            container.appendChild(div);
+                        });
+                    } else {
+                        container.innerHTML = '<div class="error">No worker status data available</div>';
+                    }
+
                 } catch (error) {
-                    document.getElementById('worker-status').innerHTML = '<div class="error">Failed to load system status</div>';
+                    console.error('❌ Failed to load system status:', error);
+                    document.getElementById('worker-status').innerHTML = 
+                        '<div class="error">Failed to load system status</div>';
                 }
+            }
+            
+            formatWorkerName(workerName) {
+                const nameMap = {
+                    'topic_researcher': '🔍 Topic Researcher',
+                    'rss_librarian': '📚 RSS Librarian',
+                    'feed_fetcher': '📡 Feed Fetcher',
+                    'content_classifier': '🧠 Content Classifier',
+                    'report_builder': '📊 Report Builder',
+                    'orchestrator': '🎯 Orchestrator'
+                };
+                return nameMap[workerName] || workerName.replace(/_/g, ' ');
             }
 
             async loadClientOverview() {
