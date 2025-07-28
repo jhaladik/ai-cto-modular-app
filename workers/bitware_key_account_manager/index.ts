@@ -681,7 +681,8 @@ export default {
         if (pathname === '/admin/clients') {
           const clients = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
             SELECT client_id, company_name, primary_contact_email, subscription_tier, 
-                   account_status, created_at, last_interaction, total_lifetime_value
+                  account_status, monthly_budget_usd, used_budget_current_month,
+                  created_at, last_interaction, total_lifetime_value
             FROM clients 
             ORDER BY created_at DESC 
             LIMIT 50
