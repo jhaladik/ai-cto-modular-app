@@ -726,7 +726,7 @@ class WorkerPerformanceGridComponent {
         const lastUpdate = new Date(worker.lastUpdate).toLocaleTimeString();
         
         return `
-            <div class="worker-card" data-worker="${worker.id}">
+            <div class="worker-card" data-worker="${worker.id}" onclick="window.location.href='/${worker.id.replace('_', '-')}.html'" style="cursor: pointer;">
                 <div class="worker-header">
                     <div class="worker-name">${worker.name}</div>
                     <div class="worker-status ${statusColor}">

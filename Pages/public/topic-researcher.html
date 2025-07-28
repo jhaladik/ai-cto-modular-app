@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Topic Researcher Admin - AI Factory</title>
+    <link rel="stylesheet" href="/css/admin-dashboard.css">
+    <link rel="stylesheet" href="/css/workers/topic-researcher.css">
+</head>
+<body>
+    <div class="worker-admin-page">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <div class="logo">🏭</div>
+                <div class="title-section">
+                    <h1>🎯 Topic Researcher Admin</h1>
+                    <p>RSS Source Discovery & Research Intelligence</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <nav class="breadcrumb">
+                    <a href="/admin-dashboard.html">Dashboard</a>
+                    <span>/</span>
+                    <span>Topic Researcher</span>
+                </nav>
+                <div class="user-info">
+                    <span class="user-name" id="admin-name">Admin</span>
+                    <span class="status-indicator status-online" id="admin-role"></span>
+                </div>
+                <button class="btn btn-secondary" onclick="topicResearcherAdmin.goToDashboard()">
+                    ← Back to Dashboard
+                </button>
+            </div>
+        </header>
+
+        <!-- Worker Status Bar -->
+        <section class="worker-status-bar">
+            <div class="status-item">
+                <div class="status-icon" id="worker-status">🟡</div>
+                <div class="status-content">
+                    <div class="status-label">Worker Status</div>
+                    <div class="status-value" id="worker-status-text">Loading...</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">📊</div>
+                <div class="status-content">
+                    <div class="status-label">Total Sessions</div>
+                    <div class="status-value" id="total-sessions">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🎯</div>
+                <div class="status-content">
+                    <div class="status-label">Avg Sources Found</div>
+                    <div class="status-value" id="avg-sources">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🤖</div>
+                <div class="status-content">
+                    <div class="status-label">OpenAI Status</div>
+                    <div class="status-value" id="openai-status">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">💾</div>
+                <div class="status-content">
+                    <div class="status-label">Cache Status</div>
+                    <div class="status-value" id="cache-status">-</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="worker-content-grid">
+            
+            <!-- Interactive Testing Console -->
+            <section class="card testing-console">
+                <div class="card-header">
+                    <div class="card-title">🧪 Live Research Testing</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="topicResearcherAdmin.clearResults()">
+                            Clear Results
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="test-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="research-topic">Research Topic</label>
+                                <input type="text" id="research-topic" placeholder="e.g., artificial intelligence, climate change" />
+                            </div>
+                            <div class="form-group">
+                                <label for="research-depth">Search Depth</label>
+                                <select id="research-depth">
+                                    <option value="1">1 - Quick</option>
+                                    <option value="2">2 - Standard</option>
+                                    <option value="3" selected>3 - Thorough</option>
+                                    <option value="4">4 - Deep</option>
+                                    <option value="5">5 - Exhaustive</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="max-sources">Max Sources</label>
+                                <input type="number" id="max-sources" value="20" min="1" max="50" />
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="topicResearcherAdmin.executeResearch()" id="research-btn">
+                            🔍 Start Research
+                        </button>
+                    </div>
+                    
+                    <div class="test-results" id="research-results" style="display: none;">
+                        <div class="results-header">
+                            <h4>Research Results</h4>
+                            <div class="performance-metrics">
+                                <span class="metric">Duration: <span id="research-duration">-</span>ms</span>
+                                <span class="metric">Sources Found: <span id="sources-found">-</span></span>
+                                <span class="metric">Quality Score: <span id="quality-score">-</span></span>
+                            </div>
+                        </div>
+                        <div class="results-content" id="research-results-content">
+                            <!-- Research results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Analytics -->
+            <section class="card performance-analytics">
+                <div class="card-header">
+                    <div class="card-title">📈 Performance Analytics</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="topicResearcherAdmin.refreshAnalytics()">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="completion-rate">-%</div>
+                            <div class="metric-label">Success Rate</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="avg-quality">-</div>
+                            <div class="metric-label">Avg Quality</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="active-sessions">-</div>
+                            <div class="metric-label">Active Sessions</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="failed-sessions">-</div>
+                            <div class="metric-label">Failed Sessions</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Research Topics -->
+            <section class="card top-topics">
+                <div class="card-header">
+                    <div class="card-title">🔥 Top Research Topics</div>
+                </div>
+                <div class="card-content">
+                    <div class="topics-list" id="topics-list">
+                        <!-- Top topics will be populated here -->
+                        <div class="loading-placeholder">Loading topics...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Sessions -->
+            <section class="card recent-sessions">
+                <div class="card-header">
+                    <div class="card-title">⏱️ Recent Sessions</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="topicResearcherAdmin.loadSessions()">
+                            Refresh Sessions
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="sessions-list" id="sessions-list">
+                        <!-- Recent sessions will be populated here -->
+                        <div class="loading-placeholder">Loading sessions...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Controls -->
+            <section class="card admin-controls">
+                <div class="card-header">
+                    <div class="card-title">⚙️ Admin Controls</div>
+                </div>
+                <div class="card-content">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <h4>Cache Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-warning" onclick="topicResearcherAdmin.clearCache()">
+                                    🗑️ Clear Cache
+                                </button>
+                                <button class="btn btn-secondary" onclick="topicResearcherAdmin.warmCache()">
+                                    🔥 Warm Cache
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <h4>Worker Operations</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="topicResearcherAdmin.healthCheck()">
+                                    🩺 Health Check
+                                </button>
+                                <button class="btn btn-warning" onclick="topicResearcherAdmin.restartWorker()">
+                                    🔄 Restart Worker
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <h4>Data Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="topicResearcherAdmin.exportData()">
+                                    📤 Export Sessions
+                                </button>
+                                <button class="btn btn-secondary" onclick="topicResearcherAdmin.viewCapabilities()">
+                                    📋 View Capabilities
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/shared/api.js"></script>
+    <script src="/js/workers/topic-researcher.js"></script>
+    <script>
+        // Initialize the Topic Researcher Admin
+        const topicResearcherAdmin = new TopicResearcherAdmin();
+        
+        // Start loading data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            topicResearcherAdmin.initialize();
+        });
+    </script>
+</body>
+</html>
