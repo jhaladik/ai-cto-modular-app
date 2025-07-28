@@ -55,7 +55,7 @@ export async function onRequestPost(context) {
             userType: 'internal',
             userId: userData.user.user_id,
             fullName: userData.user.full_name,
-            department: userData.staff_profile?.department,
+            department: userData.user.department || 'General', // ✅ FIXED: Direct access + fallback
             created: Date.now(),
             expires: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
           };

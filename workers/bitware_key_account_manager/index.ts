@@ -390,10 +390,13 @@ async function syncTemplatesFromOrchestrator(env: Env): Promise<void> {
 
 async function handleValidateUser(request: Request, env: Env, corsHeaders: any): Promise<Response> {
   try {
-    // Verify worker authentication (same pattern as existing endpoints)
-    const workerAuth = validateWorkerAuth(request);
+    // Change this line:
+    const workerAuth = validateWorkerAuth(request, env);  // Add 'env' parameter
     if (!workerAuth.valid) {
-      return errorResponse('Unauthorized - Worker authentication required', 401, corsHeaders);
+      return jsonResponse({ error: 'Unauthorized - Worker authentication required' }, { 
+        headers: corsHeaders, 
+        status: 401 
+      });
     }
 
     const { email, password, expected_role } = await request.json();
@@ -465,7 +468,7 @@ async function handleValidateUser(request: Request, env: Env, corsHeaders: any):
 async function handleSessionRegister(request: Request, env: Env, corsHeaders: any): Promise<Response> {
   try {
     // Verify worker authentication
-    const workerAuth = validateWorkerAuth(request);
+    const workerAuth = validateWorkerAuth(request, env);  // Add 'env' parameter
     if (!workerAuth.valid) {
       return errorResponse('Unauthorized - Worker authentication required', 401, corsHeaders);
     }
@@ -507,6 +510,13 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname;
     const method = request.method;
+
+    // ADD THIS:
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, Authorization, X-Worker-ID'
+    };
 
     // Handle CORS
     if (method === 'OPTIONS') {
@@ -611,11 +621,12 @@ export default {
 
       // ==================== AUTHENTICATION ENDPOINTS ====================
 
-      if (path === '/auth/validate-user' && method === 'POST') {
+
+      if (pathname === '/auth/validate-user' && method === 'POST') {
         return handleValidateUser(request, env, corsHeaders);
       }
 
-      if (path === '/session/register' && method === 'POST') {
+      if (pathname === '/session/register' && method === 'POST') {
         return handleSessionRegister(request, env, corsHeaders);
       }
 
