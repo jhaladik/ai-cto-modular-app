@@ -312,22 +312,22 @@ class AdminDashboard {
     }
 }
 
-// ==================== EXECUTIVE SUMMARY COMPONENT ====================
+// ==================== EXECUTIVE SUMMARY COMPONENT - REAL KAM DATA FIX ====================
 
 class ExecutiveSummaryComponent {
     constructor(dashboard) {
         this.dashboard = dashboard;
         this.data = {
-            totalRevenue: 0,
-            activeClients: 0,
-            totalRequests: 0,
-            systemHealth: 100
+            monthly_revenue: 0,
+            active_clients: 0,
+            requests_today: 0,
+            system_health: 100
         };
     }
 
     async load() {
         try {
-            await this.fetchData();
+            await this.fetchRealData();
             this.render();
         } catch (error) {
             console.error('Executive Summary load failed:', error);
@@ -335,76 +335,161 @@ class ExecutiveSummaryComponent {
         }
     }
 
-    async fetchData() {
+    async fetchRealData() {
         try {
-            // Get data from KAM admin stats
-            const stats = await this.dashboard.apiClient.callWorker('key-account-manager', '/admin/stats', 'GET');
+            console.log('🔍 Fetching real KAM admin stats...');
             
+            // Fetch real data from KAM worker
+            const response = await fetch(`${window.location.origin}/api/key-account-manager`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-Token': localStorage.getItem('bitware-session-token'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: '/admin/stats',
+                    method: 'GET'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const kamData = await response.json();
+            console.log('✅ Received KAM admin stats:', kamData);
+
+            // Extract real metrics from KAM data
             this.data = {
-                totalRevenue: stats.total_revenue || 0,
-                activeClients: stats.active_clients || 0,
-                totalRequests: stats.requests_today || 0,
-                systemHealth: stats.system_health_percentage || 100,
-                revenueGrowth: stats.revenue_growth_percent || 0,
-                clientGrowth: stats.client_growth_count || 0,
-                requestGrowth: stats.request_growth_percent || 0
+                monthly_revenue: kamData.clients?.total_used_budget || 0,
+                active_clients: kamData.clients?.active_clients || 0,
+                total_clients: kamData.clients?.total_clients || 0,
+                trial_clients: kamData.clients?.trial_clients || 0,
+                requests_today: kamData.communications?.total_communications || 0,
+                avg_budget: kamData.clients?.avg_budget || 0,
+                system_health: 100 // Always 100% if we can fetch data
             };
+
+            console.log('📊 Processed metrics:', this.data);
+
         } catch (error) {
-            console.error('KAM stats failed, using fallback data:', error);
-            // Use fallback/mock data - don't trigger session expiration for individual API failures
+            console.error('❌ Failed to fetch KAM admin stats:', error);
+            // Fallback to zero values but don't fail completely
             this.data = {
-                totalRevenue: 12547.50,
-                activeClients: 142,
-                totalRequests: 1847,
-                systemHealth: 98,
-                revenueGrowth: 15.2,
-                clientGrowth: 12,
-                requestGrowth: 8.5
+                monthly_revenue: 0,
+                active_clients: 0,
+                total_clients: 0,
+                requests_today: 0,
+                system_health: 0 // Show unhealthy if can't fetch data
             };
         }
     }
 
     render() {
-        // Update revenue
-        const revenueEl = document.getElementById('total-revenue');
-        const revenueTrendEl = document.getElementById('revenue-trend');
-        if (revenueEl) revenueEl.textContent = `$${this.data.totalRevenue.toLocaleString()}`;
-        if (revenueTrendEl) revenueTrendEl.textContent = `+${this.data.revenueGrowth}%`;
+        // Update Monthly Revenue
+        const revenueElement = document.getElementById('total-revenue');
+        const revenueTrendElement = document.getElementById('revenue-trend');
+        if (revenueElement) {
+            revenueElement.textContent = `$${this.data.monthly_revenue.toFixed(2)}`;
+        }
+        if (revenueTrendElement) {
+            revenueTrendElement.textContent = this.data.monthly_revenue > 0 ? '+' + 
+                ((this.data.monthly_revenue / this.data.avg_budget) * 100).toFixed(1) + '%' : '+0%';
+        }
 
-        // Update clients
-        const clientsEl = document.getElementById('active-clients');
-        const clientsTrendEl = document.getElementById('clients-trend');
-        if (clientsEl) clientsEl.textContent = this.data.activeClients.toLocaleString();
-        if (clientsTrendEl) clientsTrendEl.textContent = `+${this.data.clientGrowth}`;
+        // Update Active Clients
+        const clientsElement = document.getElementById('active-clients');
+        const clientsTrendElement = document.getElementById('clients-trend');
+        if (clientsElement) {
+            clientsElement.textContent = this.data.active_clients.toString();
+        }
+        if (clientsTrendElement) {
+            const totalClients = this.data.total_clients || this.data.active_clients;
+            clientsTrendElement.textContent = `+${this.data.trial_clients || 0} trial`;
+        }
 
-        // Update requests
-        const requestsEl = document.getElementById('total-requests');
-        const requestsTrendEl = document.getElementById('requests-trend');
-        if (requestsEl) requestsEl.textContent = this.data.totalRequests.toLocaleString();
-        if (requestsTrendEl) requestsTrendEl.textContent = `+${this.data.requestGrowth}%`;
+        // Update Requests Today
+        const requestsElement = document.getElementById('total-requests');
+        const requestsTrendElement = document.getElementById('requests-trend');
+        if (requestsElement) {
+            requestsElement.textContent = this.data.requests_today.toString();
+        }
+        if (requestsTrendElement) {
+            requestsTrendElement.textContent = this.data.requests_today > 0 ? '+' + 
+                Math.round((this.data.requests_today / 7) * 100) + '%' : '+0%';
+        }
 
-        // Update system health
-        const healthEl = document.getElementById('system-health');
-        const healthTrendEl = document.getElementById('health-trend');
-        if (healthEl) healthEl.textContent = `${this.data.systemHealth}%`;
-        if (healthTrendEl) {
-            healthTrendEl.textContent = this.data.systemHealth >= 95 ? 
+        // Update System Health
+        const healthElement = document.getElementById('system-health');
+        const healthTrendElement = document.getElementById('health-trend');
+        if (healthElement) {
+            healthElement.textContent = `${this.data.system_health}%`;
+        }
+        if (healthTrendElement) {
+            healthTrendElement.textContent = this.data.system_health === 100 ? 
                 'All Systems Operational' : 'Some Issues Detected';
+        }
+
+        // Update KPI card colors based on data
+        this.updateKPICardColors();
+    }
+
+    updateKPICardColors() {
+        // Revenue card - green if > 0
+        const revenueCard = document.getElementById('kpi-revenue');
+        if (revenueCard) {
+            if (this.data.monthly_revenue > 0) {
+                revenueCard.style.borderLeftColor = 'var(--success-color)';
+            }
+        }
+
+        // Clients card - blue if active clients exist
+        const clientsCard = document.getElementById('kpi-clients');
+        if (clientsCard) {
+            if (this.data.active_clients > 0) {
+                clientsCard.style.borderLeftColor = 'var(--primary-color)';
+            }
+        }
+
+        // Requests card - orange if requests exist
+        const requestsCard = document.getElementById('kpi-requests');
+        if (requestsCard) {
+            if (this.data.requests_today > 0) {
+                requestsCard.style.borderLeftColor = 'var(--warning-color)';
+            }
+        }
+
+        // Health card - green if 100%
+        const healthCard = document.getElementById('kpi-system-health');
+        if (healthCard) {
+            const color = this.data.system_health === 100 ? 'var(--success-color)' : 'var(--error-color)';
+            healthCard.style.borderLeftColor = color;
+        }
+    }
+
+    renderError() {
+        console.error('Executive Summary render error - using fallback display');
+        
+        // Show error state in health card
+        const healthElement = document.getElementById('system-health');
+        const healthTrendElement = document.getElementById('health-trend');
+        if (healthElement) {
+            healthElement.textContent = '0%';
+        }
+        if (healthTrendElement) {
+            healthTrendElement.textContent = 'Data Loading Error';
+            healthTrendElement.style.color = 'var(--error-color)';
         }
     }
 
     async refresh() {
-        await this.fetchData();
+        await this.fetchRealData();
         this.render();
     }
 
     async getData() {
         return this.data;
-    }
-
-    renderError() {
-        console.error('Executive Summary render error');
-        // Could show error state in UI
     }
 }
 
@@ -414,136 +499,447 @@ class WorkerPerformanceGridComponent {
     constructor(dashboard) {
         this.dashboard = dashboard;
         this.workers = [];
-        this.workerColors = {
-            'orchestrator': '#8B5CF6',
-            'topic-researcher': '#3B82F6',
-            'rss-librarian': '#059669',
-            'feed-fetcher': '#DC2626',
-            'content-classifier': '#F59E0B',
-            'report-builder': '#6366F1',
-            'content-granulator': '#7C3AED',
-            'content-generator': '#10B981',
-            'analyzer': '#F59E0B',
-            'key-account-manager': '#EC4899',
-            'billing-manager': '#10B981'
+        this.workerUrls = {
+            key_account_manager: 'https://bitware-key-account-manager.jhaladik.workers.dev',
+            orchestrator: 'https://bitware-orchestrator.jhaladik.workers.dev',
+            topic_researcher: 'https://bitware-topic-researcher.jhaladik.workers.dev',
+            rss_librarian: 'https://bitware-rss-source-finder.jhaladik.workers.dev',
+            feed_fetcher: 'https://bitware-feed-fetcher.jhaladik.workers.dev',
+            content_classifier: 'https://bitware-content-classifier.jhaladik.workers.dev',
+            report_builder: 'https://bitware-report-builder.jhaladik.workers.dev'
         };
     }
 
     async load() {
         try {
+            this.renderLoading();
             await this.fetchWorkerData();
             this.render();
         } catch (error) {
-            console.error('Worker Grid load failed:', error);
-            this.renderError();
+            console.error('Worker grid load failed:', error);
+            this.renderError(error.message);
         }
     }
 
     async fetchWorkerData() {
-        try {
-            // Try to get real orchestrator data
-            const orchestratorHealth = await this.dashboard.apiClient.callWorker('orchestrator', '/pipeline-health', 'GET');
-            this.workers = orchestratorHealth.workers || [];
-        } catch (error) {
-            console.error('Orchestrator health failed, using mock data:', error);
-            // Fallback to mock worker data
-            this.workers = [
-                {
-                    name: 'key-account-manager',
-                    displayName: 'Key Account Manager',
-                    status: 'healthy',
-                    responseTime: 142,
-                    requestCount: 847,
-                    errorRate: 0.2,
-                    uptime: 99.8
-                },
-                {
-                    name: 'topic-researcher',
-                    displayName: 'Topic Researcher',
-                    status: 'healthy',
-                    responseTime: 2341,
-                    requestCount: 156,
-                    errorRate: 1.2,
-                    uptime: 98.5
-                },
-                {
-                    name: 'content-classifier',
-                    displayName: 'Content Classifier',
-                    status: 'warning',
-                    responseTime: 876,
-                    requestCount: 423,
-                    errorRate: 5.1,
-                    uptime: 96.2
-                },
-                {
-                    name: 'report-builder',
-                    displayName: 'Report Builder',
-                    status: 'healthy',
-                    responseTime: 1203,
-                    requestCount: 298,
-                    errorRate: 0.8,
-                    uptime: 99.1
-                }
-            ];
+        const workerPromises = Object.entries(this.workerUrls).map(async ([workerId, url]) => {
+            try {
+                // Fetch health and admin stats concurrently
+                const [healthResponse, statsResponse] = await Promise.all([
+                    fetch(`${url}/health`),
+                    fetch(`${url}/admin/stats`, {
+                        headers: {
+                            'Authorization': `Bearer internal-worker-auth-token-2024`,
+                            'X-Worker-ID': 'bitware_admin_dashboard'
+                        }
+                    })
+                ]);
+
+                const health = healthResponse.ok ? await healthResponse.json() : null;
+                const stats = statsResponse.ok ? await statsResponse.json() : null;
+
+                return this.processWorkerData(workerId, health, stats);
+            } catch (error) {
+                console.error(`Failed to fetch ${workerId} data:`, error);
+                return this.createErrorWorkerData(workerId, error);
+            }
+        });
+
+        this.workers = await Promise.all(workerPromises);
+    }
+
+    processWorkerData(workerId, health, stats) {
+        const workerNames = {
+            'key_account_manager': '🔑 Key Account Manager',
+            'orchestrator': '🎭 Orchestrator', 
+            'topic_researcher': '🎯 Topic Researcher',
+            'rss_librarian': '📚 RSS Librarian',
+            'feed_fetcher': '📡 Feed Fetcher',
+            'content_classifier': '🧠 Content Classifier',
+            'report_builder': '📊 Report Builder'
+        };
+
+        // Calculate success rate and status
+        const total = this.getTotalRequests(stats, workerId);
+        const completed = this.getCompletedRequests(stats, workerId);
+        const failed = this.getFailedRequests(stats, workerId);
+        const active = this.getActiveJobs(stats, workerId);
+        
+        const successRate = total > 0 ? ((completed / total) * 100) : 100;
+        const status = this.determineWorkerStatus(health, successRate, active, failed);
+
+        return {
+            id: workerId,
+            name: workerNames[workerId] || workerId,
+            status: status,
+            health: health,
+            stats: stats,
+            successRate: successRate,
+            totalRequests: total,
+            activeJobs: active,
+            lastUpdate: health?.timestamp || new Date().toISOString(),
+            specificMetrics: this.getSpecificMetrics(workerId, health, stats)
+        };
+    }
+
+    getTotalRequests(stats, workerId) {
+        if (!stats) return 0;
+        
+        switch(workerId) {
+            case 'key_account_manager':
+                return stats.clients?.total_clients || 0;
+            case 'topic_researcher':
+                return stats.total_sessions || 0;
+            case 'rss_librarian':
+                return stats.stats?.total_sources || 0;
+            default:
+                return stats.total_jobs || 0;
         }
+    }
+
+    getCompletedRequests(stats, workerId) {
+        if (!stats) return 0;
+        
+        switch(workerId) {
+            case 'key_account_manager':
+                return stats.clients?.active_clients || 0;
+            case 'topic_researcher':
+                return stats.completed_sessions || 0;
+            case 'rss_librarian':
+                return stats.stats?.total_sources || 0;
+            default:
+                return stats.completed_jobs || 0;
+        }
+    }
+
+    getFailedRequests(stats, workerId) {
+        if (!stats) return 0;
+        return stats.failed_jobs || stats.failed_sessions || 0;
+    }
+
+    getActiveJobs(stats, workerId) {
+        if (!stats) return 0;
+        return stats.active_jobs || stats.processing_jobs || 0;
+    }
+
+    determineWorkerStatus(health, successRate, activeJobs, failedJobs) {
+        if (!health || health.status !== 'healthy') return 'error';
+        if (successRate < 50) return 'error';
+        if (successRate < 80 || activeJobs > 10) return 'warning';
+        return 'operational';
+    }
+
+    getSpecificMetrics(workerId, health, stats) {
+        if (!stats) return {};
+
+        switch(workerId) {
+            case 'key_account_manager':
+                return {
+                    activeClients: stats.clients?.active_clients || 0,
+                    totalBudget: stats.clients?.total_used_budget || 0,
+                    communications: stats.communications?.total_communications || 0
+                };
+            case 'topic_researcher':
+                return {
+                    avgSources: stats.avg_sources_found?.toFixed(2) || '0',
+                    openaiConfigured: health?.openai_configured || false
+                };
+            case 'content_classifier':
+                return {
+                    avgRelevance: stats.overall_avg_relevance?.toFixed(2) || '0',
+                    totalCost: stats.total_cost_usd?.toFixed(3) || '0',
+                    openaiConfigured: health?.openai_configured || false
+                };
+            case 'report_builder':
+                return {
+                    avgGenTime: Math.round((stats.avg_generation_time || 0) / 1000),
+                    openaiConfigured: health?.openai_configured || false
+                };
+            case 'feed_fetcher':
+                return {
+                    avgArticles: stats.avg_articles_found?.toFixed(2) || '0',
+                    uniqueFeeds: stats.unique_feeds || 0
+                };
+            case 'rss_librarian':
+                return {
+                    totalSources: stats.stats?.total_sources || 0
+                };
+            case 'orchestrator':
+                return {
+                    adminEndpoints: stats.message === 'Admin endpoints placeholder' ? 'pending' : 'active'
+                };
+            default:
+                return {};
+        }
+    }
+
+    createErrorWorkerData(workerId, error) {
+        const workerNames = {
+            'key_account_manager': '🔑 Key Account Manager',
+            'orchestrator': '🎭 Orchestrator', 
+            'topic_researcher': '🎯 Topic Researcher',
+            'rss_librarian': '📚 RSS Librarian',
+            'feed_fetcher': '📡 Feed Fetcher',
+            'content_classifier': '🧠 Content Classifier',
+            'report_builder': '📊 Report Builder'
+        };
+
+        return {
+            id: workerId,
+            name: workerNames[workerId] || workerId,
+            status: 'error',
+            health: null,
+            stats: null,
+            successRate: 0,
+            totalRequests: 0,
+            activeJobs: 0,
+            lastUpdate: new Date().toISOString(),
+            specificMetrics: {},
+            error: error.message
+        };
+    }
+
+    renderLoading() {
+        const container = document.getElementById('worker-grid');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="loading-state">
+                <div class="loading-spinner">🔄</div>
+                <div>Loading worker performance data...</div>
+            </div>
+        `;
     }
 
     render() {
         const container = document.getElementById('worker-grid');
         if (!container) return;
 
-        container.innerHTML = this.workers.map(worker => this.renderWorkerCard(worker)).join('');
+        container.innerHTML = this.workers.map(worker => 
+            this.createWorkerCard(worker)
+        ).join('');
     }
 
-    renderWorkerCard(worker) {
-        const color = this.workerColors[worker.name] || '#64748b';
+    createWorkerCard(worker) {
+        const statusColor = this.getStatusColor(worker.status);
+        const statusIcon = this.getStatusIcon(worker.status);
+        const lastUpdate = new Date(worker.lastUpdate).toLocaleTimeString();
         
         return `
-            <div class="worker-card" style="--worker-color: ${color}">
+            <div class="worker-card" data-worker="${worker.id}">
                 <div class="worker-header">
-                    <div class="worker-name">${worker.displayName}</div>
-                    <div class="worker-status ${worker.status}">${worker.status}</div>
+                    <div class="worker-name">${worker.name}</div>
+                    <div class="worker-status ${statusColor}">
+                        ${statusIcon} ${worker.status}
+                    </div>
                 </div>
+                
                 <div class="worker-metrics">
-                    <div class="worker-metric">
-                        <span class="worker-metric-label">Response</span>
-                        <span class="worker-metric-value">${worker.responseTime}ms</span>
+                    <div class="metric">
+                        <span class="metric-label">Success Rate</span>
+                        <span class="metric-value">${worker.successRate.toFixed(1)}%</span>
                     </div>
-                    <div class="worker-metric">
-                        <span class="worker-metric-label">Requests</span>
-                        <span class="worker-metric-value">${worker.requestCount}</span>
+                    <div class="metric">
+                        <span class="metric-label">Total Requests</span>
+                        <span class="metric-value">${worker.totalRequests.toLocaleString()}</span>
                     </div>
-                    <div class="worker-metric">
-                        <span class="worker-metric-label">Error Rate</span>
-                        <span class="worker-metric-value">${worker.errorRate}%</span>
+                    <div class="metric">
+                        <span class="metric-label">Active Jobs</span>
+                        <span class="metric-value">${worker.activeJobs}</span>
                     </div>
-                    <div class="worker-metric">
-                        <span class="worker-metric-label">Uptime</span>
-                        <span class="worker-metric-value">${worker.uptime}%</span>
+                    <div class="metric">
+                        <span class="metric-label">Last Update</span>
+                        <span class="metric-value">${lastUpdate}</span>
                     </div>
                 </div>
+
+                ${this.renderSpecificMetrics(worker)}
+                
+                <div class="worker-actions">
+                    <button class="btn btn-small" onclick="adminDashboard.workerGrid.viewDetails('${worker.id}')">
+                        Details
+                    </button>
+                    <button class="btn btn-small btn-secondary" onclick="adminDashboard.workerGrid.refreshWorker('${worker.id}')">
+                        Refresh
+                    </button>
+                </div>
+
+                ${worker.error ? `<div class="worker-error">Error: ${worker.error}</div>` : ''}
             </div>
         `;
     }
 
-    async refresh() {
-        await this.fetchWorkerData();
-        this.render();
+    renderSpecificMetrics(worker) {
+        const metrics = worker.specificMetrics;
+        if (!metrics || Object.keys(metrics).length === 0) return '';
+
+        let metricsHtml = '<div class="worker-specific-metrics">';
+        
+        switch(worker.id) {
+            case 'key_account_manager':
+                metricsHtml += `
+                    <div class="specific-metric">
+                        <span class="label">Active Clients:</span>
+                        <span class="value">${metrics.activeClients}</span>
+                    </div>
+                    <div class="specific-metric">
+                        <span class="label">Budget Used:</span>
+                        <span class="value">$${metrics.totalBudget}</span>
+                    </div>
+                `;
+                break;
+            case 'topic_researcher':
+                metricsHtml += `
+                    <div class="specific-metric">
+                        <span class="label">Avg Sources:</span>
+                        <span class="value">${metrics.avgSources}</span>
+                    </div>
+                    <div class="specific-metric">
+                        <span class="label">OpenAI:</span>
+                        <span class="value">${metrics.openaiConfigured ? '✅' : '❌'}</span>
+                    </div>
+                `;
+                break;
+            case 'content_classifier':
+                metricsHtml += `
+                    <div class="specific-metric">
+                        <span class="label">Avg Relevance:</span>
+                        <span class="value">${metrics.avgRelevance}</span>
+                    </div>
+                    <div class="specific-metric">
+                        <span class="label">Total Cost:</span>
+                        <span class="value">$${metrics.totalCost}</span>
+                    </div>
+                `;
+                break;
+            case 'report_builder':
+                metricsHtml += `
+                    <div class="specific-metric">
+                        <span class="label">Avg Gen Time:</span>
+                        <span class="value">${metrics.avgGenTime}s</span>
+                    </div>
+                    <div class="specific-metric">
+                        <span class="label">OpenAI:</span>
+                        <span class="value">${metrics.openaiConfigured ? '✅' : '❌'}</span>
+                    </div>
+                `;
+                break;
+            case 'feed_fetcher':
+                metricsHtml += `
+                    <div class="specific-metric">
+                        <span class="label">Avg Articles:</span>
+                        <span class="value">${metrics.avgArticles}</span>
+                    </div>
+                `;
+                break;
+            case 'rss_librarian':
+                metricsHtml += `
+                    <div class="specific-metric">
+                        <span class="label">Total Sources:</span>
+                        <span class="value">${metrics.totalSources}</span>
+                    </div>
+                `;
+                break;
+        }
+        
+        metricsHtml += '</div>';
+        return metricsHtml;
     }
 
-    async getData() {
-        return this.workers;
+    getStatusColor(status) {
+        const colors = {
+            'operational': 'status-green',
+            'warning': 'status-yellow', 
+            'error': 'status-red',
+            'maintenance': 'status-gray'
+        };
+        return colors[status] || 'status-gray';
     }
 
-    renderError() {
+    getStatusIcon(status) {
+        const icons = {
+            'operational': '🟢',
+            'warning': '🟡',
+            'error': '🔴', 
+            'maintenance': '⚪'
+        };
+        return icons[status] || '⚪';
+    }
+
+    renderError(errorMessage) {
         const container = document.getElementById('worker-grid');
         if (container) {
-            container.innerHTML = '<div class="error-message">Failed to load worker data</div>';
+            container.innerHTML = `
+                <div class="error-message">
+                    <div style="font-size: 18px; margin-bottom: 8px;">⚠️</div>
+                    <div style="font-weight: 500; margin-bottom: 4px;">Failed to load worker data</div>
+                    <div style="font-size: 13px; color: #64748b;">${errorMessage}</div>
+                    <button class="btn btn-small" onclick="adminDashboard.workerGrid.refresh()" style="margin-top: 12px;">
+                        Retry
+                    </button>
+                </div>
+            `;
         }
+    }
+
+    async refresh() {
+        await this.load();
+    }
+
+    async refreshWorker(workerId) {
+        try {
+            // Find and update specific worker
+            const workerIndex = this.workers.findIndex(w => w.id === workerId);
+            if (workerIndex === -1) return;
+
+            const url = this.workerUrls[workerId];
+            const [healthResponse, statsResponse] = await Promise.all([
+                fetch(`${url}/health`),
+                fetch(`${url}/admin/stats`, {
+                    headers: {
+                        'Authorization': `Bearer internal-worker-auth-token-2024`,
+                        'X-Worker-ID': 'bitware_admin_dashboard'
+                    }
+                })
+            ]);
+
+            const health = healthResponse.ok ? await healthResponse.json() : null;
+            const stats = statsResponse.ok ? await statsResponse.json() : null;
+
+            this.workers[workerIndex] = this.processWorkerData(workerId, health, stats);
+            this.render();
+        } catch (error) {
+            console.error(`Failed to refresh ${workerId}:`, error);
+            alert(`Failed to refresh ${workerId}: ${error.message}`);
+        }
+    }
+
+    async viewDetails(workerId) {
+        // Show detailed modal with worker information
+        const worker = this.workers.find(w => w.id === workerId);
+        if (!worker) return;
+
+        const detailsHtml = `
+            <div class="worker-details-modal">
+                <h3>${worker.name} - Detailed Information</h3>
+                <div class="details-section">
+                    <h4>Health Status</h4>
+                    <pre>${JSON.stringify(worker.health, null, 2)}</pre>
+                </div>
+                <div class="details-section">
+                    <h4>Statistics</h4>
+                    <pre>${JSON.stringify(worker.stats, null, 2)}</pre>
+                </div>
+            </div>
+        `;
+        
+        // Simple alert for now - could be enhanced with a proper modal
+        alert(`${worker.name} Details:\nStatus: ${worker.status}\nSuccess Rate: ${worker.successRate.toFixed(1)}%\nTotal Requests: ${worker.totalRequests}\nActive Jobs: ${worker.activeJobs}`);
     }
 }
 
-// ==================== CLIENT MANAGEMENT COMPONENT ====================
+// ==================== ENHANCED CLIENT MANAGEMENT COMPONENT - PHASE 1 ====================
+// Real KAM data integration with professional UI
 
 class ClientManagementComponent {
     constructor(dashboard) {
@@ -559,52 +955,68 @@ class ClientManagementComponent {
 
     async load() {
         try {
+            this.renderLoading();
             await this.fetchClientData();
+            this.applyFilters();
             this.render();
         } catch (error) {
             console.error('Client Management load failed:', error);
-            this.renderError();
+            this.renderError(error.message);
         }
     }
 
     async fetchClientData() {
         try {
-            const clientData = await this.dashboard.apiClient.callWorker('key-account-manager', '/admin/clients', 'GET');
-            this.clients = clientData.clients || [];
+            // Fetch real client data from KAM worker via Pages Function
+            const response = await fetch(`${window.location.origin}/api/key-account-manager`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-Token': localStorage.getItem('bitware-session-token'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: '/admin/clients',
+                    method: 'GET'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            this.clients = data.clients || [];
+            console.log('✅ Loaded', this.clients.length, 'real clients from KAM worker');
         } catch (error) {
-            console.error('KAM client data failed, using mock data:', error);
-            // Mock client data - don't trigger session expiration for individual failures
-            this.clients = [
-                {
-                    client_id: 'acme_corp_001',
-                    company_name: 'Acme Corporation',
-                    subscription_tier: 'enterprise',
-                    account_status: 'active',
-                    monthly_budget_usd: 2500,
-                    used_budget_current_month: 1847.50,
-                    last_interaction: '2 hours ago'
-                },
-                {
-                    client_id: 'techstart_002',
-                    company_name: 'TechStart Inc',
-                    subscription_tier: 'premium',
-                    account_status: 'active',
-                    monthly_budget_usd: 500,
-                    used_budget_current_month: 287.25,
-                    last_interaction: '1 day ago'
-                },
-                {
-                    client_id: 'medical_003',
-                    company_name: 'Medical Innovations',
-                    subscription_tier: 'standard',
-                    account_status: 'trial',
-                    monthly_budget_usd: 100,
-                    used_budget_current_month: 45.80,
-                    last_interaction: '3 hours ago'
-                }
-            ];
+            console.error('❌ Failed to fetch real client data:', error);
+            this.clients = [];
+            throw new Error('Failed to load client data: ' + error.message);
         }
-        this.filteredClients = [...this.clients];
+    }
+
+    renderLoading() {
+        const container = document.getElementById('client-grid');
+        if (container) {
+            container.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner">🔄</div>
+                    <div>Loading real client data from KAM...</div>
+                </div>
+            `;
+        }
+    }
+
+    applyFilters() {
+        this.filteredClients = this.clients.filter(client => {
+            const matchesStatus = !this.filters.status || client.account_status === this.filters.status;
+            const matchesTier = !this.filters.tier || client.subscription_tier === this.filters.tier;
+            const matchesSearch = !this.filters.search || 
+                client.company_name.toLowerCase().includes(this.filters.search.toLowerCase()) ||
+                client.primary_contact_email.toLowerCase().includes(this.filters.search.toLowerCase());
+            
+            return matchesStatus && matchesTier && matchesSearch;
+        });
     }
 
     render() {
@@ -612,102 +1024,467 @@ class ClientManagementComponent {
         if (!container) return;
 
         if (this.filteredClients.length === 0) {
-            container.innerHTML = '<div class="loading-placeholder">No clients match the current filters</div>';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div style="font-size: 24px; margin-bottom: 12px;">👥</div>
+                    <div style="font-weight: 500;">No clients found</div>
+                    <div style="font-size: 14px; color: #64748b;">Try adjusting your filters</div>
+                </div>
+            `;
             return;
         }
 
-        container.innerHTML = this.filteredClients.map(client => this.renderClientCard(client)).join('');
+        container.innerHTML = this.filteredClients.map(client => 
+            this.createClientCard(client)
+        ).join('');
     }
 
-    renderClientCard(client) {
-        const usagePercent = (client.used_budget_current_month / client.monthly_budget_usd * 100).toFixed(1);
+    createClientCard(client) {
+        const budgetUsed = client.used_budget_current_month || 0;
+        const budgetTotal = client.monthly_budget_usd || 0;
+        const budgetPercentage = budgetTotal > 0 ? (budgetUsed / budgetTotal) * 100 : 0;
+        const lifetimeValue = client.total_lifetime_value || 0;
+        
+        // Determine status styling
+        const isActive = client.account_status === 'active';
+        const statusClass = isActive ? 'status-active' : 'status-trial';
+        const statusText = client.account_status.charAt(0).toUpperCase() + client.account_status.slice(1);
+        
+        // Determine tier styling and color
+        const tierInfo = this.getTierInfo(client.subscription_tier);
+        
+        // Budget status styling
+        const budgetStatusClass = budgetPercentage > 80 ? 'budget-high' : 
+                                 budgetPercentage > 50 ? 'budget-medium' : 'budget-low';
         
         return `
-            <div class="client-card">
+            <div class="client-card" data-client="${client.client_id}">
                 <div class="client-header">
-                    <div class="client-name">${client.company_name}</div>
-                    <div class="client-tier ${client.subscription_tier}">${client.subscription_tier}</div>
+                    <div class="client-info">
+                        <div class="client-name">${client.company_name}</div>
+                        <div class="client-email">${client.primary_contact_email}</div>
+                    </div>
+                    <div class="client-badges">
+                        <span class="tier-badge ${tierInfo.class}">${tierInfo.display}</span>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
                 </div>
+                
                 <div class="client-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Budget Used</span>
-                        <span class="metric-value">$${client.used_budget_current_month.toFixed(2)}</span>
+                    <div class="metric-row">
+                        <div class="metric">
+                            <span class="metric-label">Monthly Budget</span>
+                            <span class="metric-value">$${budgetTotal.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Used This Month</span>
+                            <span class="metric-value">$${budgetUsed.toFixed(2)}</span>
+                        </div>
                     </div>
-                    <div class="metric">
-                        <span class="metric-label">Usage</span>
-                        <span class="metric-value">${usagePercent}%</span>
+                    
+                    <div class="budget-progress">
+                        <div class="budget-bar">
+                            <div class="budget-fill ${budgetStatusClass}" 
+                                 style="width: ${Math.min(budgetPercentage, 100)}%"></div>
+                        </div>
+                        <span class="budget-percentage">${budgetPercentage.toFixed(1)}%</span>
                     </div>
-                    <div class="metric">
-                        <span class="metric-label">Status</span>
-                        <span class="metric-value">${client.account_status}</span>
+                    
+                    <div class="metric-row">
+                        <div class="metric">
+                            <span class="metric-label">Lifetime Value</span>
+                            <span class="metric-value">$${lifetimeValue.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Created</span>
+                            <span class="metric-value">${this.formatDate(client.created_at)}</span>
+                        </div>
                     </div>
-                    <div class="metric">
-                        <span class="metric-label">Last Active</span>
-                        <span class="metric-value">${client.last_interaction}</span>
-                    </div>
+                    
+                    ${client.last_interaction ? `
+                        <div class="last-interaction">
+                            <span class="metric-label">Last Activity:</span>
+                            <span class="metric-value">${this.formatDate(client.last_interaction)}</span>
+                        </div>
+                    ` : ''}
                 </div>
+                
                 <div class="client-actions">
-                    <button class="btn btn-secondary" onclick="adminDashboard.clientGrid.viewClient('${client.client_id}')">
-                        View
+                    <button class="btn btn-small" onclick="adminDashboard.clientGrid.viewClient('${client.client_id}')">
+                        View Details
                     </button>
-                    <button class="btn btn-primary" onclick="adminDashboard.clientGrid.editClient('${client.client_id}')">
+                    <button class="btn btn-small btn-secondary" onclick="adminDashboard.clientGrid.editClient('${client.client_id}')">
                         Edit
                     </button>
+                    ${!isActive ? `
+                        <button class="btn btn-small btn-primary" onclick="adminDashboard.clientGrid.upgradeClient('${client.client_id}')">
+                            Upgrade
+                        </button>
+                    ` : ''}
                 </div>
             </div>
         `;
     }
 
-    showFilters() {
-        const filtersEl = document.getElementById('client-filters');
-        if (filtersEl) {
-            filtersEl.style.display = filtersEl.style.display === 'none' ? 'block' : 'none';
+    getTierInfo(tier) {
+        const tiers = {
+            'basic': { display: 'Basic', class: 'tier-basic' },
+            'standard': { display: 'Standard', class: 'tier-standard' },
+            'premium': { display: 'Premium', class: 'tier-premium' },
+            'enterprise': { display: 'Enterprise', class: 'tier-enterprise' }
+        };
+        return tiers[tier] || { display: tier, class: 'tier-default' };
+    }
+
+    formatDate(dateString) {
+        if (!dateString) return 'Never';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+
+    renderError(message) {
+        const container = document.getElementById('client-grid');
+        if (container) {
+            container.innerHTML = `
+                <div class="error-message">
+                    <div style="font-size: 18px; margin-bottom: 8px;">⚠️</div>
+                    <div style="font-weight: 500; margin-bottom: 4px;">Failed to load client data</div>
+                    <div style="font-size: 13px; color: #64748b;">${message}</div>
+                    <button class="btn btn-small" onclick="adminDashboard.clientGrid.refresh()" style="margin-top: 12px;">
+                        Retry
+                    </button>
+                </div>
+            `;
         }
     }
 
-    applyFilters() {
-        this.filters.status = document.getElementById('status-filter')?.value || '';
-        this.filters.tier = document.getElementById('tier-filter')?.value || '';
-        this.filters.search = document.getElementById('search-filter')?.value.toLowerCase() || '';
+    // =========================== FILTER METHODS ===========================
+    
+    showFilters() {
+        const filtersContainer = document.getElementById('client-filters');
+        if (filtersContainer) {
+            const isVisible = filtersContainer.style.display !== 'none';
+            filtersContainer.style.display = isVisible ? 'none' : 'block';
+        }
+    }
 
-        this.filteredClients = this.clients.filter(client => {
-            const matchesStatus = !this.filters.status || client.account_status === this.filters.status;
-            const matchesTier = !this.filters.tier || client.subscription_tier === this.filters.tier;
-            const matchesSearch = !this.filters.search || 
-                client.company_name.toLowerCase().includes(this.filters.search);
-
-            return matchesStatus && matchesTier && matchesSearch;
-        });
-
+    applyFiltersFromUI() {
+        this.filters = {
+            status: document.getElementById('status-filter')?.value || '',
+            tier: document.getElementById('tier-filter')?.value || '',
+            search: document.getElementById('search-filter')?.value || ''
+        };
+        this.applyFilters();
         this.render();
     }
 
-    viewClient(clientId) {
-        console.log('View client:', clientId);
-        // TODO: Navigate to client detail view (Level 2)
+    // =========================== ACTION METHODS ===========================
+    
+    async viewClient(clientId) {
+        const client = this.clients.find(c => c.client_id === clientId);
+        if (!client) return;
+        
+        // Create detailed client information display
+        const details = `
+🏢 ${client.company_name}
+📧 ${client.primary_contact_email}
+🎯 Tier: ${client.subscription_tier.toUpperCase()}
+📊 Status: ${client.account_status.toUpperCase()}
+💰 Budget: $${client.used_budget_current_month || 0}/$${client.monthly_budget_usd}
+💎 Lifetime Value: $${client.total_lifetime_value || 0}
+📅 Created: ${this.formatDate(client.created_at)}
+${client.last_interaction ? `🕒 Last Activity: ${this.formatDate(client.last_interaction)}` : ''}
+        `.trim();
+        
+        alert(details);
     }
 
-    editClient(clientId) {
-        console.log('Edit client:', clientId);
-        // TODO: Show edit client modal
+    async editClient(clientId) {
+        const client = this.clients.find(c => c.client_id === clientId);
+        if (!client) return;
+        
+        alert(`✏️ Client Edit Interface
+        
+This would open a form to edit:
+• Company: ${client.company_name}
+• Subscription: ${client.subscription_tier}
+• Budget: $${client.monthly_budget_usd}
+• Status: ${client.account_status}
+
+Integration with KAM worker's PUT /client/{id} endpoint would go here.`);
     }
 
-    addClient() {
-        console.log('Add new client');
-        // TODO: Show add client modal
-    }
+    async upgradeClient(clientId) {
+        const client = this.clients.find(c => c.client_id === clientId);
+        if (!client) return;
+        
+        if (confirm(`🚀 Upgrade ${client.company_name} from trial to active status?
 
-    async getData() {
-        return this.clients;
-    }
+This would:
+• Change status from trial → active
+• Enable full features
+• Begin billing cycle
 
-    renderError() {
-        const container = document.getElementById('client-grid');
-        if (container) {
-            container.innerHTML = '<div class="error-message">Failed to load client data</div>';
+Continue?`)) {
+            try {
+                alert(`🎯 Client Upgrade Feature
+                
+This would integrate with KAM worker to:
+• Call PUT /client/${clientId} endpoint
+• Update account_status to 'active'
+• Send welcome email
+• Refresh the client grid
+
+Real implementation would go here.`);
+                
+                // Real implementation would be:
+                // const response = await this.dashboard.apiClient.callWorker(
+                //     'key-account-manager', '/client/' + clientId, 'PUT',
+                //     { account_status: 'active' }
+                // );
+                // await this.refresh();
+            } catch (error) {
+                alert('❌ Failed to upgrade client: ' + error.message);
+            }
         }
     }
+
+    async addClient() {
+        alert(`➕ Add New Client Interface
+        
+This would open a form for:
+• Company name
+• Contact email  
+• Subscription tier selection
+• Monthly budget setting
+• Industry/use case
+
+Integration with KAM worker's POST /client endpoint would create the new client.`);
+    }
+
+    async refresh() {
+        await this.load();
+    }
+
+    // =========================== ADD CLIENT MODAL ===========================
+
+    async addClient() {
+        // Create and show the add client modal
+        this.showAddClientModal();
+    }
+
+    showAddClientModal() {
+        // Create modal HTML
+        const modalHtml = `
+            <div class="modal-overlay" id="add-client-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>➕ Add New Client</h3>
+                        <button class="modal-close" onclick="adminDashboard.clientGrid.closeAddClientModal()">✕</button>
+                    </div>
+                    
+                    <form id="add-client-form" onsubmit="adminDashboard.clientGrid.submitNewClient(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="company_name">Company Name *</label>
+                                <input type="text" id="company_name" name="company_name" required 
+                                    placeholder="e.g., Acme Corporation">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="primary_contact_email">Contact Email *</label>
+                                <input type="email" id="primary_contact_email" name="primary_contact_email" required 
+                                    placeholder="contact@company.com">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="subscription_tier">Subscription Tier</label>
+                                <select id="subscription_tier" name="subscription_tier">
+                                    <option value="basic">Basic - $50/month</option>
+                                    <option value="standard" selected>Standard - $200/month</option>
+                                    <option value="premium">Premium - $500/month</option>
+                                    <option value="enterprise">Enterprise - $2000/month</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="monthly_budget_usd">Monthly Budget ($)</label>
+                                <input type="number" id="monthly_budget_usd" name="monthly_budget_usd" 
+                                    min="0" step="0.01" value="200" placeholder="200.00">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="account_status">Account Status</label>
+                                <select id="account_status" name="account_status">
+                                    <option value="trial" selected>Trial - 30 days free</option>
+                                    <option value="active">Active - Billing starts immediately</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group form-group-full">
+                                <label for="industry">Industry (Optional)</label>
+                                <input type="text" id="industry" name="industry" 
+                                    placeholder="e.g., Technology, Finance, Healthcare">
+                            </div>
+                        </div>
+                        
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" 
+                                    onclick="adminDashboard.clientGrid.closeAddClientModal()">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submit-client-btn">
+                                <span id="submit-text">Create Client</span>
+                                <span id="submit-loading" style="display: none;">Creating...</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Update budget when tier changes
+        document.getElementById('subscription_tier').addEventListener('change', (e) => {
+            const budgetInput = document.getElementById('monthly_budget_usd');
+            const tierBudgets = {
+                'basic': 50,
+                'standard': 200,
+                'premium': 500,
+                'enterprise': 2000
+            };
+            budgetInput.value = tierBudgets[e.target.value] || 200;
+        });
+    }
+
+    closeAddClientModal() {
+        const modal = document.getElementById('add-client-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    async submitNewClient(event) {
+        event.preventDefault();
+        
+        const submitBtn = document.getElementById('submit-client-btn');
+        const submitText = document.getElementById('submit-text');
+        const submitLoading = document.getElementById('submit-loading');
+        
+        try {
+            // Show loading state
+            submitBtn.disabled = true;
+            submitText.style.display = 'none';
+            submitLoading.style.display = 'inline';
+            
+            // Get form data
+            const formData = new FormData(event.target);
+            const clientData = {
+                company_name: formData.get('company_name'),
+                primary_contact_email: formData.get('primary_contact_email'),
+                subscription_tier: formData.get('subscription_tier'),
+                monthly_budget_usd: parseFloat(formData.get('monthly_budget_usd')) || 0,
+                account_status: formData.get('account_status'),
+                industry: formData.get('industry') || null
+            };
+            
+            console.log('🚀 Creating new client:', clientData);
+            
+            // Call KAM worker to create client
+            const response = await fetch(`${window.location.origin}/api/key-account-manager`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-Token': localStorage.getItem('bitware-session-token'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: '/client',
+                    method: 'POST',
+                    data: clientData
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log('✅ Client created successfully:', result);
+            
+            // Close modal
+            this.closeAddClientModal();
+            
+            // Show success message
+            this.showSuccessMessage(`Client "${clientData.company_name}" created successfully!`);
+            
+            // Refresh the client grid to show new client
+            await this.refresh();
+            
+        } catch (error) {
+            console.error('❌ Failed to create client:', error);
+            this.showErrorMessage('Failed to create client: ' + error.message);
+        } finally {
+            // Reset loading state
+            submitBtn.disabled = false;
+            submitText.style.display = 'inline';
+            submitLoading.style.display = 'none';
+        }
+    }
+
+    // =========================== SUCCESS/ERROR MESSAGES ===========================
+
+    showSuccessMessage(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-success';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-icon">✅</span>
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('toast-fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    showErrorMessage(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-error';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-icon">❌</span>
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Auto-remove after 5 seconds for errors
+        setTimeout(() => {
+            toast.classList.add('toast-fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
 }
+
+// Usage: Replace the existing ClientManagementComponent in admin-dashboard-components.js
+// Or add this as a separate file and import it
+
+console.log('✅ Enhanced Client Management Component loaded - Phase 1 complete!')
 
 // ==================== FINANCIAL DASHBOARD COMPONENT ====================
 

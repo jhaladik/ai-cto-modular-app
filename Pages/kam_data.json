@@ -1,0 +1,262 @@
+{
+  "health":
+{
+  "status": "healthy",
+  "database": "connected",
+  "cache": "operational",
+  "total_clients": 6,
+  "active_templates": 5,
+  "ai_integration": "configured",
+  "orchestrator_binding": "configured",
+  "timestamp": "2025-07-28T16:22:30.037Z"
+},
+  "capabilities":
+{
+  "worker_type": "ClientRelationshipManager",
+  "ai_capabilities": [
+    "Communication intent detection",
+    "Sentiment analysis",
+    "Template recommendation",
+    "Client behavior analysis"
+  ],
+  "integrations": [
+    "Orchestrator pipeline tracking",
+    "OpenAI NLP processing",
+    "Pages session management"
+  ],
+  "features": [
+    "Client profile management",
+    "Communication processing",
+    "Template intelligence",
+    "Pipeline transparency",
+    "Budget tracking"
+  ]
+},
+  "admin_stats":
+{
+  "clients": {
+    "total_clients": 6,
+    "active_clients": 3,
+    "trial_clients": 3,
+    "avg_budget": 666.6666666666666,
+    "total_used_budget": 673.5
+  },
+  "communications": {
+    "total_communications": 7,
+    "processed_communications": 0,
+    "needs_attention": 3,
+    "avg_sentiment": 0.5
+  },
+  "generated_at": "2025-07-28T16:22:30.248Z",
+  "generated_by": "bitware_admin_dashboard"
+},
+  "clients":
+{
+  "clients": [
+    {
+      "client_id": "client_1753621861586_mt6qzi3gz",
+      "company_name": "Integration Test Corp",
+      "primary_contact_email": "integration@testcorp.com",
+      "subscription_tier": "premium",
+      "account_status": "trial",
+      "monthly_budget_usd": 1000,
+      "used_budget_current_month": 0,
+      "created_at": "2025-07-27 13:11:01",
+      "last_interaction": null,
+      "total_lifetime_value": 0
+    },
+    {
+      "client_id": "client_1753621851480_4ne5gwqz5",
+      "company_name": "Test Company",
+      "primary_contact_email": "test.user@testcompany.com",
+      "subscription_tier": "standard",
+      "account_status": "trial",
+      "monthly_budget_usd": 250,
+      "used_budget_current_month": 0,
+      "created_at": "2025-07-27 13:10:51",
+      "last_interaction": null,
+      "total_lifetime_value": 0
+    },
+    {
+      "client_id": "client_trial_001",
+      "company_name": "StartupBoost",
+      "primary_contact_email": "alex.kim@startupboost.com",
+      "subscription_tier": "basic",
+      "account_status": "trial",
+      "monthly_budget_usd": 50,
+      "used_budget_current_month": 12,
+      "created_at": "2024-07-20 14:00:00",
+      "last_interaction": "2024-07-22 10:00:00",
+      "total_lifetime_value": 12
+    },
+    {
+      "client_id": "client_demo_003",
+      "company_name": "FinanceFirst Consulting",
+      "primary_contact_email": "emily.rodriguez@financefirst.com",
+      "subscription_tier": "standard",
+      "account_status": "active",
+      "monthly_budget_usd": 200,
+      "used_budget_current_month": 85.25,
+      "created_at": "2024-07-10 11:30:00",
+      "last_interaction": "2024-07-22 08:15:00",
+      "total_lifetime_value": 750
+    },
+    {
+      "client_id": "client_demo_001",
+      "company_name": "TechCorp Solutions",
+      "primary_contact_email": "sarah.johnson@techcorp.com",
+      "subscription_tier": "premium",
+      "account_status": "active",
+      "monthly_budget_usd": 500,
+      "used_budget_current_month": 125.5,
+      "created_at": "2024-07-01 10:00:00",
+      "last_interaction": "2024-07-22 14:30:00",
+      "total_lifetime_value": 2500
+    },
+    {
+      "client_id": "client_demo_002",
+      "company_name": "GreenEnergy Innovations",
+      "primary_contact_email": "michael.chen@greenenergy.com",
+      "subscription_tier": "enterprise",
+      "account_status": "active",
+      "monthly_budget_usd": 2000,
+      "used_budget_current_month": 450.75,
+      "created_at": "2024-06-15 09:15:00",
+      "last_interaction": "2024-07-21 16:45:00",
+      "total_lifetime_value": 15000
+    }
+  ],
+  "count": 6
+},
+  "templates":
+{
+  "templates": [
+    {
+      "template_name": "competitive_intelligence",
+      "display_name": "Competitive Intelligence Research",
+      "description": "Advanced competitive analysis with multiple sources and AI-powered insights",
+      "category": "intelligence",
+      "complexity_level": "enterprise",
+      "worker_flow": "[{\"worker\": \"topic_researcher\", \"step\": 1}, {\"worker\": \"rss_librarian\", \"step\": 2}, {\"worker\": \"feed_fetcher\", \"step\": 3}, {\"worker\": \"content_classifier\", \"step\": 4}, {\"worker\": \"report_builder\", \"step\": 5}]",
+      "typical_use_cases": "[\"competitive analysis\", \"market intelligence\", \"competitor monitoring\", \"business intelligence\"]",
+      "keyword_triggers": "[\"competitive\", \"competitor\", \"intelligence\", \"market\", \"business\", \"analysis\"]",
+      "estimated_duration_ms": 450000,
+      "estimated_cost_usd": 1.2,
+      "min_cost_usd": 0.6,
+      "max_cost_usd": 2.5,
+      "is_active": 1,
+      "requires_premium": 1,
+      "last_synced_from_orchestrator": "2024-07-22 12:00:00",
+      "sync_source": "manual_seed",
+      "created_at": "2025-07-27 13:00:59",
+      "updated_at": "2025-07-27 13:00:59"
+    },
+    {
+      "template_name": "comprehensive_analysis",
+      "display_name": "Comprehensive Topic Analysis",
+      "description": "Full pipeline with source discovery, content fetching, AI analysis, and report generation",
+      "category": "analysis",
+      "complexity_level": "premium",
+      "worker_flow": "[{\"worker\": \"topic_researcher\", \"step\": 1}, {\"worker\": \"rss_librarian\", \"step\": 2}, {\"worker\": \"feed_fetcher\", \"step\": 3}, {\"worker\": \"content_classifier\", \"step\": 4}, {\"worker\": \"report_builder\", \"step\": 5}]",
+      "typical_use_cases": "[\"comprehensive analysis\", \"full research\", \"detailed reports\", \"market intelligence\"]",
+      "keyword_triggers": "[\"comprehensive\", \"analysis\", \"detailed\", \"report\", \"intelligence\", \"deep dive\"]",
+      "estimated_duration_ms": 300000,
+      "estimated_cost_usd": 0.5,
+      "min_cost_usd": 0.25,
+      "max_cost_usd": 1,
+      "is_active": 1,
+      "requires_premium": 1,
+      "last_synced_from_orchestrator": "2024-07-22 12:00:00",
+      "sync_source": "manual_seed",
+      "created_at": "2025-07-27 13:00:59",
+      "updated_at": "2025-07-27 13:00:59"
+    },
+    {
+      "template_name": "news_monitoring",
+      "display_name": "Daily News Monitoring",
+      "description": "Automated daily news collection and sentiment analysis for specific topics",
+      "category": "monitoring",
+      "complexity_level": "standard",
+      "worker_flow": "[{\"worker\": \"rss_librarian\", \"step\": 1}, {\"worker\": \"feed_fetcher\", \"step\": 2}, {\"worker\": \"content_classifier\", \"step\": 3}]",
+      "typical_use_cases": "[\"news monitoring\", \"daily updates\", \"content tracking\", \"sentiment analysis\"]",
+      "keyword_triggers": "[\"news\", \"daily\", \"monitoring\", \"updates\", \"tracking\"]",
+      "estimated_duration_ms": 120000,
+      "estimated_cost_usd": 0.15,
+      "min_cost_usd": 0.08,
+      "max_cost_usd": 0.3,
+      "is_active": 1,
+      "requires_premium": 0,
+      "last_synced_from_orchestrator": "2024-07-22 12:00:00",
+      "sync_source": "manual_seed",
+      "created_at": "2025-07-27 13:00:59",
+      "updated_at": "2025-07-27 13:00:59"
+    },
+    {
+      "template_name": "topic_research_basic",
+      "display_name": "Basic Topic Research",
+      "description": "Discover RSS sources and analyze basic content for a specific topic",
+      "category": "research",
+      "complexity_level": "basic",
+      "worker_flow": "[{\"worker\": \"topic_researcher\", \"step\": 1}, {\"worker\": \"rss_librarian\", \"step\": 2}]",
+      "typical_use_cases": "[\"topic discovery\", \"basic research\", \"source finding\"]",
+      "keyword_triggers": "[\"research\", \"sources\", \"basic\", \"topic\", \"find\"]",
+      "estimated_duration_ms": 60000,
+      "estimated_cost_usd": 0.05,
+      "min_cost_usd": 0.02,
+      "max_cost_usd": 0.1,
+      "is_active": 1,
+      "requires_premium": 0,
+      "last_synced_from_orchestrator": "2024-07-22 12:00:00",
+      "sync_source": "manual_seed",
+      "created_at": "2025-07-27 13:00:59",
+      "updated_at": "2025-07-27 13:00:59"
+    },
+    {
+      "template_name": "trend_analysis",
+      "display_name": "Trend Analysis & Forecasting",
+      "description": "Identify emerging trends and generate predictive insights from content analysis",
+      "category": "forecasting",
+      "complexity_level": "premium",
+      "worker_flow": "[{\"worker\": \"topic_researcher\", \"step\": 1}, {\"worker\": \"feed_fetcher\", \"step\": 2}, {\"worker\": \"content_classifier\", \"step\": 3}, {\"worker\": \"report_builder\", \"step\": 4}]",
+      "typical_use_cases": "[\"trend analysis\", \"forecasting\", \"predictive insights\", \"emerging trends\"]",
+      "keyword_triggers": "[\"trends\", \"forecasting\", \"prediction\", \"emerging\", \"future\"]",
+      "estimated_duration_ms": 240000,
+      "estimated_cost_usd": 0.8,
+      "min_cost_usd": 0.4,
+      "max_cost_usd": 1.5,
+      "is_active": 1,
+      "requires_premium": 1,
+      "last_synced_from_orchestrator": "2024-07-22 12:00:00",
+      "sync_source": "manual_seed",
+      "created_at": "2025-07-27 13:00:59",
+      "updated_at": "2025-07-27 13:00:59"
+    }
+  ],
+  "count": 5,
+  "last_sync": "2024-07-22 12:00:00"
+},
+  "communications":
+{
+  "error": "Valid X-API-Key required",
+  "status": "unauthorized"
+},
+  "sample_communication_analysis":
+{
+  "analysis": {
+    "intent_detected": "request_report",
+    "sentiment_score": 0.5,
+    "urgency_level": "high",
+    "confidence_score": 0.9,
+    "requires_human_attention": true
+  }
+},
+  "sample_template_recommendation":
+{
+  "error": "Client not found",
+  "status": "bad_request"
+},
+  "sample_client_lookup":
+{
+  "client": null,
+  "exists": false
+}}

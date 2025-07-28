@@ -1,0 +1,237 @@
+🏭 AI Factory Worker Performance Data Collection
+==============================================
+
+🔑 KEY ACCOUNT MANAGER
+=====================
+Health Check:
+
+Admin Stats:
+
+Capabilities:
+
+----------------------------------------
+🎭 ORCHESTRATOR
+===============
+Health Check:
+
+Admin Stats:
+
+Admin Performance:
+
+Admin Costs:
+
+Pipeline Health:
+
+----------------------------------------
+🎯 TOPIC RESEARCHER
+===================
+Health Check:
+
+Admin Stats:
+
+Admin Analytics:
+
+Admin Performance:
+
+Capabilities:
+
+----------------------------------------
+📚 RSS LIBRARIAN
+================
+Health Check:
+
+Admin Stats:
+
+Capabilities:
+
+----------------------------------------
+📡 FEED FETCHER
+===============
+Health Check:
+
+Admin Stats:
+
+Capabilities:
+
+----------------------------------------
+🧠 CONTENT CLASSIFIER
+=====================
+Health Check:
+
+Admin Stats:
+
+Admin Performance:
+
+Capabilities:
+
+----------------------------------------
+📊 REPORT BUILDER
+=================
+Health Check:
+
+Admin Stats:
+
+Capabilities:
+
+----------------------------------------
+
+🔍 COMPACT DATA COLLECTION FOR WORKER GRID
+===========================================
+{
+  "workers": {
+    "key_account_manager": {
+      "health":
+{
+  "status": "healthy",
+  "database": "connected",
+  "cache": "operational",
+  "total_clients": 7,
+  "active_templates": 5,
+  "ai_integration": "configured",
+  "orchestrator_binding": "configured",
+  "timestamp": "2025-07-28T17:05:18.046Z"
+},
+      "admin_stats":
+{
+  "clients": {
+    "total_clients": 7,
+    "active_clients": 3,
+    "trial_clients": 4,
+    "avg_budget": 578.5714285714286,
+    "total_used_budget": 673.5
+  },
+  "communications": {
+    "total_communications": 7,
+    "processed_communications": 0,
+    "needs_attention": 3,
+    "avg_sentiment": 0.5
+  },
+  "generated_at": "2025-07-28T17:05:18.174Z",
+  "generated_by": "bitware_admin_dashboard"
+}    },
+    "orchestrator": {
+      "health":
+{"status":"healthy","database":"connected","timestamp":"2025-07-28T17:05:18.293Z"},
+      "admin_stats":
+{"message":"Admin endpoints placeholder"},
+      "admin_performance":
+{"message":"Admin endpoints placeholder"}    },
+    "topic_researcher": {
+      "health":
+{"status":"healthy","database":"connected","total_sessions":83,"openai_configured":true,"cache_available":true,"timestamp":"2025-07-28T17:05:18.632Z"},
+      "admin_stats":
+{"total_sessions":83,"completed_sessions":83,"active_sessions":0,"failed_sessions":0,"avg_sources_found":3.36144578313253,"avg_quality_sources":3.3012048192771086,"top_topics":[{"topic":"Moon Landing","research_count":9},{"topic":"Měřící přístroje","research_count":8},{"topic":"technology","research_count":6},{"topic":"AI safety","research_count":5},{"topic":"test","research_count":5},{"topic":"machine learning optimization","research_count":4},{"topic":"artificial intelligence","research_count":3},{"topic":"news","research_count":3},{"topic":"verification test","research_count":3},{"topic":"AI & ML (machine learning)","research_count":2}]}    },
+    "rss_librarian": {
+      "health":
+{"status":"healthy","database":"connected","total_sources":31,"cache_available":true,"timestamp":"2025-07-28T17:05:18.889Z"},
+      "admin_stats":
+{"status":"ok","stats":{"total_sources":32,"by_topic":[{"topic":"technology","count":5},{"topic":"science","count":4},{"topic":"climate","count":4},{"topic":"ai","count":4},{"topic":"space","count":3},{"topic":"gaming","count":3},{"topic":"crypto","count":3},{"topic":"business","count":3},{"topic":"health","count":2},{"topic":"test","count":1}],"by_quality":[{"quality_tier":"high","count":9},{"quality_tier":"low","count":1},{"quality_tier":"medium","count":22}],"timestamp":"2025-07-28T17:05:19.069Z"}}    },
+    "feed_fetcher": {
+      "health":
+{
+  "status": "healthy",
+  "database": "connected",
+  "total_jobs": 6,
+  "timestamp": "2025-07-28T17:05:19.185Z"
+},
+      "admin_stats":
+{
+  "total_jobs": 22,
+  "completed_jobs": 6,
+  "active_jobs": 16,
+  "failed_jobs": 0,
+  "avg_articles_found": 1.1818181818181819,
+  "avg_articles_stored": 0.5909090909090909,
+  "avg_duration_ms": 1335.6666666666667,
+  "total_articles": 10,
+  "unique_feeds": 2,
+  "unique_sources": 2,
+  "avg_word_count": 26.1
+}    },
+    "content_classifier": {
+      "health":
+{
+  "status": "healthy",
+  "database": "connected",
+  "total_jobs": 10,
+  "openai_configured": true,
+  "timestamp": "2025-07-28T17:05:19.443Z"
+},
+      "admin_stats":
+{
+  "total_jobs": 10,
+  "completed_jobs": 10,
+  "processing_jobs": 0,
+  "failed_jobs": 0,
+  "avg_articles_per_job": 5.1,
+  "overall_avg_relevance": 0.7505,
+  "total_cost_usd": 0.14063315,
+  "top_topics": [
+    {
+      "target_topic": "artificial intelligence",
+      "analysis_count": 7,
+      "avg_relevance": 0.7135714285714286
+    },
+    {
+      "target_topic": "testing",
+      "analysis_count": 1,
+      "avg_relevance": 0.85
+    },
+    {
+      "target_topic": "quantum computing",
+      "analysis_count": 1,
+      "avg_relevance": 0.75
+    },
+    {
+      "target_topic": "climate change",
+      "analysis_count": 1,
+      "avg_relevance": 0.91
+    }
+  ]
+}    },
+    "report_builder": {
+      "health":
+{
+  "status": "healthy",
+  "database": "connected",
+  "total_reports": 37,
+  "openai_configured": true,
+  "timestamp": "2025-07-28T17:05:19.696Z"
+},
+      "admin_stats":
+{
+  "total_jobs": 37,
+  "completed_jobs": 7,
+  "processing_jobs": 0,
+  "failed_jobs": 30,
+  "avg_articles_per_report": 1,
+  "avg_generation_time": 13536.333333333334,
+  "total_reports_generated": 7,
+  "report_types_breakdown": [
+    {
+      "report_type": "executive_summary",
+      "count": 3
+    },
+    {
+      "report_type": "trend_analysis",
+      "count": 1
+    },
+    {
+      "report_type": "technical_deep_dive",
+      "count": 1
+    },
+    {
+      "report_type": "daily_briefing",
+      "count": 1
+    },
+    {
+      "report_type": "competitive_intelligence",
+      "count": 1
+    }
+  ]
+}    }
+  }
+}
+
+✅ Data collection complete!
+Use this JSON structure to build the Worker Performance Grid component.

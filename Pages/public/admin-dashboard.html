@@ -115,14 +115,14 @@
                 
                 <div class="client-filters" id="client-filters" style="display: none;">
                     <div class="filter-row">
-                        <select id="status-filter" onchange="adminDashboard.clientGrid.applyFilters()">
+                        <select id="status-filter" onchange="adminDashboard.clientGrid.applyFiltersFromUI()">
                             <option value="">All Status</option>
                             <option value="active">Active</option>
                             <option value="trial">Trial</option>
                             <option value="suspended">Suspended</option>
                         </select>
                         
-                        <select id="tier-filter" onchange="adminDashboard.clientGrid.applyFilters()">
+                        <select id="tier-filter" onchange="adminDashboard.clientGrid.applyFiltersFromUI()">
                             <option value="">All Tiers</option>
                             <option value="basic">Basic</option>
                             <option value="standard">Standard</option>
@@ -131,7 +131,7 @@
                         </select>
                         
                         <input type="text" id="search-filter" placeholder="Search clients..." 
-                               onkeyup="adminDashboard.clientGrid.applyFilters()">
+                               onkeyup="adminDashboard.clientGrid.applyFiltersFromUI()">
                     </div>
                 </div>
                 
@@ -139,7 +139,7 @@
                     <div class="loading-placeholder">Loading client data...</div>
                 </div>
             </section>
-
+            
             <!-- Financial Dashboard Component -->
             <section class="financial-dashboard-section card">
                 <div class="card-header">
