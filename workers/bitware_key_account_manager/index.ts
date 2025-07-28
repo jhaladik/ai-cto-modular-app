@@ -57,6 +57,8 @@ interface TemplateRecommendation {
   estimated_duration_ms: number;
 }
 
+
+
 // ==================== HELPER FUNCTIONS ====================
 
 function jsonResponse(data: any, options?: { headers?: Record<string, string>; status?: number }) {
@@ -386,6 +388,118 @@ async function syncTemplatesFromOrchestrator(env: Env): Promise<void> {
   }
 }
 
+async function handleValidateUser(request: Request, env: Env, corsHeaders: any): Promise<Response> {
+  try {
+    // Verify worker authentication (same pattern as existing endpoints)
+    const workerAuth = validateWorkerAuth(request);
+    if (!workerAuth.valid) {
+      return errorResponse('Unauthorized - Worker authentication required', 401, corsHeaders);
+    }
+
+    const { email, password, expected_role } = await request.json();
+
+    // Query user from unified users table
+    const userQuery = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(
+      'SELECT * FROM users WHERE email = ? AND status = "active"'
+    ).bind(email).first();
+
+    if (!userQuery) {
+      return jsonResponse({ error: 'User not found' }, { 
+        headers: corsHeaders, 
+        status: 401 
+      });
+    }
+
+    // Simple password check (use bcrypt in production)
+    if (userQuery.password_hash !== password) {
+      return jsonResponse({ error: 'Invalid password' }, { 
+        headers: corsHeaders, 
+        status: 401 
+      });
+    }
+
+    // Check role matches expected
+    if (expected_role && userQuery.role !== expected_role) {
+      return jsonResponse({ error: 'Invalid role' }, { 
+        headers: corsHeaders, 
+        status: 401 
+      });
+    }
+
+    // Get client profile for client users
+    let client_profile = null;
+    if (userQuery.role === 'client' && userQuery.client_id) {
+      client_profile = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(
+        'SELECT * FROM clients WHERE client_id = ?'
+      ).bind(userQuery.client_id).first();
+    }
+
+    // Update last login
+    await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?'
+    ).bind(userQuery.user_id).run();
+
+    return jsonResponse({
+      success: true,
+      user: {
+        user_id: userQuery.user_id,
+        email: userQuery.email,
+        role: userQuery.role,
+        full_name: userQuery.full_name,
+        status: userQuery.status,
+        department: userQuery.department,
+        client_id: userQuery.client_id
+      },
+      client_profile: client_profile
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('User validation error:', error);
+    return jsonResponse({ error: 'Authentication failed' }, { 
+      headers: corsHeaders, 
+      status: 500 
+    });
+  }
+}
+
+async function handleSessionRegister(request: Request, env: Env, corsHeaders: any): Promise<Response> {
+  try {
+    // Verify worker authentication
+    const workerAuth = validateWorkerAuth(request);
+    if (!workerAuth.valid) {
+      return errorResponse('Unauthorized - Worker authentication required', 401, corsHeaders);
+    }
+
+    const { sessionToken, userId, clientId, loginMethod, expiresAt } = await request.json();
+
+    // Store session in user_sessions table
+    await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
+      INSERT OR REPLACE INTO user_sessions 
+      (session_token, user_id, expires_at, login_method, client_context)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      sessionToken,
+      userId,
+      expiresAt,
+      loginMethod || 'dashboard',
+      JSON.stringify({ clientId: clientId || null })
+    ).run();
+
+    return jsonResponse({
+      success: true,
+      message: 'Session registered'
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Session registration error:', error);
+    return jsonResponse({ error: 'Session registration failed' }, { 
+      headers: corsHeaders, 
+      status: 500 
+    });
+  }
+}
+
+
 // ==================== MAIN HANDLER ====================
 
 export default {
@@ -493,6 +607,16 @@ export default {
             timestamp: new Date().toISOString()
           }, { status: 500 });
         }
+      }
+
+      // ==================== AUTHENTICATION ENDPOINTS ====================
+
+      if (path === '/auth/validate-user' && method === 'POST') {
+        return handleValidateUser(request, env, corsHeaders);
+      }
+
+      if (path === '/session/register' && method === 'POST') {
+        return handleSessionRegister(request, env, corsHeaders);
       }
 
       // ==================== ADMIN ENDPOINTS (WORKER AUTH) ====================

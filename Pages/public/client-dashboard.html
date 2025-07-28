@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Factory - Client Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .company-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .subscription-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            padding: 0.5rem 0;
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 8px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .btn {
+            background: #4facfe;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin: 0.25rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #3d8bfe;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-in-progress { background: #cce7ff; color: #004085; }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 1rem;
+            background: #f8d7da;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+
+        .recommendation {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .recommendation h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        .recommendation p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 AI Intelligence Portal</h1>
+        <div class="company-info">
+            <span id="company-name">Loading...</span>
+            <span id="subscription-tier" class="subscription-badge">Loading...</span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- Quick Actions -->
+        <div style="margin-bottom: 2rem;">
+            <button class="btn btn-primary" onclick="newRequest()">🚀 New Intelligence Request</button>
+            <button class="btn" onclick="viewReports()">📊 View Reports</button>
+            <button class="btn" onclick="contactKAM()">💬 Contact Your Account Manager</button>
+        </div>
+
+        <!-- Client Overview Cards -->
+        <div class="dashboard-grid">
+            <div class="card" id="usage-overview">
+                <div class="card-header">
+                    <div class="card-title">This Month's Usage</div>
+                </div>
+                <div id="usage-data">
+                    <div class="loading">Loading usage data...</div>
+                </div>
+            </div>
+
+            <div class="card" id="account-health">
+                <div class="card-header">
+                    <div class="card-title">Account Health</div>
+                </div>
+                <div id="health-data">
+                    <div class="loading">Loading account data...</div>
+                </div>
+            </div>
+
+            <div class="card" id="recommendations">
+                <div class="card-header">
+                    <div class="card-title">AI Recommendations</div>
+                </div>
+                <div id="recommendations-data">
+                    <div class="loading">Loading recommendations...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Requests -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Your Recent Intelligence Requests</div>
+                <button class="btn" onclick="refreshRequests()">Refresh</button>
+            </div>
+            <div class="table-container">
+                <table id="requests-table">
+                    <thead>
+                        <tr>
+                            <th>Request Type</th>
+                            <th>Topic</th>
+                            <th>Status</th>
+                            <th>Requested</th>
+                            <th>Cost</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-body">
+                        <tr>
+                            <td colspan="6" class="loading">Loading your requests...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Communications -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Recent Communications</div>
+            </div>
+            <div id="communications-list">
+                <div class="loading">Loading communications...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Client Dashboard components
+        class ClientDashboard {
+            constructor() {
+                this.client = null;
+                this.init();
+            }
+
+            async init() {
+                await this.loadClientInfo();
+                await this.loadUsageOverview();
+                await this.loadAccountHealth();
+                await this.loadRecommendations();
+                await this.loadRecentRequests();
+                await this.loadCommunications();
+                
+                // Auto-refresh every 60 seconds
+                setInterval(() => this.refresh(), 60000);
+            }
+
+            async loadClientInfo() {
+                try {
+                    const response = await fetch('/api/auth/validate', {
+                        headers: {
+                            'x-bitware-session-token': localStorage.getItem('bitware-session-token')
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    if (data.valid && data.user.role === 'client') {
+                        this.client = data.user;
+                        document.getElementById('company-name').textContent = data.user.companyName || data.user.email;
+                        document.getElementById('subscription-tier').textContent = (data.user.subscriptionTier || 'basic').toUpperCase();
+                    } else {
+                        window.location.href = '/login.html';
+                    }
+                } catch (error) {
+                    console.error('Failed to load client info:', error);
+                    window.location.href = '/login.html';
+                }
+            }
+
+            async loadUsageOverview() {
+                try {
+                    // Mock data for now - will connect to KAM API
+                    const usageData = {
+                        budget_used: 275.50,
+                        budget_total: 500.00,
+                        requests_this_month: 12,
+                        avg_cost_per_request: 22.96
+                    };
+                    
+                    const container = document.getElementById('usage-data');
+                    const usagePercent = (usageData.budget_used / usageData.budget_total) * 100;
+                    
+                    container.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Budget Used</span>
+                            <span class="metric-value">$${usageData.budget_used} / $${usageData.budget_total}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${usagePercent}%"></div>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Requests This Month</span>
+                            <span class="metric-value">${usageData.requests_this_month}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Avg Cost per Request</span>
+                            <span class="metric-value">$${usageData.avg_cost_per_request}</span>
+                        </div>
+                    `;
+                } catch (error) {
+                    document.getElementById('usage-data').innerHTML = '<div class="error">Failed to load usage data</div>';
+                }
+            }
+
+            async loadAccountHealth() {
+                try {
+                    // Mock data for now
+                    const healthData = {
+                        satisfaction_score: 4.2,
+                        response_time_avg: 45,
+                        success_rate: 94,
+                        account_manager: 'Sarah Johnson'
+                    };
+                    
+                    const container = document.getElementById('health-data');
+                    container.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Satisfaction Score</span>
+                            <span class="metric-value">${healthData.satisfaction_score}/5.0 ⭐</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Avg Response Time</span>
+                            <span class="metric-value">${healthData.response_time_avg} minutes</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Success Rate</span>
+                            <span class="metric-value">${healthData.success_rate}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Account Manager</span>
+                            <span class="metric-value">${healthData.account_manager}</span>
+                        </div>
+                    `;
+                } catch (error) {
+                    document.getElementById('health-data').innerHTML = '<div class="error">Failed to load account data</div>';
+                }
+            }
+
+            async loadRecommendations() {
+                try {
+                    // Mock recommendations
+                    const recommendations = [
+                        {
+                            title: "Weekly AI Market Digest",
+                            description: "Based on your recent requests, we can provide automated weekly summaries of AI market developments."
+                        }
+                    ];
+                    
+                    const container = document.getElementById('recommendations-data');
+                    container.innerHTML = '';
+                    
+                    recommendations.forEach(rec => {
+                        const div = document.createElement('div');
+                        div.className = 'recommendation';
+                        div.innerHTML = `
+                            <h4>${rec.title}</h4>
+                            <p>${rec.description}</p>
+                        `;
+                        container.appendChild(div);
+                    });
+                } catch (error) {
+                    document.getElementById('recommendations-data').innerHTML = '<div class="error">Failed to load recommendations</div>';
+                }
+            }
+
+            async loadRecentRequests() {
+                try {
+                    // Mock data for now
+                    const requests = [
+                        {
+                            type: 'Competitive Analysis',
+                            topic: 'AI Market Trends',
+                            status: 'in-progress',
+                            requested: '2 hours ago',
+                            cost: '$25.00',
+                            id: 'req_001'
+                        },
+                        {
+                            type: 'Market Research',
+                            topic: 'B2B SaaS Funding Landscape',
+                            status: 'completed',
+                            requested: '1 day ago',
+                            cost: '$18.50',
+                            id: 'req_002'
+                        },
+                        {
+                            type: 'Industry Analysis',
+                            topic: 'Cloud Infrastructure Trends',
+                            status: 'completed',
+                            requested: '3 days ago',
+                            cost: '$22.00',
+                            id: 'req_003'
+                        }
+                    ];
+                    
+                    const tbody = document.getElementById('requests-body');
+                    tbody.innerHTML = '';
+                    
+                    requests.forEach(request => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${request.type}</td>
+                            <td>${request.topic}</td>
+                            <td><span class="status-badge status-${request.status}">${request.status.replace('-', ' ')}</span></td>
+                            <td>${request.requested}</td>
+                            <td>${request.cost}</td>
+                            <td>
+                                ${request.status === 'completed' ? 
+                                    `<button class="btn" onclick="downloadReport('${request.id}')">Download</button>` : 
+                                    `<button class="btn btn-secondary" onclick="viewStatus('${request.id}')">View Status</button>`
+                                }
+                            </td>
+                        `;
+                    });
+                } catch (error) {
+                    document.getElementById('requests-body').innerHTML = '<tr><td colspan="6" class="error">Failed to load requests</td></tr>';
+                }
+            }
+
+            async loadCommunications() {
+                try {
+                    // Mock communications
+                    const communications = [
+                        {
+                            type: 'email',
+                            subject: 'Your AI Market Analysis is Ready',
+                            preview: 'Hi! Your competitive analysis on AI market trends has been completed...',
+                            timestamp: '2 hours ago',
+                            unread: false
+                        },
+                        {
+                            type: 'system',
+                            subject: 'Budget Alert: 50% Used',
+                            preview: 'You have used 50% of your monthly budget. Consider upgrading...',
+                            timestamp: '1 day ago',
+                            unread: true
+                        }
+                    ];
+                    
+                    const container = document.getElementById('communications-list');
+                    container.innerHTML = '';
+                    
+                    communications.forEach(comm => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'padding: 1rem; border-bottom: 1px solid #e9ecef; cursor: pointer;';
+                        if (comm.unread) div.style.background = '#f8f9ff';
+                        
+                        div.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <strong>${comm.subject}</strong>
+                                <span style="font-size: 0.8rem; color: #666;">${comm.timestamp}</span>
+                            </div>
+                            <div style="color: #666; font-size: 0.9rem;">${comm.preview}</div>
+                        `;
+                        
+                        div.onclick = () => viewCommunication(comm.subject);
+                        container.appendChild(div);
+                    });
+                } catch (error) {
+                    document.getElementById('communications-list').innerHTML = '<div class="error">Failed to load communications</div>';
+                }
+            }
+
+            async refresh() {
+                await this.loadUsageOverview();
+                await this.loadAccountHealth();
+                await this.loadRecentRequests();
+            }
+        }
+
+        // Global functions
+        function logout() {
+            localStorage.removeItem('bitware-session-token');
+            localStorage.removeItem('bitware-user-info');
+            window.location.href = '/login.html';
+        }
+
+        function newRequest() {
+            alert('New Intelligence Request\n\nThis will open the request form where you can specify:\n- Request type (competitive analysis, market research, etc.)\n- Topic and requirements\n- Deadline and budget');
+        }
+
+        function viewReports() {
+            alert('View Reports\n\nThis will show your report library with all completed intelligence reports.');
+        }
+
+        function contactKAM() {
+            alert('Contact Account Manager\n\nThis will open a chat/email interface to communicate with your dedicated account manager.');
+        }
+
+        function refreshRequests() {
+            dashboard.loadRecentRequests();
+        }
+
+        function downloadReport(id) {
+            alert(`Downloading report ${id}\n\nThis will download the completed intelligence report.`);
+        }
+
+        function viewStatus(id) {
+            alert(`Viewing status for request ${id}\n\nThis will show detailed progress and estimated completion time.`);
+        }
+
+        function viewCommunication(subject) {
+            alert(`Viewing communication: ${subject}\n\nThis will open the full communication thread.`);
+        }
+
+        // Initialize dashboard
+        const dashboard = new ClientDashboard();
+    </script>
+</body>
+</html>

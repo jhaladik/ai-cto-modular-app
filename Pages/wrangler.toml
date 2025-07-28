@@ -7,6 +7,10 @@ binding = "BITWARE_SESSION_STORE"
 id = "4581e54c54184e3686b3e70f2f61936b"
 
 [[services]]
+binding = "KEY_ACCOUNT_MANAGER"
+service = "bitware-key-account-manager"
+
+[[services]]
 binding = "ORCHESTRATOR"
 service = "bitware-orchestrator"
 
@@ -31,6 +35,7 @@ binding = "REPORT_BUILDER"
 service = "bitware-report-builder"
 
 [vars]
+KEY_ACCOUNT_MANAGER_URL = "https://bitware-key-account-manager.jhaladik.workers.dev"
 ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"
 TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.jhaladik.workers.dev"
 RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"

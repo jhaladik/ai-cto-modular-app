@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Factory - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-warning { background: #ffc107; }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            padding: 0.5rem 0;
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin: 0.25rem;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 1rem;
+            background: #f8d7da;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏭 AI Factory - Admin Dashboard</h1>
+        <div class="user-info">
+            <span id="user-name">Loading...</span>
+            <span id="user-role" class="status-indicator"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- System Status Cards -->
+        <div class="dashboard-grid">
+            <div class="card" id="system-status">
+                <div class="card-header">
+                    <div class="card-title">System Status</div>
+                </div>
+                <div id="worker-status">
+                    <div class="loading">Loading system status...</div>
+                </div>
+            </div>
+
+            <div class="card" id="client-overview">
+                <div class="card-header">
+                    <div class="card-title">Client Overview</div>
+                </div>
+                <div id="client-metrics">
+                    <div class="loading">Loading client data...</div>
+                </div>
+            </div>
+
+            <div class="card" id="activity-summary">
+                <div class="card-header">
+                    <div class="card-title">Activity Summary</div>
+                </div>
+                <div id="activity-data">
+                    <div class="loading">Loading activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Recent Client Requests</div>
+                <button class="btn" onclick="refreshRequests()">Refresh</button>
+            </div>
+            <div class="table-container">
+                <table id="requests-table">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Request Type</th>
+                            <th>Topic</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-body">
+                        <tr>
+                            <td colspan="6" class="loading">Loading requests...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- User Management Section (Admin Only) -->
+        <div class="card" id="user-management" style="display: none;">
+            <div class="card-header">
+                <div class="card-title">User Management</div>
+                <button class="btn" onclick="showAddUser()">Add User</button>
+            </div>
+            <div class="table-container">
+                <table id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-body">
+                        <tr>
+                            <td colspan="5" class="loading">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dashboard components
+        class AdminDashboard {
+            constructor() {
+                this.user = null;
+                this.init();
+            }
+
+            async init() {
+                await this.loadUserInfo();
+                await this.loadSystemStatus();
+                await this.loadClientOverview();
+                await this.loadActivitySummary();
+                await this.loadRecentRequests();
+                
+                if (this.user?.role === 'admin') {
+                    await this.loadUserManagement();
+                }
+                
+                // Auto-refresh every 30 seconds
+                setInterval(() => this.refresh(), 30000);
+            }
+
+            async loadUserInfo() {
+                try {
+                    const response = await fetch('/api/auth/validate', {
+                        headers: {
+                            'x-bitware-session-token': localStorage.getItem('bitware-session-token')
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    if (data.valid) {
+                        this.user = data.user;
+                        document.getElementById('user-name').textContent = `${data.user.full_name || data.user.email} (${data.user.role})`;
+                        
+                        // Set role indicator
+                        const roleIndicator = document.getElementById('user-role');
+                        roleIndicator.className = `status-indicator ${data.user.role === 'admin' ? 'status-online' : 'status-warning'}`;
+                        
+                        // Show admin-only sections
+                        if (data.user.role === 'admin') {
+                            document.getElementById('user-management').style.display = 'block';
+                        }
+                    } else {
+                        window.location.href = '/login.html';
+                    }
+                } catch (error) {
+                    console.error('Failed to load user info:', error);
+                    window.location.href = '/login.html';
+                }
+            }
+
+            async loadSystemStatus() {
+                try {
+                    const response = await fetch('/api/kam/admin/system-status', {
+                        headers: {
+                            'x-bitware-session-token': localStorage.getItem('bitware-session-token')
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    const container = document.getElementById('worker-status');
+                    container.innerHTML = '';
+                    
+                    // Mock worker status for now
+                    const workers = [
+                        { name: 'Orchestrator', status: 'online' },
+                        { name: 'Topic Researcher', status: 'online' },
+                        { name: 'Content Classifier', status: 'online' },
+                        { name: 'KAM Worker', status: 'online' }
+                    ];
+                    
+                    workers.forEach(worker => {
+                        const div = document.createElement('div');
+                        div.className = 'metric';
+                        div.innerHTML = `
+                            <span class="metric-label">
+                                <span class="status-indicator status-${worker.status}"></span>
+                                ${worker.name}
+                            </span>
+                            <span class="metric-value">${worker.status}</span>
+                        `;
+                        container.appendChild(div);
+                    });
+                } catch (error) {
+                    document.getElementById('worker-status').innerHTML = '<div class="error">Failed to load system status</div>';
+                }
+            }
+
+            async loadClientOverview() {
+                try {
+                    const response = await fetch('/api/kam/admin/client-overview', {
+                        headers: {
+                            'x-bitware-session-token': localStorage.getItem('bitware-session-token')
+                        }
+                    });
+                    
+                    // Mock data for now
+                    const metrics = [
+                        { label: 'Total Clients', value: '12' },
+                        { label: 'Active This Month', value: '8' },
+                        { label: 'Revenue (MTD)', value: '$2,450' },
+                        { label: 'Avg Satisfaction', value: '4.2/5' }
+                    ];
+                    
+                    const container = document.getElementById('client-metrics');
+                    container.innerHTML = '';
+                    
+                    metrics.forEach(metric => {
+                        const div = document.createElement('div');
+                        div.className = 'metric';
+                        div.innerHTML = `
+                            <span class="metric-label">${metric.label}</span>
+                            <span class="metric-value">${metric.value}</span>
+                        `;
+                        container.appendChild(div);
+                    });
+                } catch (error) {
+                    document.getElementById('client-metrics').innerHTML = '<div class="error">Failed to load client data</div>';
+                }
+            }
+
+            async loadActivitySummary() {
+                try {
+                    // Mock data for now
+                    const metrics = [
+                        { label: 'Requests Today', value: '15' },
+                        { label: 'Avg Response Time', value: '45 min' },
+                        { label: 'Success Rate', value: '94%' },
+                        { label: 'Queue Length', value: '3' }
+                    ];
+                    
+                    const container = document.getElementById('activity-data');
+                    container.innerHTML = '';
+                    
+                    metrics.forEach(metric => {
+                        const div = document.createElement('div');
+                        div.className = 'metric';
+                        div.innerHTML = `
+                            <span class="metric-label">${metric.label}</span>
+                            <span class="metric-value">${metric.value}</span>
+                        `;
+                        container.appendChild(div);
+                    });
+                } catch (error) {
+                    document.getElementById('activity-data').innerHTML = '<div class="error">Failed to load activity data</div>';
+                }
+            }
+
+            async loadRecentRequests() {
+                try {
+                    // Mock data for now
+                    const requests = [
+                        {
+                            client: 'Acme Corp',
+                            type: 'Competitive Analysis',
+                            topic: 'AI Market Trends',
+                            status: 'In Progress',
+                            created: '2 hours ago'
+                        },
+                        {
+                            client: 'StartupXYZ',
+                            type: 'Market Research',
+                            topic: 'B2B SaaS Funding',
+                            status: 'Completed',
+                            created: '5 hours ago'
+                        },
+                        {
+                            client: 'Global Mfg',
+                            type: 'Regulatory Tracking',
+                            topic: 'EU Sustainability',
+                            status: 'Pending',
+                            created: '1 day ago'
+                        }
+                    ];
+                    
+                    const tbody = document.getElementById('requests-body');
+                    tbody.innerHTML = '';
+                    
+                    requests.forEach(request => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${request.client}</td>
+                            <td>${request.type}</td>
+                            <td>${request.topic}</td>
+                            <td><span class="status-indicator ${request.status === 'Completed' ? 'status-online' : request.status === 'In Progress' ? 'status-warning' : 'status-offline'}"></span>${request.status}</td>
+                            <td>${request.created}</td>
+                            <td>
+                                <button class="btn" onclick="viewRequest('${request.topic}')">View</button>
+                                ${request.status === 'Pending' ? '<button class="btn btn-secondary">Cancel</button>' : ''}
+                            </td>
+                        `;
+                    });
+                } catch (error) {
+                    document.getElementById('requests-body').innerHTML = '<tr><td colspan="6" class="error">Failed to load requests</td></tr>';
+                }
+            }
+
+            async loadUserManagement() {
+                try {
+                    // Mock data for now
+                    const users = [
+                        { email: 'admin@company.com', role: 'admin', status: 'active', lastLogin: '2 hours ago' },
+                        { email: 'user@company.com', role: 'user', status: 'active', lastLogin: '1 day ago' },
+                        { email: 'ceo@acme-corp.com', role: 'client', status: 'active', lastLogin: '30 minutes ago' },
+                        { email: 'founder@startupxyz.com', role: 'client', status: 'active', lastLogin: '3 hours ago' }
+                    ];
+                    
+                    const tbody = document.getElementById('users-body');
+                    tbody.innerHTML = '';
+                    
+                    users.forEach(user => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${user.email}</td>
+                            <td>${user.role}</td>
+                            <td><span class="status-indicator status-${user.status === 'active' ? 'online' : 'offline'}"></span>${user.status}</td>
+                            <td>${user.lastLogin}</td>
+                            <td>
+                                <button class="btn" onclick="editUser('${user.email}')">Edit</button>
+                                ${user.role !== 'admin' ? '<button class="btn btn-secondary">Suspend</button>' : ''}
+                            </td>
+                        `;
+                    });
+                } catch (error) {
+                    document.getElementById('users-body').innerHTML = '<tr><td colspan="5" class="error">Failed to load users</td></tr>';
+                }
+            }
+
+            async refresh() {
+                await this.loadSystemStatus();
+                await this.loadClientOverview();
+                await this.loadActivitySummary();
+                await this.loadRecentRequests();
+            }
+        }
+
+        // Global functions
+        function logout() {
+            localStorage.removeItem('bitware-session-token');
+            localStorage.removeItem('bitware-user-info');
+            window.location.href = '/login.html';
+        }
+
+        function refreshRequests() {
+            dashboard.loadRecentRequests();
+        }
+
+        function viewRequest(topic) {
+            alert(`Viewing request: ${topic}\n\nThis will open the request details page.`);
+        }
+
+        function showAddUser() {
+            alert('Add User functionality will be implemented here.');
+        }
+
+        function editUser(email) {
+            alert(`Edit user: ${email}\n\nThis will open the user edit form.`);
+        }
+
+        // Initialize dashboard
+        const dashboard = new AdminDashboard();
+    </script>
+</body>
+</html>

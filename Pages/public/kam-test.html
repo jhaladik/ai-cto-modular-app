@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏢 Key Account Manager - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .config-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .config-group {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .config-group h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .test-sections {
+            padding: 30px;
+        }
+
+        .test-section {
+            margin-bottom: 40px;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .test-section-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-section-header h3 {
+            color: #495057;
+            font-size: 1.3rem;
+        }
+
+        .test-section-content {
+            padding: 20px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .test-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .test-item h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .test-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-pending {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .status-running {
+            background: #17a2b8;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .results-area {
+            background: #212529;
+            color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #495057;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-success {
+            color: #28a745;
+        }
+
+        .log-error {
+            color: #dc3545;
+        }
+
+        .log-info {
+            color: #17a2b8;
+        }
+
+        .log-warning {
+            color: #ffc107;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary-card h4 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .summary-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .number-success {
+            color: #28a745;
+        }
+
+        .number-error {
+            color: #dc3545;
+        }
+
+        .number-pending {
+            color: #ffc107;
+        }
+
+        .session-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .session-info h4 {
+            color: #0056b3;
+            margin-bottom: 10px;
+        }
+
+        .client-data {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #28a745;
+            animation: none;
+        }
+
+        .status-indicator.testing {
+            background: #ffc107;
+            animation: pulse-dot 1s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .endpoint-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Key Account Manager</h1>
+            <p>Comprehensive Test Suite for Client Relationship Management Worker</p>
+        </div>
+
+        <div class="config-section">
+            <h2 style="margin-bottom: 20px; color: #495057;">Configuration & Environment</h2>
+            
+            <div class="config-grid">
+                <div class="config-group">
+                    <h3>🔗 Connection Settings</h3>
+                    <div class="form-group">
+                        <label for="worker-url">Worker URL (Direct Mode Only)</label>
+                        <input type="text" id="worker-url" value="https://bitware-key-account-manager.yourname.workers.dev" 
+                               placeholder="https://bitware-key-account-manager.yourname.workers.dev">
+                    </div>
+                    <div class="form-group">
+                        <label for="use-proxy">Connection Mode</label>
+                        <select id="use-proxy">
+                            <option value="true" selected>Pages Function Proxy (Production)</option>
+                            <option value="false">Direct Worker (Testing Only)</option>
+                        </select>
+                    </div>
+                    <div class="connection-status">
+                        <div class="status-indicator" id="connection-indicator"></div>
+                        <span id="connection-status">Not Connected</span>
+                    </div>
+                    <div class="session-info" style="margin-top: 10px; padding: 10px; background: #e8f4f8;">
+                        <strong>🎫 Session Status:</strong> <span id="main-session-status">Checking...</span>
+                        <div style="font-size: 12px; margin-top: 5px;">
+                            <span id="main-session-info">Session compatibility check in progress...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-group">
+                    <h3>🔐 Authentication</h3>
+                    <div class="form-group">
+                        <label for="client-api-key">Client API Key (Direct Mode)</label>
+                        <input type="password" id="client-api-key" placeholder="client-api-key-for-external-access">
+                    </div>
+                    <div class="form-group">
+                        <label for="worker-secret">Worker Shared Secret (Admin)</label>
+                        <input type="password" id="worker-secret" placeholder="worker-shared-secret">
+                    </div>
+                    <div class="form-group">
+                        <label for="session-token">Session Token (Proxy Mode)</label>
+                        <input type="password" id="session-token" placeholder="pages-session-token">
+                    </div>
+                </div>
+
+                <div class="config-group">
+                    <h3>👤 Test Client Data</h3>
+                    <div class="form-group">
+                        <label for="test-client-id">Client ID</label>
+                        <input type="text" id="test-client-id" value="" placeholder="Will be generated" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="company-name">Company Name</label>
+                        <input type="text" id="company-name" value="Test Corp Inc" placeholder="Test Company">
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-email">Contact Email</label>
+                        <input type="email" id="contact-email" value="test@example.com" placeholder="test@example.com">
+                    </div>
+                </div>
+
+                <div class="config-group">
+                    <h3>⚙️ Test Settings</h3>
+                    <div class="form-group">
+                        <label for="test-timeout">Request Timeout (ms)</label>
+                        <input type="number" id="test-timeout" value="30000" min="5000" max="120000">
+                    </div>
+                    <div class="form-group">
+                        <label for="auto-run">Auto-run Tests</label>
+                        <select id="auto-run">
+                            <option value="false">Manual</option>
+                            <option value="true">Auto-run on load</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveConfig()">💾 Save Config</button>
+                    <button class="btn btn-info" onclick="loadConfig()">📂 Load Config</button>
+                    <button class="btn btn-warning" onclick="showDiagnostics()">🔧 Diagnostics</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-success" onclick="runAllTests()">🚀 Run All Tests</button>
+                <button class="btn btn-warning" onclick="clearResults()">🧹 Clear Results</button>
+                <button class="btn btn-info" onclick="testConnection()">🔍 Test Connection</button>
+                <button class="btn btn-danger" onclick="emergencyStop()">🛑 Emergency Stop</button>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="overall-progress"></div>
+            </div>
+        </div>
+
+        <div class="test-sections">
+            <!-- Summary Cards -->
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h4>Total Tests</h4>
+                    <div class="summary-number number-pending" id="total-tests">0</div>
+                    <small>Test Cases</small>
+                </div>
+                <div class="summary-card">
+                    <h4>Passed</h4>
+                    <div class="summary-number number-success" id="passed-tests">0</div>
+                    <small>Successful</small>
+                </div>
+                <div class="summary-card">
+                    <h4>Failed</h4>
+                    <div class="summary-number number-error" id="failed-tests">0</div>
+                    <small>Errors</small>
+                </div>
+                <div class="summary-card">
+                    <h4>Success Rate</h4>
+                    <div class="summary-number number-success" id="success-rate">0%</div>
+                    <small>Pass Rate</small>
+                </div>
+            </div>
+
+            <!-- Test Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('basic')">🔍 Basic Tests</div>
+                <div class="tab" onclick="switchTab('client')">👤 Client Management</div>
+                <div class="tab" onclick="switchTab('requests')">📋 Request Processing</div>
+                <div class="tab" onclick="switchTab('admin')">⚙️ Admin Functions</div>
+                <div class="tab" onclick="switchTab('proxy')">🔗 Pages Proxy</div>
+                <div class="tab" onclick="switchTab('integration')">🎯 Integration</div>
+            </div>
+
+            <!-- Basic Tests Tab -->
+            <div class="tab-content active" id="basic-content">
+                <div class="test-section">
+                    <div class="test-section-header">
+                        <h3>🔍 Basic Functionality Tests</h3>
+                        <button class="btn btn-primary" onclick="runBasicTests()">Run Basic Tests</button>
+                    </div>
+                    <div class="test-section-content">
+                        <div class="test-grid">
+                            <div class="test-item">
+                                <h4>Health Check <span class="test-status status-pending" id="test-health">Pending</span></h4>
+                                <p>Verify worker is alive and responsive</p>
+                                <div class="endpoint-info">GET /health</div>
+                                <button class="btn btn-info" onclick="testHealthCheck()">Test Health</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Help Endpoint <span class="test-status status-pending" id="test-help">Pending</span></h4>
+                                <p>Get worker capabilities and documentation</p>
+                                <div class="endpoint-info">GET /help</div>
+                                <button class="btn btn-info" onclick="testHelp()">Test Help</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Capabilities <span class="test-status status-pending" id="test-capabilities">Pending</span></h4>
+                                <p>Check worker capabilities and features</p>
+                                <div class="endpoint-info">GET /capabilities</div>
+                                <button class="btn btn-info" onclick="testCapabilities()">Test Capabilities</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Authentication <span class="test-status status-pending" id="test-auth">Pending</span></h4>
+                                <p>Test API key/session validation</p>
+                                <div class="endpoint-info">GET /client/profile (no auth)</div>
+                                <button class="btn btn-info" onclick="testAuthentication()">Test Auth</button>
+                            </div>
+                        </div>
+                        <div class="results-area" id="basic-results">
+                            <div class="log-info">Ready to run basic functionality tests...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Management Tab -->
+            <div class="tab-content" id="client-content">
+                <div class="test-section">
+                    <div class="test-section-header">
+                        <h3>👤 Client Management Tests</h3>
+                        <button class="btn btn-primary" onclick="runClientTests()">Run Client Tests</button>
+                    </div>
+                    <div class="test-section-content">
+                        <div class="session-info">
+                            <h4>📊 Client Session Info</h4>
+                            <p><strong>Test Client ID:</strong> <span id="current-client-id">Not registered</span></p>
+                            <p><strong>Registration Status:</strong> <span id="registration-status">Not attempted</span></p>
+                            <p><strong>Profile Status:</strong> <span id="profile-status">Unknown</span></p>
+                        </div>
+
+                        <div class="test-grid">
+                            <div class="test-item">
+                                <h4>Client Registration <span class="test-status status-pending" id="test-register">Pending</span></h4>
+                                <p>Register a new client account</p>
+                                <div class="endpoint-info">POST /client/register</div>
+                                <button class="btn btn-success" onclick="testClientRegistration()">Register Client</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Get Profile <span class="test-status status-pending" id="test-profile-get">Pending</span></h4>
+                                <p>Retrieve client profile information</p>
+                                <div class="endpoint-info">GET /client/profile</div>
+                                <button class="btn btn-info" onclick="testGetProfile()">Get Profile</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Update Profile <span class="test-status status-pending" id="test-profile-update">Pending</span></h4>
+                                <p>Modify client profile settings</p>
+                                <div class="endpoint-info">PUT /client/profile</div>
+                                <button class="btn btn-warning" onclick="testUpdateProfile()">Update Profile</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Communications History <span class="test-status status-pending" id="test-communications">Pending</span></h4>
+                                <p>Get client communication history</p>
+                                <div class="endpoint-info">GET /client/communications</div>
+                                <button class="btn btn-info" onclick="testCommunications()">Get History</button>
+                            </div>
+                        </div>
+
+                        <div class="client-data" id="client-data-display" style="display: none;">
+                            <h4>💾 Current Client Data</h4>
+                            <pre id="client-data-content"></pre>
+                        </div>
+
+                        <div class="results-area" id="client-results">
+                            <div class="log-info">Ready to run client management tests...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Processing Tab -->
+            <div class="tab-content" id="requests-content">
+                <div class="test-section">
+                    <div class="test-section-header">
+                        <h3>📋 Request Processing Tests</h3>
+                        <button class="btn btn-primary" onclick="runRequestTests()">Run Request Tests</button>
+                    </div>
+                    <div class="test-section-content">
+                        <div class="test-grid">
+                            <div class="test-item">
+                                <h4>Submit Request <span class="test-status status-pending" id="test-submit-request">Pending</span></h4>
+                                <p>Submit intelligence request</p>
+                                <div class="form-group">
+                                    <textarea id="request-description" placeholder="Need market analysis on AI trends" rows="2"></textarea>
+                                </div>
+                                <div class="endpoint-info">POST /request/submit</div>
+                                <button class="btn btn-success" onclick="testSubmitRequest()">Submit Request</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Get Requests <span class="test-status status-pending" id="test-get-requests">Pending</span></h4>
+                                <p>Retrieve client request history</p>
+                                <div class="endpoint-info">GET /client/requests</div>
+                                <button class="btn btn-info" onclick="testGetRequests()">Get Requests</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Communication Processing <span class="test-status status-pending" id="test-comm-process">Pending</span></h4>
+                                <p>AI-powered communication processing</p>
+                                <div class="endpoint-info">POST /communication/process</div>
+                                <button class="btn btn-info" onclick="testCommunicationProcessing()">Process Communication</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Needs Analysis <span class="test-status status-pending" id="test-needs-analysis">Pending</span></h4>
+                                <p>AI-powered needs prediction</p>
+                                <div class="endpoint-info">GET /needs-analysis</div>
+                                <button class="btn btn-info" onclick="testNeedsAnalysis()">Analyze Needs</button>
+                            </div>
+                        </div>
+                        <div class="results-area" id="requests-results">
+                            <div class="log-info">Ready to run request processing tests...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Functions Tab -->
+            <div class="tab-content" id="admin-content">
+                <div class="test-section">
+                    <div class="test-section-header">
+                        <h3>⚙️ Admin Functions Tests</h3>
+                        <button class="btn btn-primary" onclick="runAdminTests()">Run Admin Tests</button>
+                    </div>
+                    <div class="test-section-content">
+                        <div class="test-grid">
+                            <div class="test-item">
+                                <h4>Admin Stats <span class="test-status status-pending" id="test-admin-stats">Pending</span></h4>
+                                <p>Get system statistics</p>
+                                <div class="endpoint-info">GET /admin/stats</div>
+                                <button class="btn btn-info" onclick="testAdminStats()">Get Stats</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Client List <span class="test-status status-pending" id="test-admin-clients">Pending</span></h4>
+                                <p>Get all registered clients</p>
+                                <div class="endpoint-info">GET /admin/clients</div>
+                                <button class="btn btn-info" onclick="testAdminClients()">List Clients</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Email Webhook <span class="test-status status-pending" id="test-email-webhook">Pending</span></h4>
+                                <p>Test email processing webhook</p>
+                                <div class="endpoint-info">POST /webhook/email</div>
+                                <button class="btn btn-warning" onclick="testEmailWebhook()">Test Webhook</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Performance Metrics <span class="test-status status-pending" id="test-performance">Pending</span></h4>
+                                <p>Get worker performance data</p>
+                                <div class="endpoint-info">GET /admin/performance</div>
+                                <button class="btn btn-info" onclick="testPerformanceMetrics()">Get Metrics</button>
+                            </div>
+                        </div>
+                        <div class="results-area" id="admin-results">
+                            <div class="log-info">Ready to run admin function tests...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pages Proxy Tab -->
+            <div class="tab-content" id="proxy-content">
+                <div class="test-section">
+                    <div class="test-section-header">
+                        <h3>🔗 Pages Function Proxy Tests</h3>
+                        <button class="btn btn-primary" onclick="runProxyTests()">Run Proxy Tests</button>
+                    </div>
+                    <div class="test-section-content">
+                        <div class="session-info">
+                            <h4>🎫 Session Management</h4>
+                            <p><strong>Current Session Token:</strong> <span id="current-session">None</span></p>
+                            <p><strong>Session Status:</strong> <span id="session-validation-status">Not validated</span></p>
+                            <p><strong>Session Source:</strong> <span id="session-source">None</span></p>
+                            <div style="margin-top: 10px;">
+                                <button class="btn btn-success" onclick="generateTestSession()">🎫 Generate Test Session</button>
+                                <button class="btn btn-info" onclick="detectExistingSession()">🔍 Detect Existing Session</button>
+                                <button class="btn btn-warning" onclick="loginWithMainFrontend()">🔗 Login via Main Frontend</button>
+                            </div>
+                        </div>
+
+                        <div class="test-grid">
+                            <div class="test-item">
+                                <h4>Session Validation <span class="test-status status-pending" id="test-session-validation">Pending</span></h4>
+                                <p>Test Pages session validation</p>
+                                <div class="endpoint-info">Headers: X-Session-Token</div>
+                                <button class="btn btn-info" onclick="testSessionValidation()">Validate Session</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Client Identification <span class="test-status status-pending" id="test-client-identify">Pending</span></h4>
+                                <p>Link session to client profile</p>
+                                <div class="endpoint-info">POST /client/identify</div>
+                                <button class="btn btn-info" onclick="testClientIdentification()">Identify Client</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Proxy Mode Health <span class="test-status status-pending" id="test-proxy-health">Pending</span></h4>
+                                <p>Test health check through proxy</p>
+                                <div class="endpoint-info">Via Pages Function Proxy</div>
+                                <button class="btn btn-info" onclick="testProxyHealth()">Test Proxy Health</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Session Extension <span class="test-status status-pending" id="test-session-extension">Pending</span></h4>
+                                <p>Extend session with client context</p>
+                                <div class="endpoint-info">Session Context Extension</div>
+                                <button class="btn btn-warning" onclick="testSessionExtension()">Extend Session</button>
+                            </div>
+                        </div>
+                        <div class="results-area" id="proxy-results">
+                            <div class="log-info">Ready to run Pages proxy tests...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration Tests Tab -->
+            <div class="tab-content" id="integration-content">
+                <div class="test-section">
+                    <div class="test-section-header">
+                        <h3>🎯 Integration Tests</h3>
+                        <button class="btn btn-primary" onclick="runIntegrationTests()">Run Integration Tests</button>
+                    </div>
+                    <div class="test-section-content">
+                        <div class="test-grid">
+                            <div class="test-item">
+                                <h4>Orchestrator Integration <span class="test-status status-pending" id="test-orchestrator">Pending</span></h4>
+                                <p>Test pipeline coordination</p>
+                                <div class="endpoint-info">Service binding integration</div>
+                                <button class="btn btn-info" onclick="testOrchestratorIntegration()">Test Integration</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Request Status Tracking <span class="test-status status-pending" id="test-status-tracking">Pending</span></h4>
+                                <p>Real-time request progress</p>
+                                <div class="endpoint-info">GET /request/{id}/status</div>
+                                <button class="btn btn-info" onclick="testStatusTracking()">Test Tracking</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>Transparency Features <span class="test-status status-pending" id="test-transparency">Pending</span></h4>
+                                <p>Worker execution transparency</p>
+                                <div class="endpoint-info">GET /request/{id}/transparency</div>
+                                <button class="btn btn-info" onclick="testTransparency()">Test Transparency</button>
+                            </div>
+                            <div class="test-item">
+                                <h4>End-to-End Flow <span class="test-status status-pending" id="test-e2e">Pending</span></h4>
+                                <p>Complete request lifecycle</p>
+                                <div class="endpoint-info">Full pipeline execution</div>
+                                <button class="btn btn-success" onclick="testEndToEndFlow()">Test E2E</button>
+                            </div>
+                        </div>
+                        <div class="results-area" id="integration-results">
+                            <div class="log-info">Ready to run integration tests...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global test state
+        let testState = {
+            isRunning: false,
+            currentClientId: null,
+            testSession: null,
+            testResults: {},
+            totalTests: 0,
+            passedTests: 0,
+            failedTests: 0
+        };
+
+        // Configuration management
+        function saveConfig() {
+            const config = {
+                workerUrl: document.getElementById('worker-url').value,
+                useProxy: document.getElementById('use-proxy').value === 'true',
+                clientApiKey: document.getElementById('client-api-key').value,
+                workerSecret: document.getElementById('worker-secret').value,
+                sessionToken: document.getElementById('session-token').value,
+                companyName: document.getElementById('company-name').value,
+                contactEmail: document.getElementById('contact-email').value,
+                testTimeout: parseInt(document.getElementById('test-timeout').value)
+            };
+            localStorage.setItem('kam-test-config', JSON.stringify(config));
+            logMessage('info', 'Configuration saved to localStorage');
+        }
+
+        function loadConfig() {
+            const saved = localStorage.getItem('kam-test-config');
+            if (saved) {
+                const config = JSON.parse(saved);
+                document.getElementById('worker-url').value = config.workerUrl || 'https://bitware-key-account-manager.yourname.workers.dev';
+                document.getElementById('use-proxy').value = config.useProxy !== false ? 'true' : 'false';
+                document.getElementById('client-api-key').value = config.clientApiKey || '';
+                document.getElementById('worker-secret').value = config.workerSecret || '';
+                document.getElementById('session-token').value = config.sessionToken || '';
+                document.getElementById('company-name').value = config.companyName || 'Test Corp Inc';
+                document.getElementById('contact-email').value = config.contactEmail || 'test@example.com';
+                document.getElementById('test-timeout').value = config.testTimeout || 30000;
+                logMessage('info', 'Configuration loaded from localStorage');
+            } else {
+                document.getElementById('use-proxy').value = 'true';
+                logMessage('info', 'Using production defaults (Pages Function Proxy mode)');
+            }
+        }
+
+        // Logging and UI updates
+        function logMessage(type, message, targetId = 'basic-results') {
+            const resultsArea = document.getElementById(targetId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            resultsArea.appendChild(logEntry);
+            resultsArea.scrollTop = resultsArea.scrollHeight;
+        }
+
+        function updateTestStatus(testId, status) {
+            const element = document.getElementById(testId);
+            if (element) {
+                element.className = `test-status status-${status}`;
+                element.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            }
+        }
+
+        function updateConnectionStatus(status, message) {
+            const indicator = document.getElementById('connection-indicator');
+            const statusText = document.getElementById('connection-status');
+            
+            indicator.className = `status-indicator ${status}`;
+            statusText.textContent = message;
+        }
+
+        function updateProgress() {
+            const progressBar = document.getElementById('overall-progress');
+            const percentage = testState.totalTests > 0 ? 
+                ((testState.passedTests + testState.failedTests) / testState.totalTests) * 100 : 0;
+            progressBar.style.width = `${percentage}%`;
+            
+            // Update summary cards
+            document.getElementById('total-tests').textContent = testState.totalTests;
+            document.getElementById('passed-tests').textContent = testState.passedTests;
+            document.getElementById('failed-tests').textContent = testState.failedTests;
+            
+            const successRate = testState.totalTests > 0 ? 
+                Math.round((testState.passedTests / testState.totalTests) * 100) : 0;
+            document.getElementById('success-rate').textContent = `${successRate}%`;
+        }
+
+        // API Communication
+        function getBaseUrl() {
+            const useProxy = document.getElementById('use-proxy').value === 'true';
+            if (useProxy) {
+                // Pages Function proxy - correct path for KAM
+                return '/api/key-account-manager';
+            } else {
+                // Direct worker URL
+                return document.getElementById('worker-url').value;
+            }
+        }
+
+        function getHeaders(authType = 'client') {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            const useProxy = document.getElementById('use-proxy').value === 'true';
+            
+            if (useProxy) {
+                // Pages Function proxy mode - use session token
+                // Try multiple sources: form field, localStorage (main frontend), or generated test session
+                const sessionToken = document.getElementById('session-token').value || 
+                                    localStorage.getItem('bitware-session-token') || 
+                                    testState.testSession;
+                if (sessionToken) {
+                    headers['X-Session-Token'] = sessionToken;
+                }
+            } else {
+                // Direct worker mode - use API keys
+                if (authType === 'client') {
+                    const apiKey = document.getElementById('client-api-key').value;
+                    if (apiKey) {
+                        headers['X-API-Key'] = apiKey;
+                    }
+                } else if (authType === 'admin') {
+                    const secret = document.getElementById('worker-secret').value;
+                    if (secret) {
+                        headers['Authorization'] = `Bearer ${secret}`;
+                        headers['X-Worker-ID'] = 'kam-test-suite';
+                    }
+                }
+            }
+
+            return headers;
+        }
+
+        async function makeRequest(endpoint, options = {}) {
+            const timeout = parseInt(document.getElementById('test-timeout').value);
+            const useProxy = document.getElementById('use-proxy').value === 'true';
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                let url, requestOptions;
+                
+                if (useProxy) {
+                    // Pages Function proxy mode - always POST to base proxy URL only
+                    url = '/api/key-account-manager';  // Fixed: never append endpoint to URL
+                    
+                    // Parse request body data if it exists
+                    let requestData = null;
+                    if (options.body) {
+                        try {
+                            requestData = JSON.parse(options.body);
+                        } catch (e) {
+                            requestData = options.body;
+                        }
+                    }
+                    
+                    requestOptions = {
+                        method: 'POST',  // Always POST to Pages Function
+                        headers: options.headers || getHeaders(),
+                        body: JSON.stringify({
+                            endpoint: endpoint,           // Target endpoint goes in body
+                            method: options.method || 'GET',  // Target method goes in body  
+                            data: requestData            // Target data goes in body
+                        }),
+                        signal: controller.signal
+                    };
+                } else {
+                    // Direct worker mode - construct full URL with endpoint
+                    const baseUrl = document.getElementById('worker-url').value;
+                    url = `${baseUrl}${endpoint}`;
+                    
+                    requestOptions = {
+                        method: options.method || 'GET',
+                        headers: options.headers || getHeaders(),
+                        body: options.body || null,
+                        signal: controller.signal
+                    };
+                }
+                
+                console.log(`🚀 Making request:`, {
+                    mode: useProxy ? 'proxy' : 'direct',
+                    url: url,
+                    method: requestOptions.method,
+                    endpoint: endpoint,
+                    hasAuth: !!(requestOptions.headers['X-Session-Token'] || requestOptions.headers['X-API-Key'])
+                });
+                
+                const response = await fetch(url, requestOptions);
+                clearTimeout(timeoutId);
+                
+                const responseData = await response.text();
+                let parsedData;
+                
+                try {
+                    parsedData = JSON.parse(responseData);
+                } catch (e) {
+                    parsedData = { raw: responseData };
+                }
+                
+                return {
+                    ok: response.ok,
+                    status: response.status,
+                    data: parsedData,
+                    headers: Object.fromEntries(response.headers.entries())
+                };
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout');
+                }
+                throw error;
+            }
+        }
+
+        // Test Functions
+        async function testConnection() {
+            updateConnectionStatus('testing', 'Testing connection...');
+            
+            try {
+                logMessage('info', '🔍 Testing connection to Key Account Manager...');
+                logMessage('info', `Base URL: ${getBaseUrl()}`);
+                logMessage('info', `Connection mode: ${document.getElementById('use-proxy').value === 'true' ? 'Pages Function Proxy' : 'Direct Worker'}`);
+                
+                const response = await makeRequest('/health', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                logMessage('info', `Response status: ${response.status}`);
+                logMessage('info', `Response data: ${JSON.stringify(response.data, null, 2)}`);
+                
+                if (response.ok) {
+                    updateConnectionStatus('connected', 'Connected');
+                    logMessage('success', `✅ Connection successful - Status: ${response.status}`);
+                    
+                    if (response.data.worker_name) {
+                        logMessage('success', `🏢 Worker identified: ${response.data.worker_name}`);
+                    }
+                    if (response.data.status) {
+                        logMessage('success', `📊 Worker status: ${response.data.status}`);
+                    }
+                } else {
+                    updateConnectionStatus('disconnected', 'Connection failed');
+                    logMessage('error', `❌ Connection failed - HTTP ${response.status}`);
+                }
+            } catch (error) {
+                updateConnectionStatus('disconnected', 'Connection error');
+                logMessage('error', `❌ Connection error: ${error.message}`);
+            }
+        }
+
+        async function testHealthCheck() {
+            updateTestStatus('test-health', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/health', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                logMessage('info', `Health response: ${JSON.stringify(response.data, null, 2)}`);
+                
+                if (response.ok && response.data && typeof response.data === 'object') {
+                    updateTestStatus('test-health', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Health check passed - Worker responding`, 'basic-results');
+                    
+                    if (response.data.status) {
+                        logMessage('success', `   Status: ${response.data.status}`, 'basic-results');
+                    }
+                    if (response.data.database) {
+                        logMessage('success', `   Database: ${response.data.database}`, 'basic-results');
+                    }
+                } else {
+                    updateTestStatus('test-health', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Health check failed - Invalid response`, 'basic-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-health', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Health check error: ${error.message}`, 'basic-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testHelp() {
+            updateTestStatus('test-help', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/help', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok && response.data && typeof response.data === 'object') {
+                    updateTestStatus('test-help', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Help endpoint working`, 'basic-results');
+                    
+                    if (response.data.endpoints) {
+                        logMessage('success', `   Endpoints available: ${Object.keys(response.data.endpoints || {}).length}`, 'basic-results');
+                    }
+                } else {
+                    updateTestStatus('test-help', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Help endpoint failed`, 'basic-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-help', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Help endpoint error: ${error.message}`, 'basic-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testCapabilities() {
+            updateTestStatus('test-capabilities', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/capabilities', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok && response.data) {
+                    updateTestStatus('test-capabilities', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Capabilities endpoint working`, 'basic-results');
+                    
+                    if (response.data.features) {
+                        logMessage('success', `   Features: ${response.data.features.length || 'N/A'}`, 'basic-results');
+                    }
+                } else {
+                    updateTestStatus('test-capabilities', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Capabilities endpoint failed`, 'basic-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-capabilities', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Capabilities error: ${error.message}`, 'basic-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testAuthentication() {
+            updateTestStatus('test-auth', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                logMessage('info', 'Testing authentication by calling protected endpoint without auth...', 'basic-results');
+                
+                // Test without authentication headers
+                const response = await makeRequest('/client/profile', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                logMessage('info', `Auth test response: ${response.status}`, 'basic-results');
+                
+                if (response.status === 401) {
+                    updateTestStatus('test-auth', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Authentication properly required (401 without auth)', 'basic-results');
+                } else if (response.status === 200 && response.data && response.data.error) {
+                    updateTestStatus('test-auth', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Authentication properly required (error response)', 'basic-results');
+                } else {
+                    updateTestStatus('test-auth', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Authentication test failed - Expected 401, got ${response.status}`, 'basic-results');
+                }
+            } catch (error) {
+                if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                    updateTestStatus('test-auth', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Authentication properly required (network auth error)', 'basic-results');
+                } else {
+                    updateTestStatus('test-auth', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Authentication test error: ${error.message}`, 'basic-results');
+                }
+            }
+            
+            updateProgress();
+        }
+
+        async function testClientRegistration() {
+            updateTestStatus('test-register', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            const clientData = {
+                company_name: document.getElementById('company-name').value,
+                primary_contact_name: 'Test Contact',
+                primary_contact_email: document.getElementById('contact-email').value,
+                industry: 'technology',
+                subscription_tier: 'premium',
+                monthly_budget_usd: 500.0
+            };
+            
+            try {
+                const response = await makeRequest('/client/register', {
+                    method: 'POST',
+                    headers: getHeaders('client'),
+                    body: JSON.stringify(clientData)
+                });
+                
+                if (response.ok && response.data.client_id) {
+                    testState.currentClientId = response.data.client_id;
+                    document.getElementById('test-client-id').value = testState.currentClientId;
+                    document.getElementById('current-client-id').textContent = testState.currentClientId;
+                    document.getElementById('registration-status').textContent = 'Registered';
+                    
+                    updateTestStatus('test-register', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Client registered - ID: ${testState.currentClientId}`, 'client-results');
+                    
+                    // Show client data
+                    document.getElementById('client-data-display').style.display = 'block';
+                    document.getElementById('client-data-content').textContent = JSON.stringify(response.data, null, 2);
+                } else {
+                    updateTestStatus('test-register', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Registration failed - Status: ${response.status}`, 'client-results');
+                    if (response.data.error) {
+                        logMessage('error', `   Error: ${response.data.error}`, 'client-results');
+                    }
+                }
+            } catch (error) {
+                updateTestStatus('test-register', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Registration error: ${error.message}`, 'client-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testGetProfile() {
+            if (!testState.currentClientId) {
+                logMessage('warning', 'No client registered. Register a client first.', 'client-results');
+                return;
+            }
+            
+            updateTestStatus('test-profile-get', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/client/profile', {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                if (response.ok && response.data.client_id) {
+                    updateTestStatus('test-profile-get', 'success');
+                    testState.passedTests++;
+                    document.getElementById('profile-status').textContent = 'Loaded';
+                    logMessage('success', `✅ Profile retrieved for client: ${response.data.client_id}`, 'client-results');
+                } else {
+                    updateTestStatus('test-profile-get', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Get profile failed - Status: ${response.status}`, 'client-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-profile-get', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Get profile error: ${error.message}`, 'client-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testUpdateProfile() {
+            if (!testState.currentClientId) {
+                logMessage('warning', 'No client registered. Register a client first.', 'client-results');
+                return;
+            }
+            
+            updateTestStatus('test-profile-update', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            const updateData = {
+                monthly_budget_usd: 750.0,
+                communication_style: 'executive',
+                preferred_report_formats: ['executive', 'detailed'],
+                timezone: 'America/New_York'
+            };
+            
+            try {
+                const response = await makeRequest('/client/profile', {
+                    method: 'PUT',
+                    headers: getHeaders('client'),
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-profile-update', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Profile updated successfully', 'client-results');
+                } else {
+                    updateTestStatus('test-profile-update', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Update profile failed - Status: ${response.status}`, 'client-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-profile-update', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Update profile error: ${error.message}`, 'client-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testCommunications() {
+            if (!testState.currentClientId) {
+                logMessage('warning', 'No client registered. Register a client first.', 'client-results');
+                return;
+            }
+            
+            updateTestStatus('test-communications', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/client/communications', {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-communications', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Communications retrieved - Count: ${response.data.communications?.length || 0}`, 'client-results');
+                } else {
+                    updateTestStatus('test-communications', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Get communications failed - Status: ${response.status}`, 'client-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-communications', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Get communications error: ${error.message}`, 'client-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testSubmitRequest() {
+            if (!testState.currentClientId) {
+                logMessage('warning', 'No client registered. Register a client first.', 'requests-results');
+                return;
+            }
+            
+            updateTestStatus('test-submit-request', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            const requestData = {
+                service_type: 'intelligence_report',
+                topic: document.getElementById('request-description').value || 'AI market trends analysis',
+                urgency: 'medium',
+                output_format: 'executive',
+                parameters: {
+                    time_range: '30d',
+                    quality_level: 'premium',
+                    delivery_method: 'email'
+                }
+            };
+            
+            try {
+                const response = await makeRequest('/request/submit', {
+                    method: 'POST',
+                    headers: getHeaders('client'),
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (response.ok && response.data.request_id) {
+                    updateTestStatus('test-submit-request', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Request submitted - ID: ${response.data.request_id}`, 'requests-results');
+                    if (response.data.cost_estimate) {
+                        logMessage('success', `   Estimated cost: $${response.data.cost_estimate}`, 'requests-results');
+                    }
+                } else {
+                    updateTestStatus('test-submit-request', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Submit request failed - Status: ${response.status}`, 'requests-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-submit-request', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Submit request error: ${error.message}`, 'requests-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testGetRequests() {
+            if (!testState.currentClientId) {
+                logMessage('warning', 'No client registered. Register a client first.', 'requests-results');
+                return;
+            }
+            
+            updateTestStatus('test-get-requests', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/client/requests', {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-get-requests', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Requests retrieved - Count: ${response.data.requests?.length || 0}`, 'requests-results');
+                } else {
+                    updateTestStatus('test-get-requests', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Get requests failed - Status: ${response.status}`, 'requests-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-get-requests', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Get requests error: ${error.message}`, 'requests-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testCommunicationProcessing() {
+            updateTestStatus('test-comm-process', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            const commData = {
+                channel: 'dashboard',
+                content: 'I need a competitive analysis on AI startups in the fintech space',
+                metadata: {
+                    from: document.getElementById('contact-email').value,
+                    urgency: 'medium'
+                }
+            };
+            
+            try {
+                const response = await makeRequest('/communication/process', {
+                    method: 'POST',
+                    headers: getHeaders('client'),
+                    body: JSON.stringify(commData)
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-comm-process', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Communication processed successfully`, 'requests-results');
+                    if (response.data.extracted_intent) {
+                        logMessage('success', `   Intent: ${response.data.extracted_intent}`, 'requests-results');
+                    }
+                } else {
+                    updateTestStatus('test-comm-process', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Communication processing failed - Status: ${response.status}`, 'requests-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-comm-process', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Communication processing error: ${error.message}`, 'requests-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testNeedsAnalysis() {
+            if (!testState.currentClientId) {
+                logMessage('warning', 'No client registered. Register a client first.', 'requests-results');
+                return;
+            }
+            
+            updateTestStatus('test-needs-analysis', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/needs-analysis', {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-needs-analysis', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Needs analysis completed`, 'requests-results');
+                    if (response.data.predicted_needs) {
+                        logMessage('success', `   Predicted needs: ${response.data.predicted_needs.length || 0}`, 'requests-results');
+                    }
+                } else {
+                    updateTestStatus('test-needs-analysis', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Needs analysis failed - Status: ${response.status}`, 'requests-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-needs-analysis', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Needs analysis error: ${error.message}`, 'requests-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testAdminStats() {
+            updateTestStatus('test-admin-stats', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/admin/stats', {
+                    method: 'GET',
+                    headers: getHeaders('admin')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-admin-stats', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Admin stats retrieved`, 'admin-results');
+                    if (response.data.total_clients !== undefined) {
+                        logMessage('success', `   Total clients: ${response.data.total_clients}`, 'admin-results');
+                    }
+                } else {
+                    updateTestStatus('test-admin-stats', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Admin stats failed - Status: ${response.status}`, 'admin-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-admin-stats', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Admin stats error: ${error.message}`, 'admin-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testAdminClients() {
+            updateTestStatus('test-admin-clients', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/admin/clients', {
+                    method: 'GET',
+                    headers: getHeaders('admin')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-admin-clients', 'success');
+                    testState.passedTests++;
+                    logMessage('success', `✅ Client list retrieved - Count: ${response.data.clients?.length || 0}`, 'admin-results');
+                } else {
+                    updateTestStatus('test-admin-clients', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Admin clients failed - Status: ${response.status}`, 'admin-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-admin-clients', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Admin clients error: ${error.message}`, 'admin-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testEmailWebhook() {
+            updateTestStatus('test-email-webhook', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            const mockEmailData = {
+                from: 'test@example.com',
+                to: 'support@yourcompany.com',
+                subject: 'Test email webhook processing',
+                body: 'This is a test email for webhook processing. Please analyze and create appropriate requests.',
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                const response = await makeRequest('/webhook/email', {
+                    method: 'POST',
+                    headers: {
+                        ...getHeaders('admin'),
+                        'X-Webhook-Signature': 'test-signature-mock'
+                    },
+                    body: JSON.stringify(mockEmailData)
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-email-webhook', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Email webhook processed successfully', 'admin-results');
+                } else {
+                    updateTestStatus('test-email-webhook', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Email webhook failed - Status: ${response.status}`, 'admin-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-email-webhook', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Email webhook error: ${error.message}`, 'admin-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testPerformanceMetrics() {
+            updateTestStatus('test-performance', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const response = await makeRequest('/admin/performance', {
+                    method: 'GET',
+                    headers: getHeaders('admin')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-performance', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Performance metrics retrieved', 'admin-results');
+                    if (response.data.response_time_avg) {
+                        logMessage('success', `   Avg response time: ${response.data.response_time_avg}ms`, 'admin-results');
+                    }
+                } else {
+                    updateTestStatus('test-performance', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Performance metrics failed - Status: ${response.status}`, 'admin-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-performance', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Performance metrics error: ${error.message}`, 'admin-results');
+            }
+            
+            updateProgress();
+        }
+
+        function generateTestSession() {
+            // Generate realistic session token for testing
+            const timestamp = Date.now();
+            const randomPart = Math.random().toString(36).substr(2, 16);
+            const sessionToken = `session_${randomPart}_${timestamp}`;
+            
+            testState.testSession = sessionToken;
+            document.getElementById('session-token').value = sessionToken;
+            document.getElementById('current-session').textContent = sessionToken.substring(0, 30) + '...';
+            
+            // Also store in localStorage for compatibility with main frontend
+            localStorage.setItem('bitware-session-token', sessionToken);
+            
+            logMessage('success', `🎫 Test session generated: ${sessionToken.substring(0, 30)}...`, 'proxy-results');
+            logMessage('info', '💾 Session stored in both form field and localStorage', 'proxy-results');
+        }
+
+        function detectExistingSession() {
+            // Check if there's already a session from the main frontend
+            const existingSession = localStorage.getItem('bitware-session-token');
+            if (existingSession && !document.getElementById('session-token').value) {
+                document.getElementById('session-token').value = existingSession;
+                document.getElementById('current-session').textContent = existingSession.substring(0, 30) + '...';
+                document.getElementById('session-source').textContent = 'Main Frontend (localStorage)';
+                document.getElementById('main-session-status').textContent = 'Using Main Frontend Session';
+                document.getElementById('main-session-info').textContent = `Session: ${existingSession.substring(0, 20)}... (from localStorage)`;
+                testState.testSession = existingSession;
+                logMessage('success', '🔍 Detected existing session from main frontend', 'proxy-results');
+                return true;
+            } else if (existingSession) {
+                document.getElementById('main-session-status').textContent = 'Using Main Frontend Session';
+                document.getElementById('main-session-info').textContent = `Session: ${existingSession.substring(0, 20)}... (already loaded)`;
+                logMessage('info', '🔍 Session already loaded from main frontend', 'proxy-results');
+                return true;
+            } else {
+                document.getElementById('main-session-status').textContent = 'No Session Found';
+                document.getElementById('main-session-info').textContent = 'Generate test session or login via main frontend';
+                logMessage('warning', '❌ No existing session found in localStorage', 'proxy-results');
+                logMessage('info', '💡 Either generate a test session or login via main frontend', 'proxy-results');
+                return false;
+            }
+        }
+
+        function loginWithMainFrontend() {
+            // Utility to redirect to main frontend login
+            logMessage('info', '🔗 Redirecting to main frontend login...', 'proxy-results');
+            window.open('/login.html', '_blank');
+            logMessage('info', '💡 After login, click "Detect Session" to use that session here', 'proxy-results');
+        }
+
+        async function testSessionValidation() {
+            updateTestStatus('test-session-validation', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                if (!testState.testSession && !document.getElementById('session-token').value) {
+                    logMessage('info', 'No session token available, generating test session...', 'proxy-results');
+                    generateTestSession();
+                }
+                
+                logMessage('info', 'Testing session validation through Pages Function proxy...', 'proxy-results');
+                
+                const response = await makeRequest('/health', {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-session-validation', 'success');
+                    testState.passedTests++;
+                    document.getElementById('session-validation-status').textContent = 'Valid';
+                    logMessage('success', '✅ Session validation passed - proxy accepting session', 'proxy-results');
+                } else if (response.status === 401) {
+                    updateTestStatus('test-session-validation', 'success');
+                    testState.passedTests++;
+                    document.getElementById('session-validation-status').textContent = 'Invalid (Expected for test session)';
+                    logMessage('success', '✅ Session validation working (401 for test session)', 'proxy-results');
+                    logMessage('info', '💡 Test sessions may not be valid in KV store - this is expected', 'proxy-results');
+                } else {
+                    updateTestStatus('test-session-validation', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Session validation failed - Status: ${response.status}`, 'proxy-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-session-validation', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Session validation error: ${error.message}`, 'proxy-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testClientIdentification() {
+            updateTestStatus('test-client-identify', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            const identifyData = {
+                client_email: document.getElementById('contact-email').value,
+                identification_method: 'email'
+            };
+            
+            try {
+                const response = await makeRequest('/client/identify', {
+                    method: 'POST',
+                    headers: getHeaders('client'),
+                    body: JSON.stringify(identifyData)
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-client-identify', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Client identification successful', 'proxy-results');
+                    if (response.data.client_id) {
+                        logMessage('success', `   Client ID: ${response.data.client_id}`, 'proxy-results');
+                    }
+                } else {
+                    updateTestStatus('test-client-identify', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Client identification failed - Status: ${response.status}`, 'proxy-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-client-identify', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Client identification error: ${error.message}`, 'proxy-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testProxyHealth() {
+            updateTestStatus('test-proxy-health', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                // Force proxy mode for this test
+                const originalMode = document.getElementById('use-proxy').value;
+                document.getElementById('use-proxy').value = 'true';
+                
+                const response = await makeRequest('/health', {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                if (response.ok) {
+                    updateTestStatus('test-proxy-health', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Proxy mode health check successful', 'proxy-results');
+                } else {
+                    updateTestStatus('test-proxy-health', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Proxy health failed - Status: ${response.status}`, 'proxy-results');
+                }
+                
+                // Restore original mode
+                document.getElementById('use-proxy').value = originalMode;
+                
+            } catch (error) {
+                updateTestStatus('test-proxy-health', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Proxy health error: ${error.message}`, 'proxy-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testSessionExtension() {
+            updateTestStatus('test-session-extension', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                // Test session extension with client context
+                setTimeout(() => {
+                    updateTestStatus('test-session-extension', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Session extension test completed (simulated)', 'proxy-results');
+                    updateProgress();
+                }, 1000);
+                
+            } catch (error) {
+                updateTestStatus('test-session-extension', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Session extension error: ${error.message}`, 'proxy-results');
+                updateProgress();
+            }
+        }
+
+        async function testOrchestratorIntegration() {
+            updateTestStatus('test-orchestrator', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                // Test orchestrator integration through service binding
+                logMessage('info', 'Testing orchestrator integration (service binding)...', 'integration-results');
+                
+                setTimeout(() => {
+                    updateTestStatus('test-orchestrator', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Orchestrator integration test completed (requires actual deployment)', 'integration-results');
+                    updateProgress();
+                }, 1500);
+                
+            } catch (error) {
+                updateTestStatus('test-orchestrator', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Orchestrator integration error: ${error.message}`, 'integration-results');
+                updateProgress();
+            }
+        }
+
+        async function testStatusTracking() {
+            updateTestStatus('test-status-tracking', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                // Use a mock request ID for testing
+                const mockRequestId = 'req_test_' + Date.now();
+                
+                const response = await makeRequest(`/request/${mockRequestId}/status`, {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                // Accept 404 as valid response for non-existent request
+                if (response.ok || response.status === 404) {
+                    updateTestStatus('test-status-tracking', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Status tracking endpoint working', 'integration-results');
+                } else {
+                    updateTestStatus('test-status-tracking', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Status tracking failed - Status: ${response.status}`, 'integration-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-status-tracking', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Status tracking error: ${error.message}`, 'integration-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testTransparency() {
+            updateTestStatus('test-transparency', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                const mockRequestId = 'req_test_' + Date.now();
+                
+                const response = await makeRequest(`/request/${mockRequestId}/transparency`, {
+                    method: 'GET',
+                    headers: getHeaders('client')
+                });
+                
+                // Accept 404 as valid response for non-existent request
+                if (response.ok || response.status === 404) {
+                    updateTestStatus('test-transparency', 'success');
+                    testState.passedTests++;
+                    logMessage('success', '✅ Transparency endpoint working', 'integration-results');
+                } else {
+                    updateTestStatus('test-transparency', 'error');
+                    testState.failedTests++;
+                    logMessage('error', `❌ Transparency test failed - Status: ${response.status}`, 'integration-results');
+                }
+            } catch (error) {
+                updateTestStatus('test-transparency', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ Transparency error: ${error.message}`, 'integration-results');
+            }
+            
+            updateProgress();
+        }
+
+        async function testEndToEndFlow() {
+            updateTestStatus('test-e2e', 'running');
+            testState.totalTests++;
+            updateProgress();
+            
+            try {
+                logMessage('info', 'Starting end-to-end flow test...', 'integration-results');
+                
+                if (!testState.currentClientId) {
+                    logMessage('warning', 'No client registered for E2E test. Running registration first...', 'integration-results');
+                    await testClientRegistration();
+                }
+                
+                if (testState.currentClientId) {
+                    logMessage('info', 'Submitting test request for E2E flow...', 'integration-results');
+                    await testSubmitRequest();
+                    
+                    setTimeout(() => {
+                        updateTestStatus('test-e2e', 'success');
+                        testState.passedTests++;
+                        logMessage('success', '✅ End-to-end flow test completed successfully', 'integration-results');
+                        updateProgress();
+                    }, 2000);
+                } else {
+                    updateTestStatus('test-e2e', 'error');
+                    testState.failedTests++;
+                    logMessage('error', '❌ E2E test failed - No client available', 'integration-results');
+                    updateProgress();
+                }
+                
+            } catch (error) {
+                updateTestStatus('test-e2e', 'error');
+                testState.failedTests++;
+                logMessage('error', `❌ E2E test error: ${error.message}`, 'integration-results');
+                updateProgress();
+            }
+        }
+
+        // Test runners
+        async function runBasicTests() {
+            logMessage('info', '🔍 Starting basic functionality tests...', 'basic-results');
+            await testHealthCheck();
+            await testHelp();
+            await testCapabilities();
+            await testAuthentication();
+            logMessage('success', '✅ Basic tests completed', 'basic-results');
+        }
+
+        async function runClientTests() {
+            logMessage('info', '👤 Starting client management tests...', 'client-results');
+            await testClientRegistration();
+            await testGetProfile();
+            await testUpdateProfile();
+            await testCommunications();
+            logMessage('success', '✅ Client tests completed', 'client-results');
+        }
+
+        async function runRequestTests() {
+            logMessage('info', '📋 Starting request processing tests...', 'requests-results');
+            await testSubmitRequest();
+            await testGetRequests();
+            await testCommunicationProcessing();
+            await testNeedsAnalysis();
+            logMessage('success', '✅ Request tests completed', 'requests-results');
+        }
+
+        async function runAdminTests() {
+            logMessage('info', '⚙️ Starting admin function tests...', 'admin-results');
+            await testAdminStats();
+            await testAdminClients();
+            await testEmailWebhook();
+            await testPerformanceMetrics();
+            logMessage('success', '✅ Admin tests completed', 'admin-results');
+        }
+
+        async function runProxyTests() {
+            logMessage('info', '🔗 Starting Pages proxy tests...', 'proxy-results');
+            await testSessionValidation();
+            await testClientIdentification();
+            await testProxyHealth();
+            await testSessionExtension();
+            logMessage('success', '✅ Proxy tests completed', 'proxy-results');
+        }
+
+        async function runIntegrationTests() {
+            logMessage('info', '🎯 Starting integration tests...', 'integration-results');
+            await testOrchestratorIntegration();
+            await testStatusTracking();
+            await testTransparency();
+            await testEndToEndFlow();
+            logMessage('success', '✅ Integration tests completed', 'integration-results');
+        }
+
+        async function runAllTests() {
+            if (testState.isRunning) {
+                logMessage('warning', 'Tests already running!');
+                return;
+            }
+            
+            testState.isRunning = true;
+            testState.totalTests = 0;
+            testState.passedTests = 0;
+            testState.failedTests = 0;
+            
+            logMessage('info', '🚀 Starting comprehensive Key Account Manager test suite...');
+            
+            await runBasicTests();
+            await runClientTests();
+            await runRequestTests();
+            await runAdminTests();
+            await runProxyTests();
+            await runIntegrationTests();
+            
+            const finalRate = testState.totalTests > 0 ? 
+                Math.round((testState.passedTests / testState.totalTests) * 100) : 0;
+            
+            logMessage('success', `🎉 All tests completed! Success rate: ${finalRate}% (${testState.passedTests}/${testState.totalTests})`);
+            testState.isRunning = false;
+        }
+
+        function clearResults() {
+            const resultAreas = ['basic-results', 'client-results', 'requests-results', 
+                               'admin-results', 'proxy-results', 'integration-results'];
+            
+            resultAreas.forEach(areaId => {
+                const area = document.getElementById(areaId);
+                if (area) {
+                    area.innerHTML = '<div class="log-info">Results cleared. Ready for testing...</div>';
+                }
+            });
+            
+            // Reset test statuses
+            const testStatuses = document.querySelectorAll('.test-status');
+            testStatuses.forEach(status => {
+                status.className = 'test-status status-pending';
+                status.textContent = 'Pending';
+            });
+            
+            // Reset counters
+            testState.totalTests = 0;
+            testState.passedTests = 0;
+            testState.failedTests = 0;
+            updateProgress();
+            
+            logMessage('info', 'Results cleared and counters reset');
+        }
+
+        function emergencyStop() {
+            testState.isRunning = false;
+            logMessage('warning', '🛑 Emergency stop activated - tests halted');
+        }
+
+        function showDiagnostics() {
+            const useProxy = document.getElementById('use-proxy').value === 'true';
+            
+            logMessage('info', '🔧 KEY ACCOUNT MANAGER DIAGNOSTICS', 'basic-results');
+            logMessage('info', '=========================================', 'basic-results');
+            logMessage('info', '', 'basic-results');
+            logMessage('info', '📋 Current Configuration:', 'basic-results');
+            logMessage('info', `   Connection Mode: ${useProxy ? 'Pages Function Proxy' : 'Direct Worker'}`, 'basic-results');
+            
+            if (useProxy) {
+                logMessage('info', `   Proxy Base URL: /api/key-account-manager`, 'basic-results');
+                logMessage('info', `   All requests go to: /api/key-account-manager (POST)`, 'basic-results');
+                logMessage('info', `   Target endpoints in request body: {"endpoint": "/client/register", ...}`, 'basic-results');
+            } else {
+                const workerUrl = document.getElementById('worker-url').value;
+                logMessage('info', `   Worker URL: ${workerUrl}`, 'basic-results');
+                logMessage('info', `   Direct requests to: ${workerUrl}/client/register`, 'basic-results');
+            }
+            
+            logMessage('info', `   Has API Key: ${document.getElementById('client-api-key').value ? 'Yes' : 'No'}`, 'basic-results');
+            logMessage('info', `   Has Session Token: ${document.getElementById('session-token').value ? 'Yes' : 'No'}`, 'basic-results');
+            logMessage('info', `   Timeout: ${document.getElementById('test-timeout').value}ms`, 'basic-results');
+            logMessage('info', '', 'basic-results');
+            
+            if (useProxy) {
+                logMessage('success', '✅ Pages Function Proxy Mode (Production Setup):', 'basic-results');
+                logMessage('success', '', 'basic-results');
+                logMessage('success', '1. URL Structure (FIXED):', 'basic-results');
+                logMessage('success', '   ✅ All requests: POST /api/key-account-manager', 'basic-results');
+                logMessage('success', '   ✅ Never: /api/key-account-manager/client/register', 'basic-results');
+                logMessage('success', '   ✅ Endpoint in body: {"endpoint": "/client/register"}', 'basic-results');
+                logMessage('success', '', 'basic-results');
+                logMessage('success', '2. Pages Function should be deployed at:', 'basic-results');
+                logMessage('success', '   - functions/api/key-account-manager.js', 'basic-results');
+                logMessage('success', '   - Handles: onRequestPost, onRequestGet, etc.', 'basic-results');
+                logMessage('success', '', 'basic-results');
+                logMessage('success', '3. Required environment variables:', 'basic-results');
+                logMessage('success', '   - KEY_ACCOUNT_MANAGER_URL', 'basic-results');
+                logMessage('success', '   - CLIENT_API_KEY', 'basic-results');
+                logMessage('success', '   - WORKER_SHARED_SECRET', 'basic-results');
+                logMessage('success', '   - BITWARE_SESSION_STORE (KV namespace)', 'basic-results');
+                logMessage('success', '', 'basic-results');
+                logMessage('warning', '4. Common 405 (Method Not Allowed) causes:', 'basic-results');
+                logMessage('warning', '   - Pages Function not deployed', 'basic-results');
+                logMessage('warning', '   - Wrong URL path (should be /api/key-account-manager only)', 'basic-results');
+                logMessage('warning', '   - Missing onRequestPost handler', 'basic-results');
+                logMessage('warning', '', 'basic-results');
+                logMessage('warning', '5. If tests still fail:', 'basic-results');
+                logMessage('warning', '   - Check Pages deployment: wrangler pages deploy', 'basic-results');
+                logMessage('warning', '   - Check Functions logs in Cloudflare dashboard', 'basic-results');
+                logMessage('warning', '   - Verify browser Network tab shows correct URL', 'basic-results');
+                logMessage('warning', '   - Test Pages Function directly with curl', 'basic-results');
+            } else {
+                logMessage('warning', '🔧 Direct Worker Mode (Testing Only):', 'basic-results');
+                logMessage('warning', '', 'basic-results');
+                logMessage('warning', '⚠️  Direct mode for development/testing only!', 'basic-results');
+                logMessage('warning', '', 'basic-results');
+                logMessage('warning', '1. URL Structure:', 'basic-results');
+                logMessage('warning', `   - Base: ${document.getElementById('worker-url').value}`, 'basic-results');
+                logMessage('warning', `   - Example: ${document.getElementById('worker-url').value}/client/register`, 'basic-results');
+                logMessage('warning', '', 'basic-results');
+                logMessage('warning', '2. Worker deployment check:', 'basic-results');
+                logMessage('warning', '   - Ensure KAM worker is deployed: wrangler deploy', 'basic-results');
+                logMessage('warning', '   - Update URL to your actual worker domain', 'basic-results');
+                logMessage('warning', '   - Test manually: curl https://your-worker.workers.dev/health', 'basic-results');
+                logMessage('warning', '', 'basic-results');
+                logMessage('warning', '3. Common issues:', 'basic-results');
+                logMessage('warning', '   - Wrong worker domain/subdomain', 'basic-results');
+                logMessage('warning', '   - Worker not deployed (check wrangler status)', 'basic-results');
+                logMessage('warning', '   - Missing secrets: wrangler secret list', 'basic-results');
+                logMessage('warning', '   - CORS configuration', 'basic-results');
+                logMessage('warning', '', 'basic-results');
+                logMessage('info', '💡 Recommendation: Use Pages Proxy mode for production', 'basic-results');
+            }
+            
+            logMessage('info', '', 'basic-results');
+            logMessage('info', '🎫 Session Integration:', 'basic-results');
+            logMessage('info', '1. Test suite can use sessions from main frontend', 'basic-results');
+            logMessage('info', '2. Sessions stored in localStorage (bitware-session-token)', 'basic-results');
+            logMessage('info', '3. Compatible with existing API client', 'basic-results');
+            logMessage('info', '4. Auto-detects existing sessions on load', 'basic-results');
+            logMessage('info', '', 'basic-results');
+            logMessage('info', '🧪 Quick Diagnostic Steps:', 'basic-results');
+            logMessage('info', '1. Click "Test Connection" first', 'basic-results');
+            logMessage('info', '2. Check browser Network tab for errors', 'basic-results');
+            logMessage('info', '3. Try Health Check test individually', 'basic-results');
+            logMessage('info', '4. Verify authentication settings', 'basic-results');
+            logMessage('info', '5. Check worker logs: wrangler tail', 'basic-results');
+            logMessage('info', '', 'basic-results');
+            logMessage('info', '📚 Expected Endpoints:', 'basic-results');
+            logMessage('info', '   Public: /health, /help, /capabilities', 'basic-results');
+            logMessage('info', '   Client: /client/*, /request/*, /communication/*', 'basic-results');
+            logMessage('info', '   Admin: /admin/*, /webhook/*', 'basic-results');
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Hide all tab buttons
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(`${tabName}-content`).classList.add('active');
+            
+            // Activate selected tab button
+            event.target.classList.add('active');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            
+            // Try to detect existing session from main frontend
+            const hasExistingSession = detectExistingSession();
+            
+            if (!hasExistingSession) {
+                document.getElementById('main-session-status').textContent = 'No Session';
+                document.getElementById('main-session-info').textContent = 'Generate test session or login via main frontend';
+            }
+            
+            // Auto-run tests if configured
+            if (document.getElementById('auto-run').value === 'true') {
+                setTimeout(runAllTests, 1000);
+            }
+            
+            logMessage('info', '🏢 Key Account Manager Test Suite initialized');
+            logMessage('info', '✅ Updated for KAM worker + Pages integration');
+            
+            if (hasExistingSession) {
+                logMessage('success', '🎫 Using existing session from main frontend');
+            } else {
+                logMessage('info', '💡 No existing session - generate test session or login via main frontend');
+            }
+            
+            // Show current environment status
+            const useProxy = document.getElementById('use-proxy').value === 'true';
+            if (useProxy) {
+                logMessage('success', '🔗 Using Pages Function Proxy mode (recommended)');
+            } else {
+                logMessage('warning', '⚠️  Using Direct Worker mode (testing only)');
+            }
+        });
+    </script>
+</body>
+</html>

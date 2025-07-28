@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Factory + KAM Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo h1 {
+            color: #333;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .role-selector {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 30px;
+        }
+
+        .role-option {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .role-option.active {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            background: #fafafa;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-bottom: 20px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .help-text {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .help-text h4 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .help-text ul {
+            list-style: none;
+            margin: 0;
+        }
+
+        .help-text li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .help-text li:before {
+            content: "•";
+            position: absolute;
+            left: 8px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c53030;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>🏭 AI Factory</h1>
+            <p>Key Account Manager Integration</p>
+        </div>
+
+        <div class="role-selector">
+            <button class="role-option active" data-role="admin">Admin</button>
+            <button class="role-option" data-role="user">User</button>
+            <button class="role-option" data-role="client">Client</button>
+        </div>
+
+        <form id="login-form">
+            <div class="error-message" id="error-message"></div>
+            
+            <div class="form-group">
+                <label for="username" id="username-label">Username</label>
+                <input type="text" id="username" name="username" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="login-btn" id="login-btn">
+                Sign In
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            Authenticating...
+        </div>
+
+        <div class="help-text">
+            <h4>Account Types:</h4>
+            <ul>
+                <li><strong>Admin:</strong> Full system access, worker management, client oversight</li>
+                <li><strong>User:</strong> Standard worker access, pipeline operations</li>
+                <li><strong>Client:</strong> Personalized dashboard, usage analytics, KAM features</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        class LoginManager {
+            constructor() {
+                this.currentRole = 'admin';
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateFormLabels();
+            }
+
+            setupEventListeners() {
+                // Role selection
+                document.querySelectorAll('.role-option').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        this.selectRole(e.target.dataset.role);
+                    });
+                });
+
+                // Login form
+                document.getElementById('login-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleLogin();
+                });
+            }
+
+            selectRole(role) {
+                this.currentRole = role;
+                
+                // Update UI
+                document.querySelectorAll('.role-option').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-role="${role}"]`).classList.add('active');
+                
+                this.updateFormLabels();
+                this.clearError();
+            }
+
+            updateFormLabels() {
+                const usernameLabel = document.getElementById('username-label');
+                const usernameInput = document.getElementById('username');
+                
+                switch (this.currentRole) {
+                    case 'admin':
+                    case 'user':
+                        usernameLabel.textContent = 'Username';
+                        usernameInput.type = 'text';
+                        usernameInput.placeholder = 'Enter your username';
+                        break;
+                    case 'client':
+                        usernameLabel.textContent = 'Email Address';
+                        usernameInput.type = 'email';
+                        usernameInput.placeholder = 'Enter your company email';
+                        break;
+                }
+            }
+
+            async handleLogin() {
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
+                
+                if (!username || !password) {
+                    this.showError('Please enter both username and password');
+                    return;
+                }
+
+                this.setLoading(true);
+                this.clearError();
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username,
+                            password,
+                            loginType: this.currentRole
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Store session data
+                        localStorage.setItem('bitware-session-token', data.sessionToken);
+                        if (data.user) {
+                               localStorage.setItem('bitware-user-info', JSON.stringify(data.user));
+    }
+
+                      
+                        // Redirect based on role
+                        this.redirectUser(data.user);
+                    } else {
+                        this.showError(data.error || 'Login failed');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    this.showError('Network error. Please try again.');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            redirectUser(user) {
+                switch (user.role) {
+                    case 'admin':
+                        window.location.href = '/admin-dashboard.html';
+                        break;
+                    case 'user':
+                        window.location.href = '/dashboard.html';
+                        break;
+                    case 'client':
+                        window.location.href = '/client-dashboard.html';
+                        break;
+                    default:
+                        window.location.href = '/dashboard.html';
+                }
+            }
+
+            setLoading(loading) {
+                const form = document.getElementById('login-form');
+                const loadingDiv = document.getElementById('loading');
+                const button = document.getElementById('login-btn');
+
+                if (loading) {
+                    form.style.display = 'none';
+                    loadingDiv.style.display = 'block';
+                    button.disabled = true;
+                } else {
+                    form.style.display = 'block';
+                    loadingDiv.style.display = 'none';
+                    button.disabled = false;
+                }
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('error-message');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+
+            clearError() {
+                const errorDiv = document.getElementById('error-message');
+                errorDiv.style.display = 'none';
+            }
+        }
+
+        // Initialize login manager
+        const loginManager = new LoginManager();
+
+        // Check if already logged in
+        const existingToken = localStorage.getItem('bitware-session-token');
+            if (existingToken && existingToken !== 'undefined') {
+                // Validate existing session
+                fetch('/api/auth/validate', {
+                    headers: {
+                        'x-bitware-session-token': existingToken
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.valid) {
+                        // Fix: Don't try to parse if undefined
+                        const userInfo = localStorage.getItem('bitware-user-info');
+                        if (userInfo && userInfo !== 'undefined') {
+                            const user = JSON.parse(userInfo);
+                            loginManager.redirectUser(user);
+                        } else {
+                            // Create user object from validation response
+                            const user = { role: data.role, username: data.username };
+                            loginManager.redirectUser(user);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.log('Session validation failed:', error);
+                    // Clear bad data
+                    localStorage.removeItem('bitware-session-token');
+                    localStorage.removeItem('bitware-user-info');
+                });
+            }
+    </script>
+</body>
+</html>
