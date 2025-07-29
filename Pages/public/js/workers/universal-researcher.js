@@ -743,7 +743,7 @@ class UniversalResearcherFullInterface {
                 <div class="source-title">${source.title || 'Untitled'}</div>
                 <div class="source-description">${source.description || 'No description available'}</div>
                 <div class="source-footer">
-                    <a href="${source.url}" target="_blank" class="source-link">Visit Source</a>
+                    <a href="${source.identifier}" target="_blank" class="source-link">Visit Source</a>
                     <div class="source-meta">
                         ${source.author ? `By ${source.author}` : ''}
                         ${source.published_date ? ` • ${new Date(source.published_date).toLocaleDateString()}` : ''}
@@ -761,7 +761,7 @@ class UniversalResearcherFullInterface {
             <div class="source-list-item" data-platform="${source.platform}" data-quality="${source.quality_score}">
                 <div class="source-list-content">
                     <div class="source-list-title">
-                        <a href="${source.url}" target="_blank">${source.title || 'Untitled'}</a>
+                        <a href="${source.identifier}" target="_blank">${source.title || 'Untitled'}</a>
                     </div>
                     <div class="source-list-meta">
                         ${this.getPlatformIcon(source.platform)} ${source.platform} • 
@@ -946,7 +946,7 @@ class UniversalResearcherFullInterface {
         const headers = ['Title', 'URL', 'Platform', 'Quality Score', 'Description', 'Author', 'Published Date'];
         const rows = sources.map(source => [
             source.title || '',
-            source.url || '',
+            source.identifier || '',
             source.platform || '',
             source.quality_score || '',
             source.description || '',

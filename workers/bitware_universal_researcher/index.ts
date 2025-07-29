@@ -362,56 +362,86 @@ interface Env {
   }
   
   // ==================== TEMPLATE HANDLERS ====================
-  
-  async function handleRSSSearch(data: any, parameters: any, env: Env): Promise<DiscoveredSource[]> {
+  async function handleRSSSearch(data: any, parameters: any, env: Env, context: any): Promise<DiscoveredSource[]> {
     const { topic } = data;
     const { depth = 3, quality_threshold = 0.7 } = parameters;
-  
-    console.log(`🔍 RSS search for topic: ${topic}, depth: ${depth}`);
-  
+
+    console.log(`🔍 Enhanced RSS search for topic: ${topic}, depth: ${depth}, quality_threshold: ${quality_threshold}`);
+
     const sources: DiscoveredSource[] = [];
-  
-    // Generate search queries using AI
-    const searchQueries = await generateSearchQueries(topic, 'rss', env);
-    
-    for (const query of searchQueries.slice(0, depth)) {
-      try {
-        // Search for RSS sources using multiple methods
-        const foundSources = await searchRSSFeeds(query, env);
+    const startTime = Date.now();
+
+    try {
+      // 1. Generate AI-powered search queries
+      console.log('📝 Generating search queries...');
+      const searchQueries = await generateSearchQueries(topic, 'rss', env);
+      console.log(`Generated ${searchQueries.length} search queries:`, searchQueries);
+
+      // 2. Search for RSS feeds using multiple methods
+      for (const query of searchQueries.slice(0, depth)) {
+        console.log(`🔎 Searching for: "${query}"`);
         
-        for (const source of foundSources) {
-          // Validate and score the source
-          const qualityScore = await scoreRSSSource(source, topic, env);
+        try {
+          const foundSources = await searchRSSFeeds(query, env);
+          console.log(`Found ${foundSources.length} potential sources for query: "${query}"`);
           
-          if (qualityScore >= quality_threshold) {
-            sources.push({
-              id: generateSourceId(),
-              platform: 'rss',
-              identifier: source.url,
-              title: source.title || 'Unknown Title',
-              description: source.description || '',
-              quality_score: qualityScore,
-              relevance_score: await calculateRelevance(source, topic, env),
-              discovery_method: `ai_search_query: ${query}`,
-              metadata: {
-                feed_type: source.type || 'rss',
-                last_updated: source.lastUpdated,
-                item_count: source.itemCount,
-                language: source.language
-              },
-              verified: source.verified || false
-            });
+          // 3. Validate and score each source
+          for (const source of foundSources) {
+            console.log(`📊 Scoring source: ${source.url}`);
+            
+            const qualityScore = await scoreRSSSource(source, topic, env);
+            const relevanceScore = await calculateRelevance(source, topic, env);
+            
+            console.log(`Quality: ${qualityScore.toFixed(2)}, Relevance: ${relevanceScore.toFixed(2)} for ${source.url}`);
+            
+            if (qualityScore >= quality_threshold) {
+              const discoveredSource: DiscoveredSource = {
+                id: generateSourceId(),
+                platform: 'rss',
+                identifier: source.url,
+                title: source.title || 'Unknown Title',
+                description: source.description || '',
+                quality_score: qualityScore,
+                relevance_score: relevanceScore,
+                discovery_method: `ai_search_query: ${query}`,
+                metadata: {
+                  feed_type: 'rss',
+                  discovery_source: source.source,
+                  last_updated: source.discoveredAt,
+                  domain: new URL(source.url).hostname,
+                  source_website: source.sourceWebsite || source.url
+                },
+                verified: qualityScore > 0.8
+              };
+              
+              sources.push(discoveredSource);
+              
+              // Save to database
+              await saveDiscoveredSource(discoveredSource, context, env);
+            } else {
+              console.log(`⚠️ Source ${source.url} filtered out (quality: ${qualityScore.toFixed(2)} < ${quality_threshold})`);
+            }
           }
+        } catch (error) {
+          console.error(`RSS search error for query "${query}":`, error);
         }
-      } catch (error) {
-        console.error(`RSS search error for query "${query}":`, error);
       }
+
+      const executionTime = Date.now() - startTime;
+      console.log(`✅ RSS search completed in ${executionTime}ms. Found ${sources.length} qualifying sources.`);
+
+      // 4. Remove duplicates and rank by quality
+      const finalSources = deduplicateAndRank(sources);
+      console.log(`📋 Final results: ${finalSources.length} unique sources after deduplication`);
+
+      return finalSources;
+      
+    } catch (error) {
+      console.error('RSS search pipeline failed:', error);
+      return [];
     }
-  
-    // Remove duplicates and sort by quality
-    return deduplicateAndRank(sources);
   }
-  
+   
   async function handleYouTubeSearch(data: any, parameters: any, env: Env): Promise<DiscoveredSource[]> {
     const { topic } = data;
     const { content_type = 'channels', subscriber_threshold = 1000 } = parameters;
@@ -476,18 +506,6 @@ interface Env {
     }
   
     return deduplicateAndRank(sources);
-  }
-  
-  async function handlePodcastSearch(data: any, parameters: any, env: Env): Promise<DiscoveredSource[]> {
-    // TODO: Implement podcast search using iTunes API or similar
-    console.log('🎧 Podcast search not yet implemented');
-    return [];
-  }
-  
-  async function handleAcademicSearch(data: any, parameters: any, env: Env): Promise<DiscoveredSource[]> {
-    // TODO: Implement academic search using arXiv, PubMed, etc.
-    console.log('📚 Academic search not yet implemented');
-    return [];
   }
   
   async function handleMultiPlatformSearch(data: any, parameters: any, env: Env): Promise<DiscoveredSource[]> {
@@ -644,20 +662,27 @@ interface Env {
   
   async function generateSearchQueries(topic: string, platform: string, env: Env): Promise<string[]> {
     if (!env.OPENAI_API_KEY) {
-      // Fallback without AI
+      console.log('OpenAI API key not available, using fallback queries');
       return [
-        `${topic} RSS feed`,
+        `${topic} rss feed`,
         `${topic} news feed`,
-        `${topic} blog RSS`,
-        `${topic} updates feed`
+        `${topic} blog rss`,
+        `${topic} updates rss`,
+        `best ${topic} rss feeds`
       ];
     }
-  
+
     try {
-      const prompt = `Generate 5 specific search queries to find high-quality ${platform} sources about "${topic}". 
-      Focus on authoritative sources, news outlets, research institutions, and industry leaders.
-      Return only the search queries, one per line.`;
-  
+      const prompt = `Generate 5 search queries to find high-quality RSS feeds about "${topic}". 
+      Focus on:
+      - News sources and publications
+      - Expert blogs and thought leaders
+      - Industry publications
+      - Academic institutions
+      - Professional organizations
+      
+      Return only the search queries, one per line, optimized for finding RSS feeds.`;
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -665,46 +690,490 @@ interface Env {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: env.AI_MODEL || 'gpt-4o-mini',
+          model: 'gpt-3.5-turbo',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 200,
           temperature: 0.7
         })
       });
-  
+
       const data = await response.json();
-      const queries = data.choices[0].message.content.trim().split('\n').filter(q => q.trim());
-      
-      return queries.length > 0 ? queries : [`${topic} ${platform}`];
+      const queries = data.choices[0].message.content
+      .split('\n')
+      .map((q: string) => q.trim())
+      .map((q: string) => q.replace(/^\d+\.\s*/, '')) // Remove "1. " prefixes  
+      .map((q: string) => q.replace(/^["']|["']$/g, '')) // Remove quotes
+      .filter((q: string) => q.length > 0)
+      .slice(0, 5);
+
+      return queries.length > 0 ? queries : [`${topic} rss feed`];
     } catch (error) {
       console.error('AI query generation failed:', error);
-      return [`${topic} ${platform}`];
+      return [`${topic} rss feed`, `${topic} news`, `${topic} blog`];
     }
   }
-  
+
   async function searchRSSFeeds(query: string, env: Env): Promise<any[]> {
-    // Implementation would use Google Search API, Bing API, or RSS directory APIs
-    // For now, return mock data structure
-    console.log(`Searching RSS feeds for: ${query}`);
-    
-    // TODO: Implement actual RSS search using:
-    // - Google Custom Search API
-    // - RSS directory APIs
-    // - Web scraping with RSS detection
-    
-    return []; // Placeholder
+    const discoveredFeeds: any[] = [];
+
+    // Method 1: Google Custom Search for RSS feeds
+    if (env.GOOGLE_SEARCH_API_KEY && env.GOOGLE_SEARCH_ENGINE_ID) {
+      try {
+        const googleFeeds = await searchGoogleForRSS(query, env);
+        discoveredFeeds.push(...googleFeeds);
+      } catch (error) {
+        console.error('Google RSS search failed:', error);
+      }
+    }
+
+    // Method 2: Search for websites and detect RSS feeds
+    try {
+      const webRSSFeeds = await searchWebsitesForRSS(query, env);
+      discoveredFeeds.push(...webRSSFeeds);
+    } catch (error) {
+      console.error('Website RSS detection failed:', error);
+    }
+
+    // Method 3: Check known RSS directories and aggregators
+    try {
+      const directoryFeeds = await searchRSSDirectories(query, env);
+      discoveredFeeds.push(...directoryFeeds);
+    } catch (error) {
+      console.error('RSS directory search failed:', error);
+    }
+
+    // Remove duplicates by URL
+    const uniqueFeeds = Array.from(
+      new Map(discoveredFeeds.map(feed => [feed.url, feed])).values()
+    );
+
+    return uniqueFeeds;
   }
-  
+
+  async function searchGoogleForRSS(query: string, env: Env): Promise<any[]> {
+    const feeds: any[] = [];
+    
+    // Search for explicit RSS/XML files
+    const rssQuery = `${query} filetype:rss OR filetype:xml "rss" OR "feed"`;
+    const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${env.GOOGLE_SEARCH_API_KEY}&cx=${env.GOOGLE_SEARCH_ENGINE_ID}&q=${encodeURIComponent(rssQuery)}&num=10`;
+
+    const response = await fetch(searchUrl);
+    const data = await response.json();
+
+    if (data.items) {
+      for (const item of data.items) {
+        if (item.link && (item.link.includes('rss') || item.link.includes('feed') || item.link.includes('.xml'))) {
+          feeds.push({
+            url: item.link,
+            title: item.title,
+            description: item.snippet,
+            source: 'google_search',
+            discoveredAt: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    return feeds;
+  }
+
+  async function searchWebsitesForRSS(query: string, env: Env): Promise<any[]> {
+    const feeds: any[] = [];
+
+    if (!env.GOOGLE_SEARCH_API_KEY) return feeds;
+
+    // Search for websites related to the topic
+    const websiteQuery = `${query} site:* -filetype:pdf`;
+    const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${env.GOOGLE_SEARCH_API_KEY}&cx=${env.GOOGLE_SEARCH_ENGINE_ID}&q=${encodeURIComponent(websiteQuery)}&num=10`;
+
+    const response = await fetch(searchUrl);
+    const data = await response.json();
+
+    if (data.items) {
+      for (const item of data.items) {
+        try {
+          const detectedFeeds = await detectRSSFeeds(item.link);
+          feeds.push(...detectedFeeds.map(feed => ({
+            ...feed,
+            sourceWebsite: item.link,
+            websiteTitle: item.title,
+            source: 'website_detection'
+          })));
+        } catch (error) {
+          // Skip websites that can't be analyzed
+          continue;
+        }
+      }
+    }
+
+    return feeds;
+  }
+
+  async function detectRSSFeeds(websiteUrl: string): Promise<any[]> {
+    const feeds: any[] = [];
+
+    try {
+      // Fetch the website HTML
+      const response = await fetch(websiteUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; RSSBot/1.0)'
+        }
+      });
+
+      if (!response.ok) return feeds;
+
+      const html = await response.text();
+      const baseUrl = new URL(websiteUrl).origin;
+
+      // Look for RSS feed links in HTML
+      const feedPatterns = [
+        /<link[^>]*type=["']application\/rss\+xml["'][^>]*href=["']([^"']+)["'][^>]*>/gi,
+        /<link[^>]*href=["']([^"']+)["'][^>]*type=["']application\/rss\+xml["'][^>]*>/gi,
+        /<link[^>]*type=["']application\/atom\+xml["'][^>]*href=["']([^"']+)["'][^>]*>/gi,
+        /<link[^>]*href=["']([^"']+)["'][^>]*type=["']application\/atom\+xml["'][^>]*>/gi
+      ];
+
+      for (const pattern of feedPatterns) {
+        let match;
+        while ((match = pattern.exec(html)) !== null) {
+          let feedUrl = match[1];
+          
+          // Convert relative URLs to absolute
+          if (feedUrl.startsWith('/')) {
+            feedUrl = baseUrl + feedUrl;
+          } else if (!feedUrl.startsWith('http')) {
+            feedUrl = baseUrl + '/' + feedUrl;
+          }
+
+          // Extract title from the link tag
+          const titleMatch = match[0].match(/title=["']([^"']+)["']/i);
+          const title = titleMatch ? titleMatch[1] : 'RSS Feed';
+
+          feeds.push({
+            url: feedUrl,
+            title: title,
+            description: `RSS feed from ${new URL(websiteUrl).hostname}`,
+            source: 'html_detection',
+            discoveredAt: new Date().toISOString()
+          });
+        }
+      }
+
+      // Common RSS URL patterns to try
+      const commonPaths = ['/rss', '/feed', '/rss.xml', '/feed.xml', '/feeds/all.atom.xml'];
+      for (const path of commonPaths) {
+        const feedUrl = baseUrl + path;
+        try {
+          const feedResponse = await fetch(feedUrl, { method: 'HEAD' });
+          if (feedResponse.ok) {
+            feeds.push({
+              url: feedUrl,
+              title: `RSS Feed - ${new URL(websiteUrl).hostname}`,
+              description: `RSS feed discovered at ${path}`,
+              source: 'path_detection',
+              discoveredAt: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          // Skip if feed doesn't exist
+        }
+      }
+
+    } catch (error) {
+      console.error(`Failed to detect RSS feeds for ${websiteUrl}:`, error);
+    }
+
+    return feeds;
+  }
+
+  async function searchRSSDirectories(query: string, env: Env): Promise<any[]> {
+    const feeds: any[] = [];
+
+    // RSS directory searches would go here
+    // Examples: AllTop, Feedspot, RSS directories
+    // For now, we'll implement a basic pattern
+
+    const directories = [
+      'https://rss.cnn.com/rss/edition.rss',
+      'https://feeds.bbci.co.uk/news/rss.xml',
+      'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml'
+    ];
+
+    // This is a simplified implementation
+    // In production, you'd search actual RSS directories
+    for (const directoryUrl of directories) {
+      if (directoryUrl.toLowerCase().includes(query.toLowerCase().split(' ')[0])) {
+        feeds.push({
+          url: directoryUrl,
+          title: `${query} News Feed`,
+          description: `News feed related to ${query}`,
+          source: 'directory',
+          discoveredAt: new Date().toISOString()
+        });
+      }
+    }
+
+    return feeds;
+  }
+
   async function scoreRSSSource(source: any, topic: string, env: Env): Promise<number> {
-    // Implement quality scoring based on:
-    // - Domain authority
-    // - Content freshness
-    // - Feed validity
-    // - Relevance to topic
-    
-    return Math.random() * 0.3 + 0.7; // Placeholder: 0.7-1.0 range
+    let score = 0.5; // Base score
+
+    try {
+      // 1. Validate RSS feed by fetching it
+      const validationScore = await validateRSSFeed(source.url);
+      score += validationScore * 0.3; // 30% weight for technical validity
+
+      // 2. Domain authority and reputation
+      const domainScore = await scoreDomainAuthority(source.url);
+      score += domainScore * 0.2; // 20% weight for domain authority
+
+      // 3. Content freshness and frequency
+      const freshnessScore = await scoreFeedFreshness(source.url);
+      score += freshnessScore * 0.2; // 20% weight for freshness
+
+      // 4. AI-based relevance and quality assessment
+      if (env.OPENAI_API_KEY) {
+        const aiScore = await scoreContentQualityWithAI(source, topic, env);
+        score += aiScore * 0.3; // 30% weight for AI assessment
+      }
+
+    } catch (error) {
+      console.error(`Scoring failed for ${source.url}:`, error);
+      return 0.3; // Low score for failed validation
+    }
+
+    return Math.min(Math.max(score, 0), 1); // Clamp between 0 and 1
   }
-  
+
+  async function validateRSSFeed(feedUrl: string): Promise<number> {
+    try {
+      const response = await fetch(feedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; RSSValidator/1.0)'
+        }
+      });
+
+      if (!response.ok) return 0;
+
+      const feedText = await response.text();
+      
+      // Basic RSS/Atom validation
+      const isValidRSS = feedText.includes('<rss') || feedText.includes('<feed');
+      const hasItems = feedText.includes('<item>') || feedText.includes('<entry>');
+      const hasTitle = feedText.includes('<title>');
+      
+      let score = 0;
+      if (isValidRSS) score += 0.4;
+      if (hasItems) score += 0.4;
+      if (hasTitle) score += 0.2;
+      
+      return score;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  async function scoreDomainAuthority(feedUrl: string): Promise<number> {
+    try {
+      const domain = new URL(feedUrl).hostname.toLowerCase();
+      
+      // High authority domains
+      const highAuthority = [
+        'bbc.co.uk', 'cnn.com', 'nytimes.com', 'reuters.com', 'techcrunch.com',
+        'wired.com', 'arstechnica.com', 'theguardian.com', 'wsj.com', 'forbes.com',
+        'mit.edu', 'stanford.edu', 'harvard.edu', 'arxiv.org'
+      ];
+      
+      const mediumAuthority = [
+        'medium.com', 'substack.com', 'wordpress.com', 'blogger.com'
+      ];
+
+      if (highAuthority.some(auth => domain.includes(auth))) return 0.9;
+      if (mediumAuthority.some(auth => domain.includes(auth))) return 0.6;
+      if (domain.includes('.edu') || domain.includes('.gov')) return 0.8;
+      if (domain.includes('.org')) return 0.7;
+      
+      return 0.5; // Default score
+    } catch (error) {
+      return 0.5;
+    }
+  }
+
+  async function scoreFeedFreshness(feedUrl: string): Promise<number> {
+    try {
+      const response = await fetch(feedUrl);
+      if (!response.ok) return 0;
+
+      const feedText = await response.text();
+      
+      // Look for recent publication dates
+      const datePattern = /<pubDate>([^<]+)<\/pubDate>|<published>([^<]+)<\/published>/gi;
+      const dates: Date[] = [];
+      
+      let match;
+      while ((match = datePattern.exec(feedText)) !== null) {
+        const dateStr = match[1] || match[2];
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          dates.push(date);
+        }
+      }
+
+      if (dates.length === 0) return 0.3;
+
+      // Score based on most recent publication
+      const mostRecent = new Date(Math.max(...dates.map(d => d.getTime())));
+      const daysSinceUpdate = (Date.now() - mostRecent.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (daysSinceUpdate < 1) return 1.0;      // Updated today
+      if (daysSinceUpdate < 7) return 0.8;      // Updated this week
+      if (daysSinceUpdate < 30) return 0.6;     // Updated this month
+      if (daysSinceUpdate < 90) return 0.4;     // Updated this quarter
+      return 0.2;                               // Older updates
+      
+    } catch (error) {
+      return 0.3;
+    }
+  }
+
+  async function scoreContentQualityWithAI(source: any, topic: string, env: Env): Promise<number> {
+    try {
+      const prompt = `Analyze this RSS feed for quality and relevance to "${topic}":
+
+  Title: ${source.title}
+  URL: ${source.url}
+  Description: ${source.description}
+
+  Rate from 0.0 to 1.0 based on:
+  - Relevance to topic "${topic}"
+  - Source credibility and authority
+  - Content quality indicators
+  - Professional presentation
+
+  Return only a number between 0.0 and 1.0.`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 10,
+          temperature: 0.1
+        })
+      });
+
+      const data = await response.json();
+      const scoreText = data.choices[0].message.content.trim();
+      const score = parseFloat(scoreText);
+      
+      return isNaN(score) ? 0.5 : Math.min(Math.max(score, 0), 1);
+    } catch (error) {
+      console.error('AI scoring failed:', error);
+      return 0.5;
+    }
+  }
+
+  async function calculateRelevance(source: any, topic: string, env: Env): Promise<number> {
+    if (!env.OPENAI_API_KEY) {
+      // Fallback: simple keyword matching
+      const topicLower = topic.toLowerCase();
+      const titleLower = (source.title || '').toLowerCase();
+      const descLower = (source.description || '').toLowerCase();
+      const urlLower = source.url.toLowerCase();
+      
+      let score = 0;
+      const topicWords = topicLower.split(' ');
+      
+      for (const word of topicWords) {
+        if (titleLower.includes(word)) score += 0.4;
+        if (descLower.includes(word)) score += 0.3;
+        if (urlLower.includes(word)) score += 0.1;
+      }
+      
+      return Math.min(score, 1.0);
+    }
+
+    try {
+      const prompt = `Rate the relevance of this RSS feed to the topic "${topic}" from 0.0 to 1.0:
+
+  Feed Title: ${source.title}
+  Feed Description: ${source.description}
+  Feed URL: ${source.url}
+
+  Consider:
+  - Direct topic alignment
+  - Subject matter overlap
+  - Content focus
+
+  Return only a number between 0.0 and 1.0.`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 10,
+          temperature: 0.1
+        })
+      });
+
+      const data = await response.json();
+      const scoreText = data.choices[0].message.content.trim();
+      const score = parseFloat(scoreText);
+      
+      return isNaN(score) ? 0.5 : Math.min(Math.max(score, 0), 1);
+    } catch (error) {
+      console.error('AI relevance calculation failed:', error);
+      return 0.5;
+    }
+  }
+
+  // ==================== DATABASE INTEGRATION ====================
+
+  async function saveDiscoveredSource(source: DiscoveredSource, context: any, env: Env): Promise<void> {
+    try {
+      await env.UNIVERSAL_DISCOVERY_DB
+        .prepare(`
+          INSERT OR REPLACE INTO discovered_sources (
+            id, client_id, pipeline_id, request_id, platform, identifier,
+            title, description, quality_score, relevance_score, 
+            discovery_method, metadata, verified, discovered_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          source.id,
+          context.client_id,
+          context.pipeline_id,
+          context.request_id,
+          source.platform,
+          source.identifier,
+          source.title,
+          source.description,
+          source.quality_score,
+          source.relevance_score,
+          source.discovery_method,
+          JSON.stringify(source.metadata),
+          source.verified ? 1 : 0,
+          new Date().toISOString()
+        )
+        .run();
+    } catch (error) {
+      console.error('Failed to save discovered source:', error);
+    }
+  }
+
+  // ==================== ENHANCED handleRSSSearch ====================
+
+
   async function scoreYouTubeChannel(channel: any, topic: string, subscriberCount: number, env: Env): Promise<number> {
     // Implement quality scoring based on:
     // - Subscriber count
@@ -717,11 +1186,6 @@ interface Env {
     const baseScore = 0.2;
     
     return Math.min(subscriberScore + relevanceScore + baseScore, 1.0);
-  }
-  
-  async function calculateRelevance(source: any, topic: string, env: Env): Promise<number> {
-    // TODO: Implement AI-based relevance calculation
-    return Math.random() * 0.3 + 0.7; // Placeholder
   }
   
   function generateSourceId(): string {
