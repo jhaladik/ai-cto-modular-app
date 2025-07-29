@@ -236,9 +236,7 @@ class ReportBuilderUI {
 
         try {
             console.log('Generating report:', reportRequest);
-
-            const response = await this.apiClient.post('report-builder', '/generate', reportRequest);
-
+            const response = await this.apiClient.callWorker('report-builder', '/generate', 'POST', reportRequest);
             if (response && response.status === 'ok') {
                 this.hideGenerationProgress();
                 this.showSuccess(`Report generated successfully! Report ID: ${response.report_id}`);
@@ -314,7 +312,7 @@ class ReportBuilderUI {
 
     async loadReports() {
         try {
-            const response = await this.apiClient.get('report-builder', '/reports');
+            const response = await this.apiClient.callWorker('report-builder', '/reports', 'GET');
             
             if (response.success && response.data && response.data.reports) {
                 this.currentReports = response.data.reports;
