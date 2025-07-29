@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔬 Universal Researcher - AI Factory</title>
+    <title>🔬 Universal Researcher 2.0 - AI Factory</title>
     <link rel="stylesheet" href="/css/shared.css">
     <link rel="stylesheet" href="/css/worker-common.css">
     <link rel="stylesheet" href="/css/universal-researcher.css">
@@ -11,7 +11,7 @@
 <body class="worker-page">
     <header class="worker-header">
         <div class="header-content">
-            <h1>🔬 Universal Researcher</h1>
+            <h1>🔬 Universal Researcher 2.0</h1>
             <nav class="breadcrumb">
                 <a href="/admin-dashboard.html">Dashboard</a> / Universal Researcher
             </nav>
@@ -32,161 +32,197 @@
                 <div class="template-card active" data-template="search_rss">
                     <div class="template-icon">📡</div>
                     <div class="template-name">RSS Discovery</div>
-                    <div class="template-description">Discover RSS feeds and news sources</div>
+                    <div class="template-description">Discover RSS feeds and news sources with AI quality scoring</div>
                     <div class="template-features">
                         <span class="feature">AI Quality Scoring</span>
                         <span class="feature">Source Validation</span>
                         <span class="feature">Domain Analysis</span>
                     </div>
+                    <div class="template-status">Ready</div>
                 </div>
                 
                 <div class="template-card" data-template="search_youtube">
                     <div class="template-icon">🎥</div>
                     <div class="template-name">YouTube Discovery</div>
-                    <div class="template-description">Find YouTube channels and playlists</div>
+                    <div class="template-description">Find YouTube channels and playlists with engagement metrics</div>
                     <div class="template-features">
                         <span class="feature">Subscriber Analysis</span>
                         <span class="feature">Content Quality</span>
                         <span class="feature">Engagement Metrics</span>
                     </div>
+                    <div class="template-status">Ready</div>
                 </div>
                 
-                <div class="template-card disabled" data-template="search_podcasts">
-                    <div class="template-icon">🎧</div>
+                <div class="template-card" data-template="search_podcasts">
+                    <div class="template-icon">🎙️</div>
                     <div class="template-name">Podcast Discovery</div>
-                    <div class="template-description">Find podcast feeds and episodes</div>
+                    <div class="template-description">Discover podcasts and audio content sources</div>
+                    <div class="template-features">
+                        <span class="feature">Episode Analysis</span>
+                        <span class="feature">Host Profiling</span>
+                        <span class="feature">Content Matching</span>
+                    </div>
                     <div class="template-status">Coming Soon</div>
                 </div>
                 
-                <div class="template-card disabled" data-template="search_academic">
-                    <div class="template-icon">📚</div>
-                    <div class="template-name">Academic Search</div>
-                    <div class="template-description">Research papers and journals</div>
+                <div class="template-card" data-template="search_academic">
+                    <div class="template-icon">🎓</div>
+                    <div class="template-name">Academic Discovery</div>
+                    <div class="template-description">Find academic papers and research sources</div>
+                    <div class="template-features">
+                        <span class="feature">Citation Analysis</span>
+                        <span class="feature">Impact Scoring</span>
+                        <span class="feature">Peer Review</span>
+                    </div>
                     <div class="template-status">Coming Soon</div>
                 </div>
                 
                 <div class="template-card" data-template="search_all">
                     <div class="template-icon">🌐</div>
                     <div class="template-name">Multi-Platform</div>
-                    <div class="template-description">Search across all platforms</div>
+                    <div class="template-description">Search across all platforms simultaneously</div>
                     <div class="template-features">
-                        <span class="feature">Cross-Platform</span>
                         <span class="feature">Unified Results</span>
-                        <span class="feature">Comparative Analysis</span>
+                        <span class="feature">Cross-Platform</span>
+                        <span class="feature">Smart Deduplication</span>
                     </div>
+                    <div class="template-status">Ready</div>
                 </div>
             </div>
         </section>
-        
+
         <!-- Research Configuration Section -->
         <section class="worker-section research-config">
             <h2>⚙️ Research Configuration</h2>
             
             <div class="config-grid">
-                <div class="config-group">
-                    <label for="research-topic">Research Topic</label>
-                    <input type="text" id="research-topic" placeholder="Enter research topic..." 
-                           class="config-input">
-                    <div class="config-help">Be specific for better results</div>
-                </div>
-                
-                <div class="config-group">
-                    <label for="client-context">Client Context</label>
+                <div class="config-primary">
+                    <div class="config-group">
+                        <label for="research-topic">Research Topic</label>
+                        <input type="text" id="research-topic" class="config-input" 
+                               placeholder="Enter research topic (e.g., artificial intelligence, climate change)" 
+                               required>
+                        <div class="config-help">Describe what you want to research. Be specific for better results.</div>
+                    </div>
+                    
                     <div class="client-inputs">
-                        <input type="text" id="client-id-full" placeholder="Client ID" 
-                               value="demo_client">
-                        <select id="billing-tier">
-                            <option value="free">Free Tier</option>
-                            <option value="pro" selected>Pro Tier</option>
-                            <option value="enterprise">Enterprise</option>
+                        <div class="config-group">
+                            <label for="client-id">Client ID</label>
+                            <input type="text" id="client-id" class="config-input" 
+                                   placeholder="acme_corp_001" value="demo_client">
+                            <div class="config-help">Client identifier for tracking and billing</div>
+                        </div>
+                        
+                        <div class="config-group">
+                            <label for="billing-tier">Billing Tier</label>
+                            <select id="billing-tier" class="config-input">
+                                <option value="demo">Demo</option>
+                                <option value="basic">Basic</option>
+                                <option value="pro" selected>Pro</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-secondary">
+                    <!-- Template-specific parameters -->
+                    <div class="template-params" id="rss-params">
+                        <div class="config-group">
+                            <label for="rss-depth">Search Depth</label>
+                            <select id="rss-depth" class="config-input">
+                                <option value="1">Fast (1 level)</option>
+                                <option value="2">Standard (2 levels)</option>
+                                <option value="3" selected>Deep (3 levels)</option>
+                                <option value="4">Comprehensive (4 levels)</option>
+                            </select>
+                            <div class="config-help">How many levels to search through RSS feed networks</div>
+                        </div>
+                        
+                        <div class="config-group">
+                            <label for="rss-quality">Quality Threshold</label>
+                            <input type="range" id="rss-quality" min="0.1" max="1.0" step="0.1" value="0.7" class="config-input">
+                            <div class="quality-display">0.7 (Balanced)</div>
+                            <div class="config-help">Minimum quality score for sources (0.1=Low, 1.0=Highest)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="template-params" id="youtube-params" style="display: none;">
+                        <div class="config-group">
+                            <label for="youtube-max-channels">Max Channels</label>
+                            <input type="number" id="youtube-max-channels" class="config-input" 
+                                   value="20" min="5" max="100">
+                            <div class="config-help">Maximum number of channels to discover</div>
+                        </div>
+                        
+                        <div class="config-group">
+                            <label for="youtube-min-subscribers">Min Subscribers</label>
+                            <input type="number" id="youtube-min-subscribers" class="config-input" 
+                                   value="1000" min="0" max="1000000">
+                            <div class="config-help">Minimum subscriber count for channels</div>
+                        </div>
+                    </div>
+                    
+                    <div class="template-params" id="all-params" style="display: none;">
+                        <div class="config-group">
+                            <label for="all-platforms">Platform Priority</label>
+                            <select id="all-platforms" class="config-input">
+                                <option value="balanced">Balanced</option>
+                                <option value="rss_priority">RSS Priority</option>
+                                <option value="video_priority">Video Priority</option>
+                                <option value="quality_priority">Quality Priority</option>
+                            </select>
+                            <div class="config-help">How to prioritize different content platforms</div>
+                        </div>
+                        
+                        <div class="config-group">
+                            <label for="all-max-sources">Max Total Sources</label>
+                            <input type="number" id="all-max-sources" class="config-input" 
+                                   value="50" min="10" max="200">
+                            <div class="config-help">Maximum total sources across all platforms</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Advanced Parameters (Collapsible) -->
+            <div class="advanced-config">
+                <button class="toggle-advanced" onclick="toggleAdvancedParams()">⚙️ Advanced Options</button>
+                
+                <div class="advanced-params" id="advanced-params" style="display: none;">
+                    <div class="config-group">
+                        <label for="cache-strategy">Cache Strategy</label>
+                        <select id="cache-strategy" class="config-input">
+                            <option value="standard">Standard (1 hour)</option>
+                            <option value="aggressive">Aggressive (6 hours)</option>
+                            <option value="fresh">Fresh (No cache)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="ai-model">AI Model</label>
+                        <select id="ai-model" class="config-input">
+                            <option value="gpt-4o-mini" selected>GPT-4o Mini (Fast)</option>
+                            <option value="gpt-4o">GPT-4o (Balanced)</option>
+                            <option value="gpt-4">GPT-4 (Premium)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="language-preference">Language Preference</label>
+                        <select id="language-preference" class="config-input">
+                            <option value="any">Any Language</option>
+                            <option value="en">English Only</option>
+                            <option value="multi">Multilingual</option>
                         </select>
                     </div>
                 </div>
-                
-                <div class="config-group template-params" id="rss-params">
-                    <label>RSS Parameters</label>
-                    <div class="param-inputs">
-                        <div class="param-input">
-                            <label for="rss-depth">Search Depth:</label>
-                            <select id="rss-depth">
-                                <option value="1">Quick (1 query)</option>
-                                <option value="3" selected>Standard (3 queries)</option>
-                                <option value="5">Deep (5 queries)</option>
-                            </select>
-                        </div>
-                        <div class="param-input">
-                            <label for="rss-quality">Quality Threshold:</label>
-                            <select id="rss-quality">
-                                <option value="0.6">Low (0.6)</option>
-                                <option value="0.7" selected>Standard (0.7)</option>
-                                <option value="0.8">High (0.8)</option>
-                                <option value="0.9">Premium (0.9)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="config-group template-params" id="youtube-params" style="display: none;">
-                    <label>YouTube Parameters</label>
-                    <div class="param-inputs">
-                        <div class="param-input">
-                            <label for="youtube-type">Content Type:</label>
-                            <select id="youtube-type">
-                                <option value="channels" selected>Channels</option>
-                                <option value="playlists">Playlists</option>
-                                <option value="videos">Individual Videos</option>
-                            </select>
-                        </div>
-                        <div class="param-input">
-                            <label for="youtube-subscribers">Min Subscribers:</label>
-                            <select id="youtube-subscribers">
-                                <option value="0">Any</option>
-                                <option value="1000" selected>1K+</option>
-                                <option value="10000">10K+</option>
-                                <option value="100000">100K+</option>
-                                <option value="1000000">1M+</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="config-group template-params" id="multi-params" style="display: none;">
-                    <label>Multi-Platform Parameters</label>
-                    <div class="platform-selection">
-                        <label class="platform-checkbox">
-                            <input type="checkbox" value="rss" checked>
-                            <span class="platform-icon">📡</span>
-                            RSS Feeds
-                        </label>
-                        <label class="platform-checkbox">
-                            <input type="checkbox" value="youtube">
-                            <span class="platform-icon">🎥</span>
-                            YouTube
-                        </label>
-                        <label class="platform-checkbox">
-                            <input type="checkbox" value="podcasts" disabled>
-                            <span class="platform-icon">🎧</span>
-                            Podcasts
-                        </label>
-                        <label class="platform-checkbox">
-                            <input type="checkbox" value="academic" disabled>
-                            <span class="platform-icon">📚</span>
-                            Academic
-                        </label>
-                    </div>
-                    <div class="param-input">
-                        <label for="max-per-platform">Max per Platform:</label>
-                        <select id="max-per-platform">
-                            <option value="5" selected>5 sources</option>
-                            <option value="10">10 sources</option>
-                            <option value="20">20 sources</option>
-                            <option value="50">50 sources</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="config-actions">
-                    <button class="btn btn-primary execute-btn" onclick="executeFullResearch()">
+            </div>
+            
+            <!-- Execution Controls -->
+            <div class="execution-controls">
+                <div class="control-buttons">
+                    <button class="btn btn-primary" onclick="executeFullResearch()" id="execute-btn">
                         🚀 Execute Research
                     </button>
                     <button class="btn btn-secondary" onclick="saveTemplate()">
@@ -242,114 +278,105 @@
                 </div>
             </div>
         </section>
-        
-        <!-- Comprehensive Results Display -->
-        <section class="worker-section results-display" id="results-display" style="display: none;">
-            <h2>📊 Research Results</h2>
-            
-            <!-- Results Summary -->
-            <div class="results-summary">
-                <div class="summary-cards">
-                    <div class="summary-card">
-                        <div class="summary-icon">🎯</div>
-                        <div class="summary-value" id="total-sources-found">0</div>
-                        <div class="summary-label">Total Sources</div>
+
+        <!-- Results Display Section -->
+        <section class="worker-section results-display" id="results-section" style="display: none;">
+            <div class="results-header">
+                <h2>📊 Discovery Results</h2>
+                <div class="results-controls">
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid">Grid</button>
+                        <button class="view-btn" data-view="list">List</button>
+                        <button class="view-btn" data-view="analytics">Analytics</button>
                     </div>
-                    <div class="summary-card">
-                        <div class="summary-icon">⭐</div>
-                        <div class="summary-value" id="avg-quality-score">0.0</div>
-                        <div class="summary-label">Avg Quality</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-icon">🌐</div>
-                        <div class="summary-value" id="platforms-used">0</div>
-                        <div class="summary-label">Platforms</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-icon">⚡</div>
-                        <div class="summary-value" id="total-execution-time">0ms</div>
-                        <div class="summary-label">Execution Time</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Platform Breakdown Chart -->
-            <div class="platform-breakdown-chart">
-                <h3>Platform Distribution</h3>
-                <div class="breakdown-bars" id="breakdown-bars">
-                    <!-- Platform bars will be generated dynamically -->
-                </div>
-            </div>
-            
-            <!-- Sources Table -->
-            <div class="sources-table-container">
-                <div class="table-header">
-                    <h3>Discovered Sources</h3>
-                    <div class="table-actions">
-                        <select id="platform-filter">
-                            <option value="">All Platforms</option>
-                            <option value="rss">RSS Only</option>
-                            <option value="youtube">YouTube Only</option>
-                            <option value="podcast">Podcasts Only</option>
-                            <option value="academic">Academic Only</option>
+                    <div class="result-filters">
+                        <select id="platform-filter" class="filter-select">
+                            <option value="all">All Platforms</option>
+                            <option value="rss">RSS</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="podcast">Podcast</option>
+                            <option value="academic">Academic</option>
                         </select>
-                        <select id="quality-filter">
-                            <option value="">All Quality</option>
+                        <select id="quality-filter" class="filter-select">
+                            <option value="all">All Quality</option>
                             <option value="high">High (0.8+)</option>
                             <option value="medium">Medium (0.6-0.8)</option>
-                            <option value="low">Low (0.6-)</option>
+                            <option value="low">Low (0.4-0.6)</option>
                         </select>
-                        <button class="btn btn-secondary" onclick="exportSources()">
-                            📋 Export CSV
-                        </button>
                     </div>
+                    <button class="btn btn-export" onclick="exportSources()">📥 Export</button>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="results-summary" id="results-summary">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-sources">0</div>
+                    <div class="stat-label">Total Sources</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avg-quality">0.0</div>
+                    <div class="stat-label">Avg Quality</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="execution-time">0ms</div>
+                    <div class="stat-label">Execution Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="platforms-covered">0</div>
+                    <div class="stat-label">Platforms</div>
+                </div>
+            </div>
+
+            <!-- Platform Breakdown -->
+            <div class="platform-breakdown" id="platform-breakdown">
+                <!-- Dynamically populated platform stats -->
+            </div>
+
+            <!-- Source Results -->
+            <div class="source-results" id="source-results">
+                <div class="results-grid" id="results-grid">
+                    <!-- Dynamically populated source cards -->
                 </div>
                 
-                <div class="sources-table" id="sources-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Platform</th>
-                                <th>Title</th>
-                                <th>Quality</th>
-                                <th>Relevance</th>
-                                <th>Verified</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sources-table-body">
-                            <!-- Sources will be populated dynamically -->
-                        </tbody>
-                    </table>
+                <div class="results-list" id="results-list" style="display: none;">
+                    <!-- Dynamically populated source list -->
+                </div>
+                
+                <div class="results-analytics" id="results-analytics" style="display: none;">
+                    <!-- Analytics charts and insights -->
                 </div>
             </div>
         </section>
-        
-        <!-- Session History -->
+
+        <!-- Session History Section -->
         <section class="worker-section session-history">
-            <h2>📈 Session History</h2>
-            
-            <div class="history-controls">
-                <select id="history-timeframe">
-                    <option value="24h">Last 24 Hours</option>
-                    <option value="7d" selected>Last 7 Days</option>
-                    <option value="30d">Last 30 Days</option>
-                </select>
-                <button class="btn btn-secondary" onclick="refreshHistory()">
-                    🔄 Refresh
-                </button>
+            <div class="history-header">
+                <h2>📚 Session History</h2>
+                <button class="btn btn-secondary" onclick="refreshHistory()">🔄 Refresh</button>
             </div>
             
-            <div class="history-list" id="history-list">
-                <!-- Session history will be populated dynamically -->
+            <div class="history-timeline" id="history-timeline">
+                <div class="history-placeholder">
+                    <div class="placeholder-icon">📋</div>
+                    <div class="placeholder-text">No research sessions yet. Execute your first research to see history here.</div>
+                </div>
             </div>
         </section>
-        
+
     </main>
-    
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text">Executing Universal Research...</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="/js/shared/api.js"></script>
     <script src="/js/shared/auth.js"></script>
-    <script src="/js/worker-common.js"></script>
-    <script src="/js/universal-researcher.js"></script>
+    <script src="/js/workers/universal-researcher.js"></script>
 </body>
 </html>
