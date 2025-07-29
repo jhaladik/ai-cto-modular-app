@@ -1,0 +1,45 @@
+{
+    "name": "bitware-universal-researcher",
+    "version": "2.0.0",
+    "description": "Universal content source discovery worker for AI Factory v2.0",
+    "main": "index.ts",
+    "type": "module",
+    "scripts": {
+      "dev": "wrangler dev --env development",
+      "deploy": "wrangler deploy",
+      "deploy:dev": "wrangler deploy --env development",
+      "deploy:prod": "wrangler deploy --env production",
+      "db:create": "wrangler d1 create universal-discovery-db",
+      "db:migrate": "wrangler d1 execute universal-discovery-db --file=schema.sql",
+      "db:migrate:local": "wrangler d1 execute universal-discovery-db --local --file=schema.sql",
+      "kv:create": "wrangler kv:namespace create DISCOVERY_CACHE",
+      "test": "chmod +x test.sh && ./test.sh",
+      "test:templates": "chmod +x test-templates.sh && ./test-templates.sh",
+      "logs": "wrangler tail",
+      "logs:prod": "wrangler tail --env production"
+    },
+    "keywords": [
+      "ai-factory",
+      "universal-discovery", 
+      "content-sources",
+      "rss",
+      "youtube",
+      "podcasts",
+      "academic",
+      "cloudflare-workers",
+      "template-driven",
+      "multi-platform"
+    ],
+    "author": "AI Factory Team",
+    "license": "MIT",
+    "dependencies": {
+      "@cloudflare/workers-types": "^4.20250120.0"
+    },
+    "devDependencies": {
+      "typescript": "^5.3.3",
+      "wrangler": "^3.78.0"
+    },
+    "engines": {
+      "node": ">=18.0.0"
+    }
+  }

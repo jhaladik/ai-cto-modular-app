@@ -34,6 +34,10 @@ service = "bitware-content-classifier"
 binding = "REPORT_BUILDER"
 service = "bitware-report-builder"
 
+[[services]]
+binding = "UNIVERSAL_RESEARCHER"
+service = "bitware-universal-researcher"
+
 [vars]
 KEY_ACCOUNT_MANAGER_URL = "https://bitware-key-account-manager.jhaladik.workers.dev"
 ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"

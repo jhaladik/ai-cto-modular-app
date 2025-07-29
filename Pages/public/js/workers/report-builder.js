@@ -48,6 +48,14 @@ class ReportBuilderUI {
             // Start health monitoring
             this.startHealthCheck();
 
+            // Prevent report library clicks from bubbling
+            const reportLibrary = document.querySelector('.report-library');
+            if (reportLibrary) {
+                reportLibrary.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
+
             // Hide loading screen and show main content
             document.getElementById('loading-screen').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
@@ -107,9 +115,11 @@ class ReportBuilderUI {
         // Relevance slider display
         const relevanceSlider = document.getElementById('min-relevance');
         const relevanceDisplay = document.getElementById('relevance-display');
-        relevanceSlider.addEventListener('input', (e) => {
-            relevanceDisplay.textContent = e.target.value;
-        });
+        if (relevanceSlider && relevanceDisplay) {
+            relevanceSlider.addEventListener('input', (e) => {
+                relevanceDisplay.textContent = e.target.value;
+            });
+        }
 
         // Custom time range handling
         document.getElementById('time-range').addEventListener('change', (e) => {
@@ -146,8 +156,8 @@ class ReportBuilderUI {
     async loadCapabilities() {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/capabilities', 'GET');
-            if (response.success && response.data) {
-                console.log('Report Builder capabilities:', response.data);
+            if (response && response.worker_type) {
+                console.log('Report Builder capabilities:', response);
                 // Update UI with capabilities info if needed
             }
         } catch (error) {
@@ -158,21 +168,21 @@ class ReportBuilderUI {
     async loadDashboardData() {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/dashboard-data', 'GET');
-            if (response.success && response.data) {
-                const data = response.data;
+            if (response && response.status === 'ok') {
+                const data = response;
                 
                 // Update status bar metrics
                 document.getElementById('reports-today').textContent = data.reports_today || '0';
                 document.getElementById('avg-generation-time').textContent = data.avg_generation_time || '-';
-                document.getElementById('cost-today').textContent = data.cost_today ? `${data.cost_today.toFixed(2)}` : '$0.00';
+                document.getElementById('cost-today').textContent = data.cost_today ? `$${data.cost_today.toFixed(2)}` : '$0.00';
                 document.getElementById('success-rate').textContent = data.success_rate ? `${(data.success_rate * 100).toFixed(1)}%` : '-';
                 document.getElementById('cache-hit-rate').textContent = data.cache_hit_rate ? `${(data.cache_hit_rate * 100).toFixed(1)}%` : '-';
                 
                 // Update analytics metrics
                 document.getElementById('total-reports').textContent = data.total_reports || '0';
                 document.getElementById('success-rate-metric').textContent = data.success_rate ? `${(data.success_rate * 100).toFixed(1)}%` : '-';
-                document.getElementById('avg-cost').textContent = data.avg_cost ? `${data.avg_cost.toFixed(3)}` : '$0.000';
-                document.getElementById('total-cost').textContent = data.total_cost ? `${data.total_cost.toFixed(2)}` : '$0.00';
+                document.getElementById('avg-cost').textContent = data.avg_cost ? `$${data.avg_cost.toFixed(3)}` : '$0.000';
+                document.getElementById('total-cost').textContent = data.total_cost ? `$${data.total_cost.toFixed(2)}` : '$0.00';
             }
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -183,8 +193,8 @@ class ReportBuilderUI {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/health', 'GET');
             
-            if (response.success && response.data) {
-                const health = response.data;
+            if (response && response.status === 'healthy') {
+                const health = response;
                 const isHealthy = health.status === 'healthy';
                 
                 const statusElement = document.getElementById('worker-status');
@@ -236,7 +246,9 @@ class ReportBuilderUI {
 
         try {
             console.log('Generating report:', reportRequest);
+
             const response = await this.apiClient.callWorker('report-builder', '/generate', 'POST', reportRequest);
+
             if (response && response.status === 'ok') {
                 this.hideGenerationProgress();
                 this.showSuccess(`Report generated successfully! Report ID: ${response.report_id}`);
@@ -265,9 +277,11 @@ class ReportBuilderUI {
         const progressDiv = document.getElementById('generation-progress');
         const generateBtn = document.getElementById('generate-report-btn');
         
-        progressDiv.style.display = 'block';
-        generateBtn.textContent = 'Generating...';
-        generateBtn.disabled = true;
+        if (progressDiv) progressDiv.style.display = 'block';
+        if (generateBtn) {
+            generateBtn.textContent = 'Generating...';
+            generateBtn.disabled = true;
+        }
 
         // Simulate progress for user feedback
         let progress = 0;
@@ -287,10 +301,10 @@ class ReportBuilderUI {
             progress += Math.random() * 15 + 5;
             if (progress > 95) progress = 95;
             
-            progressFill.style.width = `${progress}%`;
+            if (progressFill) progressFill.style.width = `${progress}%`;
             
             const stageIndex = Math.floor((progress / 100) * stages.length);
-            if (stageIndex < stages.length) {
+            if (stageIndex < stages.length && progressStatus) {
                 progressStatus.textContent = stages[stageIndex];
             }
         }, 1000);
@@ -300,9 +314,11 @@ class ReportBuilderUI {
         const progressDiv = document.getElementById('generation-progress');
         const generateBtn = document.getElementById('generate-report-btn');
         
-        progressDiv.style.display = 'none';
-        generateBtn.textContent = '📊 Generate Intelligence Report';
-        generateBtn.disabled = false;
+        if (progressDiv) progressDiv.style.display = 'none';
+        if (generateBtn) {
+            generateBtn.textContent = '📊 Generate Intelligence Report';
+            generateBtn.disabled = false;
+        }
 
         if (this.generationInterval) {
             clearInterval(this.generationInterval);
@@ -314,8 +330,8 @@ class ReportBuilderUI {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/reports', 'GET');
             
-            if (response.success && response.data && response.data.reports) {
-                this.currentReports = response.data.reports;
+            if (response && response.status === 'ok' && response.reports) {
+                this.currentReports = response.reports;
                 this.displayReports();
             }
         } catch (error) {
@@ -325,6 +341,7 @@ class ReportBuilderUI {
 
     displayReports() {
         const reportsList = document.getElementById('reports-list');
+        if (!reportsList) return;
         
         if (this.currentReports.length === 0) {
             reportsList.innerHTML = `
@@ -338,25 +355,27 @@ class ReportBuilderUI {
 
         const reportsHtml = this.currentReports.map(report => {
             const createdDate = new Date(report.created_at).toLocaleDateString();
-            const reportTypeDisplay = this.formatReportType(report.report_type);
+            const reportTypeDisplay = this.formatReportType(report.type || report.report_type);
             
             return `
-                <div class="report-item">
-                    <div class="report-title">${report.title || reportTypeDisplay}</div>
-                    <div class="report-meta">
-                        <span>Type: ${reportTypeDisplay}</span>
-                        <span>Created: ${createdDate}</span>
-                        <span>Format: ${report.output_format?.toUpperCase() || 'JSON'}</span>
+                <div class="report-item" onclick="event.stopPropagation();">
+                    <div class="report-content">
+                        <div class="report-title">${report.title || reportTypeDisplay}</div>
+                        <div class="report-meta">
+                            <span>Type: ${reportTypeDisplay}</span>
+                            <span>Created: ${createdDate}</span>
+                            <span>Articles: ${report.articles_analyzed || 0}</span>
+                        </div>
                     </div>
-                    <div class="report-actions">
-                        <button class="btn btn-primary" onclick="reportBuilderUI.viewReport(${report.id})">
+                    <div class="report-actions" onclick="event.stopPropagation();">
+                        <a href="/api/report-builder/reports/${report.report_id || report.id}/view" target="_blank" class="btn btn-primary">
                             👁️ View
-                        </button>
-                        <button class="btn btn-secondary" onclick="reportBuilderUI.downloadReport(${report.id})">
+                        </a>
+                        <a href="/api/report-builder/reports/${report.report_id || report.id}/download?format=${report.output_format || 'json'}" target="_blank" class="btn btn-secondary">
                             📥 Download
-                        </button>
+                        </a>
                         ${this.isAdmin ? `
-                            <button class="btn btn-warning" onclick="reportBuilderUI.deleteReport(${report.id})">
+                            <button class="btn btn-warning" data-action="delete" data-report-id="${report.report_id || report.id}">
                                 🗑️ Delete
                             </button>
                         ` : ''}
@@ -366,6 +385,17 @@ class ReportBuilderUI {
         }).join('');
         
         reportsList.innerHTML = reportsHtml;
+
+        // Only add event listeners for delete buttons
+        reportsList.querySelectorAll('button[data-action="delete"]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const reportId = button.dataset.reportId;
+                this.deleteReport(reportId);
+            });
+        });
     }
 
     formatReportType(type) {
@@ -422,11 +452,16 @@ class ReportBuilderUI {
             estimatedTime = 20;
         }
 
-        document.getElementById('cost-estimate').textContent = 
-            `Estimated Cost: $${baseCost.toFixed(3)} | Generation Time: ~${estimatedTime}s`;
+        const costElement = document.getElementById('cost-estimate');
+        if (costElement) {
+            costElement.textContent = 
+                `Estimated Cost: $${baseCost.toFixed(3)} | Generation Time: ~${estimatedTime}s`;
+        }
     }
 
     async viewReport(reportId) {
+        // This method is no longer needed since we use direct links
+        // Keeping for backward compatibility
         try {
             window.open(`/api/report-builder/reports/${reportId}/view`, '_blank');
         } catch (error) {
@@ -436,8 +471,10 @@ class ReportBuilderUI {
     }
 
     async downloadReport(reportId) {
+        // This method is no longer needed since we use direct links
+        // Keeping for backward compatibility
         try {
-            const report = this.currentReports.find(r => r.id === reportId);
+            const report = this.currentReports.find(r => (r.id === reportId || r.report_id === reportId));
             const format = report?.output_format || 'json';
             window.open(`/api/report-builder/reports/${reportId}/download?format=${format}`, '_blank');
         } catch (error) {
@@ -454,11 +491,11 @@ class ReportBuilderUI {
         try {
             const response = await this.apiClient.callWorker('report-builder', `/admin/reports/${reportId}`, 'DELETE');
             
-            if (response.success) {
+            if (response && (response.success || response.status === 'ok')) {
                 this.showSuccess('Report deleted successfully');
                 await this.loadReports();
             } else {
-                throw new Error(response.error || 'Delete failed');
+                throw new Error(response?.error || 'Delete failed');
             }
         } catch (error) {
             console.error('Error deleting report:', error);
@@ -474,19 +511,28 @@ class ReportBuilderUI {
         this.selectedReportType = null;
 
         // Reset form fields
-        document.getElementById('topic-filters').value = '';
-        document.getElementById('time-range').value = '7d';
-        document.getElementById('min-relevance').value = '0.7';
-        document.getElementById('relevance-display').textContent = '0.7';
-        document.getElementById('entity-focus').value = '';
-        document.getElementById('include-charts').checked = true;
-        document.getElementById('include-sources').checked = true;
+        const topicFilters = document.getElementById('topic-filters');
+        const timeRange = document.getElementById('time-range');
+        const minRelevance = document.getElementById('min-relevance');
+        const relevanceDisplay = document.getElementById('relevance-display');
+        const entityFocus = document.getElementById('entity-focus');
+        const includeCharts = document.getElementById('include-charts');
+        const includeSources = document.getElementById('include-sources');
+
+        if (topicFilters) topicFilters.value = '';
+        if (timeRange) timeRange.value = '7d';
+        if (minRelevance) minRelevance.value = '0.7';
+        if (relevanceDisplay) relevanceDisplay.textContent = '0.7';
+        if (entityFocus) entityFocus.value = '';
+        if (includeCharts) includeCharts.checked = true;
+        if (includeSources) includeSources.checked = true;
 
         // Reset output format to JSON
         document.querySelectorAll('.format-tab').forEach(tab => {
             tab.classList.remove('active');
         });
-        document.querySelector('.format-tab[data-format="json"]').classList.add('active');
+        const jsonTab = document.querySelector('.format-tab[data-format="json"]');
+        if (jsonTab) jsonTab.classList.add('active');
         this.selectedOutputFormat = 'json';
 
         this.updateCostEstimate();
@@ -506,8 +552,8 @@ class ReportBuilderUI {
     async loadAdminStats() {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/admin/stats', 'GET');
-            if (response.success && response.data) {
-                console.log('Admin stats loaded:', response.data);
+            if (response && (response.total_jobs !== undefined)) {
+                console.log('Admin stats loaded:', response);
             }
         } catch (error) {
             console.error('Error loading admin stats:', error);
@@ -517,8 +563,9 @@ class ReportBuilderUI {
     async viewAdminStats() {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/admin/stats', 'GET');
-            if (response.success) {
-                alert(`System Statistics:\n\nTotal Jobs: ${response.data.total_jobs}\nCompleted: ${response.data.completed_jobs}\nFailed: ${response.data.failed_jobs}\nSuccess Rate: ${(response.data.success_rate * 100).toFixed(2)}%\nTotal Cost: ${response.data.total_cost.toFixed(2)}`);
+            if (response && response.total_jobs !== undefined) {
+                const successRate = response.completed_jobs > 0 ? (response.completed_jobs / response.total_jobs * 100).toFixed(2) : 0;
+                alert(`System Statistics:\n\nTotal Jobs: ${response.total_jobs}\nCompleted: ${response.completed_jobs}\nFailed: ${response.failed_jobs}\nSuccess Rate: ${successRate}%\nTotal Cost: $${(response.total_cost || 0).toFixed(2)}`);
             }
         } catch (error) {
             console.error('Error viewing admin stats:', error);
@@ -529,8 +576,8 @@ class ReportBuilderUI {
     async viewJobHistory() {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/admin/jobs', 'GET');
-            if (response.success) {
-                console.log('Job history:', response.data);
+            if (response && response.jobs) {
+                console.log('Job history:', response);
                 this.showSuccess('Job history loaded (check console)');
             }
         } catch (error) {
@@ -542,8 +589,8 @@ class ReportBuilderUI {
     async viewCostAnalysis() {
         try {
             const response = await this.apiClient.callWorker('report-builder', '/admin/costs', 'GET');
-            if (response.success) {
-                console.log('Cost analysis:', response.data);
+            if (response) {
+                console.log('Cost analysis:', response);
                 this.showSuccess('Cost analysis loaded (check console)');
             }
         } catch (error) {
@@ -559,10 +606,10 @@ class ReportBuilderUI {
 
         try {
             const response = await this.apiClient.callWorker('report-builder', '/admin/clear-cache', 'POST');
-            if (response.success) {
+            if (response && (response.success || response.status === 'ok')) {
                 this.showSuccess('Cache cleared successfully');
             } else {
-                throw new Error(response.error || 'Cache clear failed');
+                throw new Error(response?.error || 'Cache clear failed');
             }
         } catch (error) {
             console.error('Error clearing cache:', error);
@@ -618,6 +665,12 @@ class ReportBuilderUI {
         }
     }
 }
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.reportBuilderUI = new ReportBuilderUI();
+    window.reportBuilderUI.init();
+});
 
 // Auto-cleanup on page unload
 window.addEventListener('beforeunload', () => {
