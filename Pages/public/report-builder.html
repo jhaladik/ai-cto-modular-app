@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Builder - AI Factory</title>
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/workers.css">
+    <style>
+        :root {
+            --worker-primary: var(--report-builder-primary);
+            --worker-secondary: var(--report-builder-secondary);
+            --worker-accent: var(--report-builder-accent);
+            --worker-light: var(--report-builder-light);
+            --worker-dark: var(--report-builder-dark);
+        }
+
+        .report-generation-console {
+            grid-area: console;
+        }
+
+        .report-library {
+            grid-area: library;
+        }
+
+        .generation-analytics {
+            grid-area: analytics;
+        }
+
+        .admin-controls {
+            grid-area: controls;
+        }
+
+        .worker-content-grid {
+            grid-template-areas: 
+                "console console library"
+                "analytics analytics library"
+                "controls controls controls";
+            grid-template-columns: 2fr 2fr 1fr;
+            grid-template-rows: auto auto auto;
+        }
+
+        .report-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-m);
+            margin-bottom: var(--space-l);
+        }
+
+        .report-type-option {
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: var(--space-m);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            background: var(--surface-color);
+        }
+
+        .report-type-option:hover {
+            border-color: var(--worker-primary);
+            background: var(--worker-light);
+        }
+
+        .report-type-option.selected {
+            border-color: var(--worker-primary);
+            background: var(--worker-light);
+            box-shadow: 0 0 0 2px rgba(67, 56, 202, 0.2);
+        }
+
+        .report-type-icon {
+            font-size: 32px;
+            margin-bottom: var(--space-s);
+            display: block;
+        }
+
+        .report-type-title {
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+            color: var(--text-primary);
+        }
+
+        .report-type-desc {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .generation-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-l);
+            margin-bottom: var(--space-l);
+        }
+
+        .output-format-tabs {
+            display: flex;
+            gap: var(--space-s);
+            margin-bottom: var(--space-m);
+        }
+
+        .format-tab {
+            padding: var(--space-s) var(--space-m);
+            border: 1px solid var(--border-color);
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: var(--font-small);
+        }
+
+        .format-tab:hover {
+            background: var(--background-color);
+        }
+
+        .format-tab.active {
+            background: var(--worker-primary);
+            color: white;
+            border-color: var(--worker-primary);
+        }
+
+        .reports-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .report-item {
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: var(--space-m);
+            margin-bottom: var(--space-s);
+            background: var(--surface-color);
+            transition: var(--transition);
+        }
+
+        .report-item:hover {
+            border-color: var(--worker-primary);
+            transform: translateX(2px);
+        }
+
+        .report-title {
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+            color: var(--text-primary);
+        }
+
+        .report-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-s);
+        }
+
+        .report-actions {
+            display: flex;
+            gap: var(--space-s);
+        }
+
+        .report-actions .btn {
+            padding: 4px 8px;
+            font-size: var(--font-tiny);
+        }
+
+        .generation-progress {
+            background: var(--background-color);
+            border-radius: var(--border-radius);
+            padding: var(--space-m);
+            margin-top: var(--space-m);
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: var(--space-s) 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--worker-primary);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .cost-estimate {
+            background: var(--warning-color);
+            color: white;
+            padding: var(--space-s) var(--space-m);
+            border-radius: var(--border-radius);
+            font-size: var(--font-small);
+            text-align: center;
+            margin-top: var(--space-m);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--space-m);
+        }
+
+        .metric-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: var(--space-m);
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: var(--font-h3);
+            font-weight: 700;
+            color: var(--worker-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .metric-label {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>Loading Report Builder</h2>
+            <p>Initializing intelligence report generation interface...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="worker-admin-page" style="display: none;">
+        
+        <!-- Worker Header -->
+        <header class="worker-header">
+            <div class="header-left">
+                <div class="worker-logo">📊</div>
+                <div class="header-content">
+                    <h1>Report Builder</h1>
+                    <p class="worker-subtitle">Intelligence Report Generation & Analysis</p>
+                </div>
+                <div class="breadcrumb">
+                    <a href="../index.html">Dashboard</a>
+                    <span>→</span>
+                    <span>Report Builder</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-display">Loading...</span>
+                </div>
+                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+            </div>
+        </header>
+
+        <!-- Worker Status Bar -->
+        <section class="worker-status-bar">
+            <div class="status-item">
+                <div class="status-icon">🏥</div>
+                <div class="status-content">
+                    <div class="status-label">Worker Status</div>
+                    <div class="status-value" id="worker-status">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">📊</div>
+                <div class="status-content">
+                    <div class="status-label">Reports Today</div>
+                    <div class="status-value" id="reports-today">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">⚡</div>
+                <div class="status-content">
+                    <div class="status-label">Generation Time</div>
+                    <div class="status-value" id="avg-generation-time">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">💰</div>
+                <div class="status-content">
+                    <div class="status-label">Cost Today</div>
+                    <div class="status-value" id="cost-today">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">📈</div>
+                <div class="status-content">
+                    <div class="status-label">Success Rate</div>
+                    <div class="status-value" id="success-rate">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🎯</div>
+                <div class="status-content">
+                    <div class="status-label">Cache Hit Rate</div>
+                    <div class="status-value" id="cache-hit-rate">-</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="worker-content-grid">
+            
+            <!-- Report Generation Console (Main Feature) -->
+            <section class="card report-generation-console">
+                <div class="card-header">
+                    <div class="card-title">📊 Report Generation Console</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="reportBuilderUI.clearForm()">
+                            Clear Form
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <!-- Report Type Selection -->
+                    <h4>Select Report Type</h4>
+                    <div class="report-type-grid">
+                        <div class="report-type-option" data-type="executive_summary">
+                            <span class="report-type-icon">📋</span>
+                            <div class="report-type-title">Executive Summary</div>
+                            <div class="report-type-desc">High-level overview with key insights for leadership</div>
+                        </div>
+                        <div class="report-type-option" data-type="trend_analysis">
+                            <span class="report-type-icon">📈</span>
+                            <div class="report-type-title">Trend Analysis</div>
+                            <div class="report-type-desc">Pattern identification and trending topics over time</div>
+                        </div>
+                        <div class="report-type-option" data-type="technical_deep_dive">
+                            <span class="report-type-icon">🔬</span>
+                            <div class="report-type-title">Technical Deep Dive</div>
+                            <div class="report-type-desc">Detailed technical analysis with comprehensive data</div>
+                        </div>
+                        <div class="report-type-option" data-type="competitive_intelligence">
+                            <span class="report-type-icon">🎯</span>
+                            <div class="report-type-title">Competitive Intelligence</div>
+                            <div class="report-type-desc">Market positioning and competitor analysis</div>
+                        </div>
+                        <div class="report-type-option" data-type="daily_briefing">
+                            <span class="report-type-icon">📰</span>
+                            <div class="report-type-title">Daily Briefing</div>
+                            <div class="report-type-desc">Concise daily update with latest developments</div>
+                        </div>
+                    </div>
+
+                    <!-- Generation Options -->
+                    <div class="generation-options">
+                        <div class="form-group">
+                            <label>Topic Filters (comma-separated)</label>
+                            <input type="text" id="topic-filters" placeholder="AI, machine learning, automation">
+                        </div>
+                        <div class="form-group">
+                            <label>Time Range</label>
+                            <select id="time-range">
+                                <option value="24h">Last 24 Hours</option>
+                                <option value="7d" selected>Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Relevance Score</label>
+                            <input type="range" id="min-relevance" min="0" max="1" step="0.1" value="0.7">
+                            <span id="relevance-display">0.7</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Entity Focus (optional)</label>
+                            <input type="text" id="entity-focus" placeholder="Companies, people, technologies">
+                        </div>
+                    </div>
+
+                    <!-- Output Format Selection -->
+                    <h4>Output Format</h4>
+                    <div class="output-format-tabs">
+                        <div class="format-tab active" data-format="json">📄 JSON</div>
+                        <div class="format-tab" data-format="html">🌐 HTML</div>
+                        <div class="format-tab" data-format="markdown">📝 Markdown</div>
+                        <div class="format-tab" data-format="email">📧 Email</div>
+                    </div>
+
+                    <!-- Additional Options -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="include-charts" checked>
+                                Include Charts & Visualizations
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="include-sources" checked>
+                                Include Source Attribution
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Cost Estimate -->
+                    <div class="cost-estimate" id="cost-estimate">
+                        Estimated Cost: $0.00 | Generation Time: ~30s
+                    </div>
+
+                    <!-- Generate Button -->
+                    <button id="generate-report-btn" class="btn btn-primary btn-large" style="width: 100%; margin-top: var(--space-l);">
+                        📊 Generate Intelligence Report
+                    </button>
+
+                    <!-- Generation Progress -->
+                    <div class="generation-progress" id="generation-progress">
+                        <h4>Generating Report...</h4>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div id="progress-status">Initializing report generation...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Report Library -->
+            <section class="card report-library">
+                <div class="card-header">
+                    <div class="card-title">📚 Report Library</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="reportBuilderUI.refreshReports()">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="reports-list" id="reports-list">
+                        <div class="empty-state">
+                            <h4>No reports generated yet</h4>
+                            <p>Create your first intelligence report using the console</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Generation Analytics -->
+            <section class="card generation-analytics">
+                <div class="card-header">
+                    <div class="card-title">📈 Generation Analytics</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="reportBuilderUI.refreshAnalytics()">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="total-reports">-</div>
+                            <div class="metric-label">Total Reports</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="success-rate-metric">-</div>
+                            <div class="metric-label">Success Rate</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="avg-cost">-</div>
+                            <div class="metric-label">Avg Cost</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="total-cost">-</div>
+                            <div class="metric-label">Total Cost</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Controls -->
+            <section class="card admin-controls admin-only" style="display: none;">
+                <div class="card-header">
+                    <div class="card-title">🔧 Admin Controls</div>
+                </div>
+                <div class="card-content">
+                    <div class="controls-grid">
+                        <button class="btn btn-secondary" onclick="reportBuilderUI.viewAdminStats()">
+                            📊 View System Stats
+                        </button>
+                        <button class="btn btn-secondary" onclick="reportBuilderUI.viewJobHistory()">
+                            📋 Job History
+                        </button>
+                        <button class="btn btn-secondary" onclick="reportBuilderUI.viewCostAnalysis()">
+                            💰 Cost Analysis
+                        </button>
+                        <button class="btn btn-warning" onclick="reportBuilderUI.clearCache()">
+                            🗑️ Clear Cache
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Load shared authentication and API -->
+    <script src="../js/shared/auth.js"></script>
+    <script src="../js/shared/api.js"></script>
+    
+    <!-- Load Report Builder functionality -->
+    <script src="../js/workers/report-builder.js"></script>
+    
+    <script>
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.reportBuilderUI = new ReportBuilderUI();
+            window.reportBuilderUI.init();
+        });
+    </script>
+</body>
+</html>
