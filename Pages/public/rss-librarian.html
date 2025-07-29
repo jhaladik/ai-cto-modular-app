@@ -4,471 +4,330 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RSS Librarian - AI Factory</title>
-    <link rel="stylesheet" href="/css/admin-dashboard.css">
+    
+    <!-- Load shared styles -->
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/workers.css">
+    
+    <style>
+        /* RSS Librarian specific overrides */
+        :root {
+            --worker-primary: var(--rss-librarian-primary);
+            --worker-secondary: var(--rss-librarian-secondary);
+            --worker-accent: var(--rss-librarian-accent);
+            --worker-light: var(--rss-librarian-light);
+            --worker-dark: var(--rss-librarian-dark);
+        }
+        
+        .worker-title {
+            background: linear-gradient(135deg, var(--rss-librarian-primary), var(--rss-librarian-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-header .card-title span {
+            filter: hue-rotate(120deg); /* Green theme for RSS Librarian */
+        }
+        
+        /* Loading screen with RSS Librarian branding */
+        .loading-screen {
+            background: linear-gradient(135deg, var(--rss-librarian-primary) 0%, var(--rss-librarian-dark) 100%);
+        }
+    </style>
 </head>
 <body>
-    <div class="admin-dashboard">
-        <!-- Dashboard Header -->
-        <header class="dashboard-header">
-            <div class="header-left">
-                <span class="logo">📚</span>
-                <div class="title-section">
-                    <h1>RSS Librarian</h1>
-                    <p>Curated RSS Source Management</p>
-                </div>
-            </div>
-            <div class="header-right">
-                <div class="admin-controls">
-                    <a href="/" class="btn btn-secondary">Dashboard</a>
-                </div>
-                <button id="logout-btn" class="logout-btn">Logout</button>
-            </div>
-        </header>
-
-        <!-- Executive Summary -->
-        <div class="executive-summary">
-            <div class="summary-grid">
-                <div class="kpi-card">
-                    <div class="kpi-icon">✅</div>
-                    <div class="kpi-content">
-                        <div class="kpi-value" id="worker-status">Checking...</div>
-                        <div class="kpi-label">Worker Status</div>
-                    </div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon">📊</div>
-                    <div class="kpi-content">
-                        <div class="kpi-value" id="total-sources">-</div>
-                        <div class="kpi-label">Total Sources</div>
-                    </div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon">🏷️</div>
-                    <div class="kpi-content">
-                        <div class="kpi-value" id="available-topics">-</div>
-                        <div class="kpi-label">Available Topics</div>
-                    </div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon">💾</div>
-                    <div class="kpi-content">
-                        <div class="kpi-value" id="cache-status">-</div>
-                        <div class="kpi-label">Cache Status</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Dashboard Grid -->
-        <div class="dashboard-grid">
-            <!-- Search Sources Card -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <span>🔍</span>
-                        Search RSS Sources
-                    </h3>
-                </div>
-                <div class="card-content">
-                    <form id="searchForm" style="display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-s); margin-bottom: var(--space-l);">
-                        <input 
-                            type="text" 
-                            id="search-topic" 
-                            placeholder="Enter topic (e.g., ai, climate, crypto)"
-                            required
-                        />
-                        
-                        <select id="search-quality">
-                            <option value="0.5">All Quality</option>
-                            <option value="0.7" selected>Good Quality (0.7+)</option>
-                            <option value="0.8">High Quality (0.8+)</option>
-                            <option value="0.9">Excellent (0.9+)</option>
-                        </select>
-                        
-                        <button type="submit" class="btn btn-primary">
-                            Search Sources
-                        </button>
-                    </form>
-                    
-                    <div id="search-results">
-                        <!-- Search results will appear here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Browse Topics Card -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <span>📖</span>
-                        Browse by Topic
-                    </h3>
-                    <div class="card-actions">
-                        <button class="btn btn-secondary" onclick="rssLibrarianUI.loadTopics()">Refresh</button>
-                    </div>
-                </div>
-                <div class="card-content">
-                    <div id="topics-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-s);">
-                        <!-- Topic cards will appear here -->
-                    </div>
-                    
-                    <div id="topic-sources" style="display: none; margin-top: var(--space-l);">
-                        <!-- Topic-specific sources will appear here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Analytics Card -->
-            <div class="card" style="grid-column: 1 / -1;">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <span>📊</span>
-                        RSS Library Analytics
-                    </h3>
-                </div>
-                <div class="card-content">
-                    <div class="analytics-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-s); margin-bottom: var(--space-l);">
-                        <div class="stat-card">
-                            <div class="stat-value" id="stat-total-sources">0</div>
-                            <div class="stat-label">Total Sources</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="stat-topics">0</div>
-                            <div class="stat-label">Topics Covered</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="stat-high-quality">0</div>
-                            <div class="stat-label">High Quality (0.9+)</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="stat-avg-quality">0.00</div>
-                            <div class="stat-label">Average Quality</div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-l);">
-                        <div>
-                            <h4 style="margin-bottom: var(--space-s);">Quality Distribution</h4>
-                            <div id="quality-distribution" style="background: var(--background-color); padding: var(--space-s); border-radius: var(--border-radius);">
-                                <!-- Quality distribution will appear here -->
-                            </div>
-                        </div>
-                        <div>
-                            <h4 style="margin-bottom: var(--space-s);">Topic Distribution</h4>
-                            <div id="topic-distribution" style="background: var(--background-color); padding: var(--space-s); border-radius: var(--border-radius);">
-                                <!-- Topic distribution will appear here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Admin Panel (Admin Only) -->
-            <div class="card admin-only" style="display: none; grid-column: 1 / -1;">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <span>⚙️</span>
-                        Admin Panel - Add RSS Source
-                    </h3>
-                </div>
-                <div class="card-content">
-                    <form id="addSourceForm" style="background: var(--background-color); padding: var(--space-l); border-radius: var(--border-radius);">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-m); margin-bottom: var(--space-m);">
-                            <div>
-                                <label style="display: block; margin-bottom: var(--space-xs); font-weight: 600;">RSS Feed URL *</label>
-                                <input 
-                                    type="url" 
-                                    id="new-url" 
-                                    placeholder="https://example.com/feed.xml"
-                                    required
-                                />
-                            </div>
-                            
-                            <div>
-                                <label style="display: block; margin-bottom: var(--space-xs); font-weight: 600;">Feed Title *</label>
-                                <input 
-                                    type="text" 
-                                    id="new-title" 
-                                    placeholder="Example Tech Blog"
-                                    required
-                                />
-                            </div>
-                            
-                            <div style="grid-column: 1 / -1;">
-                                <label style="display: block; margin-bottom: var(--space-xs); font-weight: 600;">Description *</label>
-                                <textarea 
-                                    id="new-description" 
-                                    rows="3"
-                                    placeholder="High-quality tech news and analysis..."
-                                    style="resize: vertical;"
-                                    required
-                                ></textarea>
-                            </div>
-                            
-                            <div>
-                                <label style="display: block; margin-bottom: var(--space-xs); font-weight: 600;">Primary Topic *</label>
-                                <select id="new-topic" required>
-                                    <option value="">Select topic...</option>
-                                    <option value="ai">AI / Machine Learning</option>
-                                    <option value="climate">Climate / Environment</option>
-                                    <option value="crypto">Crypto / Blockchain</option>
-                                    <option value="science">Science / Research</option>
-                                    <option value="space">Space / Astronomy</option>
-                                    <option value="health">Health / Medicine</option>
-                                    <option value="gaming">Gaming / Entertainment</option>
-                                    <option value="business">Business / Finance</option>
-                                    <option value="tech">Technology</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label style="display: block; margin-bottom: var(--space-xs); font-weight: 600;">Subtopic (Optional)</label>
-                                <input 
-                                    type="text" 
-                                    id="new-subtopic" 
-                                    placeholder="e.g., news, research, analysis"
-                                />
-                            </div>
-                            
-                            <div>
-                                <label style="display: block; margin-bottom: var(--space-xs); font-weight: 600;">Language</label>
-                                <select id="new-language">
-                                    <option value="en" selected>English</option>
-                                    <option value="es">Spanish</option>
-                                    <option value="fr">French</option>
-                                    <option value="de">German</option>
-                                    <option value="it">Italian</option>
-                                    <option value="pt">Portuguese</option>
-                                    <option value="ja">Japanese</option>
-                                    <option value="zh">Chinese</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label style="display: block; margin-bottom: var(--space-xs); font-weight: 600;">Quality Score</label>
-                                <div style="display: flex; align-items: center; gap: var(--space-s);">
-                                    <input 
-                                        type="range" 
-                                        id="new-quality" 
-                                        min="0.5" 
-                                        max="1.0" 
-                                        step="0.05" 
-                                        value="0.7"
-                                        style="flex: 1;"
-                                    />
-                                    <span id="quality-display" style="min-width: 40px; text-align: center; font-weight: 600; color: var(--primary-color);">0.70</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">
-                            Add RSS Source
-                        </button>
-                    </form>
-                    
-                    <div style="margin-top: var(--space-l);">
-                        <h4 style="margin-bottom: var(--space-s);">Database Statistics</h4>
-                        <div id="admin-stats">
-                            <!-- Admin statistics will appear here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>📚 RSS Librarian</h2>
+            <p>Loading curated sources...</p>
         </div>
     </div>
 
-    <!-- Success/Error Messages -->
-    <div id="message-container"></div>
+    <!-- Main Worker Admin Interface -->
+    <div class="worker-admin-page" id="main-content" style="display: none;">
+        
+        <!-- Worker Header -->
+        <header class="worker-header">
+            <div class="header-left">
+                <div class="worker-logo">📚</div>
+                <div class="header-content">
+                    <h1 class="worker-title">RSS Librarian</h1>
+                    <p class="worker-subtitle">Curated RSS Source Management</p>
+                </div>
+                <nav class="breadcrumb">
+                    <a href="/">Dashboard</a>
+                    <span>/</span>
+                    <span>RSS Librarian</span>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-display">Loading...</span>
+                    <button class="btn btn-secondary" id="logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
 
-    <!-- Custom CSS for RSS Sources -->
-    <style>
-        /* RSS Librarian specific styles */
-        .card-content {
-            padding: var(--space-l);
-        }
-        
-        /* Source Card Styles */
-        .source-card {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: var(--space-m);
-            margin-bottom: var(--space-s);
-            transition: all 0.3s ease;
-        }
-        
-        .source-card:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-        }
-        
-        .source-title {
-            color: var(--primary-color);
-            font-size: var(--font-h4);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .source-url {
-            color: var(--text-secondary);
-            font-size: var(--font-small);
-            margin-bottom: var(--space-s);
-            word-break: break-all;
-        }
-        
-        .source-url a {
-            color: inherit;
-            text-decoration: none;
-        }
-        
-        .source-url a:hover {
-            color: var(--primary-color);
-            text-decoration: underline;
-        }
-        
-        .source-description {
-            color: var(--text-primary);
-            font-size: var(--font-small);
-            line-height: 1.6;
-            margin-bottom: var(--space-s);
-        }
-        
-        .source-meta {
-            display: flex;
-            gap: var(--space-m);
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .quality-score {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: var(--font-tiny);
-            font-weight: 600;
-        }
-        
-        .quality-high {
-            background: var(--success-light);
-            color: var(--success-color);
-            border: 1px solid var(--success-color);
-        }
-        
-        .quality-medium {
-            background: var(--warning-light);
-            color: var(--warning-color);
-            border: 1px solid var(--warning-color);
-        }
-        
-        .quality-low {
-            background: var(--error-light);
-            color: var(--error-color);
-            border: 1px solid var(--error-color);
-        }
-        
-        .topic-tag {
-            background: rgba(37, 99, 235, 0.1);
-            color: var(--primary-color);
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: var(--font-tiny);
-            font-weight: 500;
-        }
-        
-        /* Topic Cards */
-        .topic-card {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: var(--space-m);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .topic-card:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-        }
-        
-        .topic-name {
-            color: var(--primary-color);
-            font-size: var(--font-h4);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        
-        .topic-count {
-            color: var(--text-secondary);
-            font-size: var(--font-small);
-        }
-        
-        .topic-quality {
-            color: var(--text-primary);
-            font-size: var(--font-tiny);
-            margin-top: var(--space-xs);
-        }
-        
-        /* Results Header */
-        .results-header {
-            margin-bottom: var(--space-m);
-            padding-bottom: var(--space-s);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .results-header h3 {
-            margin: 0;
-            color: var(--text-primary);
-            font-size: var(--font-h3);
-        }
-        
-        /* Form Overrides */
-        form input,
-        form select,
-        form textarea {
-            width: 100%;
-            padding: var(--space-s);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: var(--font-body);
-        }
-        
-        form input:focus,
-        form select:focus,
-        form textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        
-        /* Loading States */
-        .loading {
-            text-align: center;
-            padding: var(--space-xl);
-            color: var(--text-secondary);
-            font-size: var(--font-body);
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: var(--space-xl);
-            color: var(--text-secondary);
-        }
-        /* Stats Display Override */
-        #admin-stats .stat-card .stat-value {
-            font-size: var(--font-h3);
-        }
-    </style>
+        <!-- Worker Status Overview -->
+        <section class="worker-status-bar">
+            <div class="status-item">
+                <div class="status-icon">📚</div>
+                <div class="status-content">
+                    <div class="status-label">Total Sources</div>
+                    <div class="status-value" id="total-sources">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🏷️</div>
+                <div class="status-content">
+                    <div class="status-label">Available Topics</div>
+                    <div class="status-value" id="available-topics">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">⭐</div>
+                <div class="status-content">
+                    <div class="status-label">Avg Quality</div>
+                    <div class="status-value" id="avg-quality">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🔄</div>
+                <div class="status-content">
+                    <div class="status-label">Worker Status</div>
+                    <div class="status-value" id="worker-status">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">💾</div>
+                <div class="status-content">
+                    <div class="status-label">Cache Status</div>
+                    <div class="status-value" id="cache-status">-</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="worker-content-grid">
+            
+            <!-- Interactive Source Management Console -->
+            <section class="card management-console">
+                <div class="card-header">
+                    <div class="card-title">🔧 Source Management Console</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="rssLibrarianUI.clearResults()">
+                            Clear Results
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="console-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="search-topic">Search Topic</label>
+                                <input type="text" id="search-topic" placeholder="e.g., ai, crypto, climate" />
+                            </div>
+                            <div class="form-group">
+                                <label for="quality-filter">Min Quality</label>
+                                <select id="quality-filter">
+                                    <option value="0.5">All Quality (0.5+)</option>
+                                    <option value="0.7" selected>Good (0.7+)</option>
+                                    <option value="0.8">High (0.8+)</option>
+                                    <option value="0.9">Excellent (0.9+)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="max-sources">Max Sources</label>
+                                <input type="number" id="max-sources" value="20" min="1" max="50" />
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="rssLibrarianUI.executeSearch()" id="search-btn">
+                            🔍 Search Sources
+                        </button>
+                    </div>
+                    
+                    <div class="console-results" id="search-results" style="display: none;">
+                        <div class="results-header">
+                            <h4>Search Results</h4>
+                            <div class="performance-metrics">
+                                <span class="metric">Duration: <span id="search-duration">-</span>ms</span>
+                                <span class="metric">Sources Found: <span id="sources-found">-</span></span>
+                                <span class="metric">Avg Quality: <span id="result-quality">-</span></span>
+                            </div>
+                        </div>
+                        <div class="results-content" id="results-content">
+                            <!-- Search results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Source Analytics -->
+            <section class="card source-analytics">
+                <div class="card-header">
+                    <div class="card-title">📊 Source Analytics</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="rssLibrarianUI.refreshAnalytics()">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="cached-searches">-</div>
+                            <div class="metric-label">Cached Searches</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="cache-hit-rate">-</div>
+                            <div class="metric-label">Cache Hit Rate</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="quality-range">-</div>
+                            <div class="metric-label">Quality Range</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="active-domains">-</div>
+                            <div class="metric-label">Active Domains</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Browse Topics -->
+            <section class="card browse-topics">
+                <div class="card-header">
+                    <div class="card-title">🏷️ Browse Topics</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="rssLibrarianUI.loadTopics()">
+                            Refresh Topics
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="topics-list" id="topics-list">
+                        <!-- Topics will be populated here -->
+                        <div class="loading-placeholder">Loading topics...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section class="card recent-activity">
+                <div class="card-header">
+                    <div class="card-title">⏱️ Recent Activity</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="rssLibrarianUI.loadActivity()">
+                            Refresh Activity
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="activity-list" id="activity-list">
+                        <!-- Recent activity will be populated here -->
+                        <div class="loading-placeholder">Loading activity...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Controls (Admin Only) -->
+            <section class="card admin-controls admin-only" style="display: none;">
+                <div class="card-header">
+                    <div class="card-title">⚙️ Admin Controls</div>
+                </div>
+                <div class="card-content">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <h4>Source Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-primary" onclick="rssLibrarianUI.showAddSourceModal()">
+                                    ➕ Add New Source
+                                </button>
+                                <button class="btn btn-secondary" onclick="rssLibrarianUI.validateAllSources()">
+                                    ✅ Validate All Sources
+                                </button>
+                                <button class="btn btn-secondary" onclick="rssLibrarianUI.exportSources()">
+                                    📤 Export Sources
+                                </button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <h4>Cache Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-warning" onclick="rssLibrarianUI.clearCache()">
+                                    🗑️ Clear Cache
+                                </button>
+                                <button class="btn btn-secondary" onclick="rssLibrarianUI.warmCache()">
+                                    🔥 Warm Cache
+                                </button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <h4>Statistics</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="rssLibrarianUI.loadAdminStats()">
+                                    📈 View Admin Stats
+                                </button>
+                                <button class="btn btn-secondary" onclick="rssLibrarianUI.generateReport()">
+                                    📋 Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Add Source Modal (Admin Only) -->
+    <div class="modal" id="add-source-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New RSS Source</h3>
+                <button class="modal-close" onclick="rssLibrarianUI.hideAddSourceModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-source-form">
+                    <div class="form-group">
+                        <label for="new-url">RSS Feed URL *</label>
+                        <input type="url" id="new-url" placeholder="https://example.com/feed.xml" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="new-title">Feed Title *</label>
+                        <input type="text" id="new-title" placeholder="Example Tech Blog" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="new-description">Description *</label>
+                        <textarea id="new-description" rows="3" placeholder="High-quality tech news and analysis..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-topic">Topic Category *</label>
+                        <select id="new-topic" required>
+                            <option value="">Select topic...</option>
+                            <option value="ai">AI & Machine Learning</option>
+                            <option value="crypto">Cryptocurrency</option>
+                            <option value="tech">Technology</option>
+                            <option value="climate">Climate</option>
+                            <option value="business">Business</option>
+                            <option value="science">Science</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-quality">Quality Score</label>
+                        <input type="range" id="new-quality" min="0.5" max="1.0" step="0.05" value="0.8" />
+                        <span id="quality-display">0.80</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="rssLibrarianUI.hideAddSourceModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="rssLibrarianUI.addNewSource()">Add Source</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Load shared scripts -->
     <script src="/js/shared/auth.js"></script>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed Fetcher - AI Factory</title>
+    
+    <!-- Load shared styles -->
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/workers.css">
+    
+    <style>
+        /* Feed Fetcher specific overrides */
+        :root {
+            --worker-primary: var(--feed-fetcher-primary);
+            --worker-secondary: var(--feed-fetcher-secondary);
+            --worker-accent: var(--feed-fetcher-accent);
+            --worker-light: var(--feed-fetcher-light);
+            --worker-dark: var(--feed-fetcher-dark);
+        }
+        
+        .worker-title {
+            background: linear-gradient(135deg, var(--feed-fetcher-primary), var(--feed-fetcher-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .loading-screen {
+            background: linear-gradient(135deg, var(--feed-fetcher-primary) 0%, var(--feed-fetcher-dark) 100%);
+        }
+        
+        /* Processing mode tabs */
+        .processing-modes {
+            display: flex;
+            background: var(--background-color);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: var(--space-m);
+            border: 1px solid var(--border-color);
+        }
+        
+        .mode-tab {
+            flex: 1;
+            padding: var(--space-s) var(--space-m);
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            text-align: center;
+        }
+        
+        .mode-tab.active {
+            background: var(--worker-primary);
+            color: white;
+        }
+        
+        .mode-tab:not(.active):hover {
+            background: var(--worker-light);
+        }
+        
+        /* Processing content areas */
+        .processing-content {
+            display: none;
+        }
+        
+        .processing-content.active {
+            display: block;
+        }
+        
+        /* Batch processing specific */
+        .batch-urls {
+            width: 100%;
+            min-height: 120px;
+            padding: var(--space-s);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: var(--font-small);
+            resize: vertical;
+        }
+        
+        .template-buttons {
+            display: flex;
+            gap: var(--space-s);
+            margin-bottom: var(--space-s);
+            flex-wrap: wrap;
+        }
+        
+        .template-btn {
+            padding: var(--space-xs) var(--space-s);
+            background: var(--worker-light);
+            border: 1px solid var(--worker-secondary);
+            border-radius: 4px;
+            font-size: var(--font-tiny);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .template-btn:hover {
+            background: var(--worker-secondary);
+        }
+        
+        /* Article display */
+        .article-item {
+            border-left: 3px solid var(--worker-primary);
+            background: var(--surface-color);
+            margin-bottom: var(--space-s);
+        }
+        
+        .article-header {
+            display: flex;
+            justify-content: between;
+            align-items: start;
+            gap: var(--space-s);
+        }
+        
+        .article-meta {
+            display: flex;
+            gap: var(--space-s);
+            font-size: var(--font-tiny);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+        
+        .article-meta span {
+            background: var(--background-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        
+        /* Progress indicators */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--background-color);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: var(--space-xs) 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--worker-primary);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .batch-progress {
+            padding: var(--space-s);
+            background: var(--worker-light);
+            border-radius: 6px;
+            margin-top: var(--space-s);
+            display: none;
+        }
+        
+        .batch-progress.active {
+            display: block;
+        }
+        
+        /* Job status indicators */
+        .job-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: var(--font-tiny);
+            font-weight: 500;
+        }
+        
+        .job-status.completed {
+            background: rgba(5, 150, 105, 0.1);
+            color: var(--success-color);
+        }
+        
+        .job-status.processing {
+            background: rgba(234, 88, 12, 0.1);
+            color: var(--worker-primary);
+        }
+        
+        .job-status.failed {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--error-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>📡 Feed Fetcher</h2>
+            <p>Initializing content extraction...</p>
+        </div>
+    </div>
+
+    <!-- Main Worker Admin Interface -->
+    <div class="worker-admin-page" id="main-content" style="display: none;">
+        
+        <!-- Worker Header -->
+        <header class="worker-header">
+            <div class="header-left">
+                <div class="worker-logo">📡</div>
+                <div class="header-content">
+                    <h1 class="worker-title">Feed Fetcher</h1>
+                    <p class="worker-subtitle">RSS Content Downloading & Article Extraction</p>
+                </div>
+                <nav class="breadcrumb">
+                    <a href="/">Dashboard</a>
+                    <span>/</span>
+                    <span>Feed Fetcher</span>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-display">Loading...</span>
+                    <button class="btn btn-secondary" id="logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Worker Status Overview -->
+        <section class="worker-status-bar">
+            <div class="status-item">
+                <div class="status-icon">📊</div>
+                <div class="status-content">
+                    <div class="status-label">Total Jobs</div>
+                    <div class="status-value" id="total-jobs">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">📰</div>
+                <div class="status-content">
+                    <div class="status-label">Articles Extracted</div>
+                    <div class="status-value" id="total-articles">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">⚡</div>
+                <div class="status-content">
+                    <div class="status-label">Success Rate</div>
+                    <div class="status-value" id="success-rate">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🔄</div>
+                <div class="status-content">
+                    <div class="status-label">Worker Status</div>
+                    <div class="status-value" id="worker-status">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">💾</div>
+                <div class="status-content">
+                    <div class="status-label">Cache Hit Rate</div>
+                    <div class="status-value" id="cache-hit-rate">-</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="worker-content-grid">
+            
+            <!-- Processing Console -->
+            <section class="card processing-console">
+                <div class="card-header">
+                    <div class="card-title">🚀 Content Processing Console</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="feedFetcherUI.clearResults()">
+                            Clear Results
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <!-- Processing Mode Tabs -->
+                    <div class="processing-modes">
+                        <button class="mode-tab active" onclick="feedFetcherUI.switchMode('single')" id="single-tab">
+                            🔍 Single Feed
+                        </button>
+                        <button class="mode-tab" onclick="feedFetcherUI.switchMode('batch')" id="batch-tab">
+                            📦 Batch Processing
+                        </button>
+                    </div>
+                    
+                    <!-- Single Feed Mode -->
+                    <div class="processing-content active" id="single-mode">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label for="feed-url">RSS Feed URL</label>
+                                <input type="url" id="feed-url" placeholder="https://feeds.reuters.com/reuters/technologyNews" />
+                            </div>
+                            <div class="form-group">
+                                <label for="max-articles">Max Articles</label>
+                                <select id="max-articles">
+                                    <option value="10">10 articles</option>
+                                    <option value="20" selected>20 articles</option>
+                                    <option value="50">50 articles</option>
+                                    <option value="100">100 articles</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="include-content">Extract Content</label>
+                                <label style="display: flex; align-items: center; gap: 6px; margin-top: 8px;">
+                                    <input type="checkbox" id="include-content" checked>
+                                    <span style="font-size: var(--font-tiny);">Full content extraction</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="template-buttons">
+                            <button class="template-btn" onclick="feedFetcherUI.useSampleUrl('tech')">📱 Tech News Sample</button>
+                            <button class="template-btn" onclick="feedFetcherUI.useSampleUrl('business')">💼 Business Sample</button>
+                            <button class="template-btn" onclick="feedFetcherUI.useSampleUrl('science')">🔬 Science Sample</button>
+                        </div>
+                        <button class="btn btn-primary" onclick="feedFetcherUI.processSingleFeed()" id="single-fetch-btn">
+                            🚀 Fetch Articles
+                        </button>
+                    </div>
+                    
+                    <!-- Batch Processing Mode -->
+                    <div class="processing-content" id="batch-mode">
+                        <div class="form-group">
+                            <label for="batch-urls">RSS Feed URLs (one per line, max 20 feeds)</label>
+                            <textarea id="batch-urls" class="batch-urls" placeholder="https://feeds.reuters.com/reuters/technologyNews&#10;https://rss.cnn.com/rss/cnn_tech.rss&#10;https://feeds.bbci.co.uk/news/technology/rss.xml"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="batch-max-articles">Max Articles per Feed</label>
+                                <select id="batch-max-articles">
+                                    <option value="5">5 articles</option>
+                                    <option value="10">10 articles</option>
+                                    <option value="15" selected>15 articles</option>
+                                    <option value="20">20 articles</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="batch-include-content">Extract Content</label>
+                                <label style="display: flex; align-items: center; gap: 6px; margin-top: 8px;">
+                                    <input type="checkbox" id="batch-include-content" checked>
+                                    <span style="font-size: var(--font-tiny);">Full content extraction</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="template-buttons">
+                            <button class="template-btn" onclick="feedFetcherUI.loadTemplate('news')">🏛️ News Bundle (5 feeds)</button>
+                            <button class="template-btn" onclick="feedFetcherUI.loadTemplate('tech')">🔬 Tech Bundle (8 feeds)</button>
+                            <button class="template-btn" onclick="feedFetcherUI.loadTemplate('finance')">💰 Finance Bundle (6 feeds)</button>
+                            <button class="template-btn" onclick="feedFetcherUI.loadTemplate('global')">🌍 Global News (12 feeds)</button>
+                        </div>
+                        <button class="btn btn-primary" onclick="feedFetcherUI.processBatchFeeds()" id="batch-fetch-btn">
+                            📦 Process Batch
+                        </button>
+                        
+                        <!-- Batch Progress -->
+                        <div class="batch-progress" id="batch-progress">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs);">
+                                <span>Processing Feeds...</span>
+                                <span id="batch-progress-text">0/0 feeds</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="batch-progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing Results -->
+                    <div class="console-results" id="processing-results" style="display: none;">
+                        <div class="results-header">
+                            <h4>Processing Results</h4>
+                            <div class="performance-metrics">
+                                <span class="metric">Duration: <span id="process-duration">-</span>ms</span>
+                                <span class="metric">Articles Found: <span id="articles-found">-</span></span>
+                                <span class="metric">Articles Stored: <span id="articles-stored">-</span></span>
+                                <span class="metric">Job ID: <span id="job-id">-</span></span>
+                            </div>
+                        </div>
+                        <div class="results-content" id="results-content">
+                            <!-- Processing results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Analytics -->
+            <section class="card performance-analytics">
+                <div class="card-header">
+                    <div class="card-title">📈 Performance Analytics</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="feedFetcherUI.refreshAnalytics()">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="avg-processing-time">-</div>
+                            <div class="metric-label">Avg Processing Time</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="cache-efficiency">-</div>
+                            <div class="metric-label">Cache Efficiency</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="avg-articles-per-job">-</div>
+                            <div class="metric-label">Avg Articles/Job</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="active-sources">-</div>
+                            <div class="metric-label">Active Sources</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Jobs -->
+            <section class="card recent-jobs">
+                <div class="card-header">
+                    <div class="card-title">⏱️ Recent Jobs</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="feedFetcherUI.loadRecentJobs()">
+                            Refresh Jobs
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="jobs-list" id="jobs-list">
+                        <!-- Recent jobs will be populated here -->
+                        <div class="loading-placeholder">Loading jobs...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Article Browser -->
+            <section class="card article-browser">
+                <div class="card-header">
+                    <div class="card-title">🗂️ Article Database</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="feedFetcherUI.showAllArticles()">
+                            Browse All
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="form-row" style="margin-bottom: var(--space-s);">
+                        <div class="form-group">
+                            <input type="text" id="article-search" placeholder="Search articles..." />
+                        </div>
+                        <div class="form-group">
+                            <select id="article-filter">
+                                <option value="all">All Sources</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="articles-preview" id="articles-preview">
+                        <div class="loading-placeholder">Select a job to view articles...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Controls (Admin Only) -->
+            <section class="card admin-controls admin-only" style="display: none;">
+                <div class="card-header">
+                    <div class="card-title">⚙️ Admin Controls</div>
+                </div>
+                <div class="card-content">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <h4>Feed Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="feedFetcherUI.validateFeeds()">
+                                    ✅ Validate Sample Feeds
+                                </button>
+                                <button class="btn btn-secondary" onclick="feedFetcherUI.exportArticles()">
+                                    📤 Export Articles
+                                </button>
+                                <button class="btn btn-secondary" onclick="feedFetcherUI.showHealthReport()">
+                                    📊 Health Report
+                                </button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <h4>Database Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="feedFetcherUI.cleanupOldJobs()">
+                                    🧹 Cleanup Old Jobs
+                                </button>
+                                <button class="btn btn-warning" onclick="feedFetcherUI.clearCache()">
+                                    🗑️ Clear Cache
+                                </button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <h4>Statistics</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="feedFetcherUI.loadAdminStats()">
+                                    📈 View Admin Stats
+                                </button>
+                                <button class="btn btn-secondary" onclick="feedFetcherUI.generateReport()">
+                                    📋 Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Load shared scripts -->
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/shared/api.js"></script>
+    <script src="/js/workers/feed-fetcher.js"></script>
+</body>
+</html>
