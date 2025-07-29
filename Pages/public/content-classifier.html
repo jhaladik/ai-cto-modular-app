@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Classifier - AI Factory</title>
+    
+    <!-- Load shared styles -->
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/workers.css">
+    
+    <style>
+        /* Content Classifier specific overrides */
+        :root {
+            --worker-primary: #6366f1;
+            --worker-secondary: #8b5cf6;
+            --worker-accent: #a855f7;
+            --worker-light: #e0e7ff;
+            --worker-dark: #4338ca;
+            
+            --content-classifier-primary: var(--worker-primary);
+            --content-classifier-secondary: var(--worker-secondary);
+            --content-classifier-accent: var(--worker-accent);
+            --content-classifier-light: var(--worker-light);
+            --content-classifier-dark: var(--worker-dark);
+        }
+        
+        .worker-title {
+            background: linear-gradient(135deg, var(--content-classifier-primary), var(--content-classifier-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .loading-screen {
+            background: linear-gradient(135deg, var(--content-classifier-primary) 0%, var(--content-classifier-dark) 100%);
+        }
+        
+        /* Analysis mode tabs */
+        .analysis-modes {
+            display: flex;
+            background: var(--background-color);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: var(--space-m);
+            border: 1px solid var(--border-color);
+        }
+        
+        .mode-tab {
+            flex: 1;
+            padding: var(--space-s) var(--space-m);
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            text-align: center;
+        }
+        
+        .mode-tab.active {
+            background: var(--worker-primary);
+            color: white;
+        }
+        
+        .mode-tab:not(.active):hover {
+            background: var(--worker-light);
+        }
+        
+        /* Analysis content areas */
+        .analysis-content {
+            display: none;
+        }
+        
+        .analysis-content.active {
+            display: block;
+        }
+        
+        /* Results display */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: var(--space-m);
+        }
+        
+        .results-table th,
+        .results-table td {
+            padding: var(--space-s);
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .results-table th {
+            background: var(--surface-color);
+            font-weight: 600;
+        }
+        
+        .relevance-score {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+        
+        .score-bar {
+            width: 60px;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .score-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+        
+        .score-high { background: var(--success-color); }
+        .score-medium { background: var(--warning-color); }
+        .score-low { background: var(--error-color); }
+        
+        .sentiment-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .sentiment-positive { background: var(--success-color); }
+        .sentiment-neutral { background: var(--text-muted); }
+        .sentiment-negative { background: var(--error-color); }
+        
+        .topics-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-xs);
+        }
+        
+        .topic-tag {
+            background: var(--worker-light);
+            color: var(--worker-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: var(--font-small);
+        }
+        
+        .cost-display {
+            color: var(--warning-color);
+            font-weight: 600;
+        }
+        
+        .job-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: var(--font-small);
+            font-weight: 500;
+        }
+        
+        .job-status.processing {
+            background: var(--worker-light);
+            color: var(--worker-primary);
+        }
+        
+        .job-status.completed {
+            background: var(--success-light);
+            color: var(--success-color);
+        }
+        
+        .job-status.failed {
+            background: var(--error-light);
+            color: var(--error-color);
+        }
+        
+        .analysis-form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-m);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: var(--space-m);
+            align-items: end;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .batch-input {
+            width: 100%;
+            min-height: 120px;
+            padding: var(--space-s);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: var(--font-small);
+            resize: vertical;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: var(--space-s) 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--worker-primary);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>🧠 Content Classifier</h2>
+            <p>Loading AI analysis engine...</p>
+        </div>
+    </div>
+
+    <!-- Main Worker Interface -->
+    <div class="worker-admin-page" id="main-content" style="display: none;">
+        
+        <!-- Worker Header -->
+        <header class="worker-header">
+            <div class="header-left">
+                <div class="worker-logo">🧠</div>
+                <div class="header-content">
+                    <h1 class="worker-title">Content Classifier</h1>
+                    <p class="worker-subtitle">AI-Powered Content Analysis & Topic Classification</p>
+                </div>
+                <nav class="breadcrumb">
+                    <a href="/">Dashboard</a>
+                    <span>/</span>
+                    <span>Content Classifier</span>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-display">Loading...</span>
+                    <button class="btn btn-secondary" id="logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Worker Status Overview -->
+        <section class="worker-status-bar">
+            <div class="status-item">
+                <div class="status-icon">🧠</div>
+                <div class="status-content">
+                    <div class="status-label">Worker Status</div>
+                    <div class="status-value" id="worker-status">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">📊</div>
+                <div class="status-content">
+                    <div class="status-label">Jobs Today</div>
+                    <div class="status-value" id="jobs-today">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">📄</div>
+                <div class="status-content">
+                    <div class="status-label">Articles Processed</div>
+                    <div class="status-value" id="articles-processed">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🎯</div>
+                <div class="status-content">
+                    <div class="status-label">Avg Relevance</div>
+                    <div class="status-value" id="avg-relevance">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">💰</div>
+                <div class="status-content">
+                    <div class="status-label">Cost Today</div>
+                    <div class="status-value" id="cost-today">-</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">⚡</div>
+                <div class="status-content">
+                    <div class="status-label">Cache Hit Rate</div>
+                    <div class="status-value" id="cache-hit-rate">-</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="worker-content-grid">
+            
+            <!-- Analysis Console (Main Feature) -->
+            <section class="card analysis-console">
+                <div class="card-header">
+                    <div class="card-title">🎯 Analysis Console</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="contentClassifierUI.clearAnalysis()">
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <!-- Analysis Mode Tabs -->
+                    <div class="analysis-modes">
+                        <button class="mode-tab active" id="single-tab" onclick="contentClassifierUI.switchMode('single')">
+                            📄 Single Article
+                        </button>
+                        <button class="mode-tab" id="batch-tab" onclick="contentClassifierUI.switchMode('batch')">
+                            📚 Batch Analysis
+                        </button>
+                        <button class="mode-tab" id="topic-tab" onclick="contentClassifierUI.switchMode('topic')">
+                            🏷️ Topic Analysis
+                        </button>
+                    </div>
+
+                    <!-- Single Article Mode -->
+                    <div class="analysis-content active" id="single-mode">
+                        <form class="analysis-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="article-url">Article URL</label>
+                                    <input type="url" id="article-url" class="form-control" 
+                                           placeholder="https://example.com/article">
+                                </div>
+                                <div class="form-group">
+                                    <label for="target-topic">Target Topic</label>
+                                    <input type="text" id="target-topic" class="form-control" 
+                                           placeholder="artificial intelligence">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="article-content">Article Content (optional)</label>
+                                <textarea id="article-content" class="form-control" rows="4" 
+                                          placeholder="Paste article content here if URL is not accessible..."></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="analysis-depth">Analysis Depth</label>
+                                    <select id="analysis-depth" class="form-control">
+                                        <option value="quick">Quick ($0.001)</option>
+                                        <option value="standard" selected>Standard ($0.003)</option>
+                                        <option value="deep">Deep ($0.005)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="min-confidence">Min Confidence</label>
+                                    <input type="number" id="min-confidence" class="form-control" 
+                                           value="0.7" min="0" max="1" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <button type="button" class="btn btn-primary" id="single-analyze-btn" 
+                                            onclick="contentClassifierUI.analyzeSingle()">
+                                        🧠 Analyze Article
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Batch Analysis Mode -->
+                    <div class="analysis-content" id="batch-mode">
+                        <form class="analysis-form">
+                            <div class="form-group">
+                                <label for="batch-articles">Article URLs (one per line)</label>
+                                <textarea id="batch-articles" class="batch-input" 
+                                          placeholder="https://example.com/article1&#10;https://example.com/article2&#10;https://example.com/article3"></textarea>
+                                <small class="form-help">Maximum 20 articles per batch</small>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="batch-topic">Target Topic</label>
+                                    <input type="text" id="batch-topic" class="form-control" 
+                                           placeholder="artificial intelligence">
+                                </div>
+                                <div class="form-group">
+                                    <label for="batch-depth">Analysis Depth</label>
+                                    <select id="batch-depth" class="form-control">
+                                        <option value="quick">Quick</option>
+                                        <option value="standard" selected>Standard</option>
+                                        <option value="deep">Deep</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <button type="button" class="btn btn-primary" id="batch-analyze-btn" 
+                                            onclick="contentClassifierUI.analyzeBatch()">
+                                        🧠 Analyze Batch
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Progress indicator -->
+                        <div id="batch-progress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                            <p id="progress-text">Processing articles...</p>
+                        </div>
+                    </div>
+
+                    <!-- Topic Analysis Mode -->
+                    <div class="analysis-content" id="topic-mode">
+                        <form class="analysis-form">
+                            <div class="form-group">
+                                <label for="topic-articles">Articles for Topic Analysis</label>
+                                <textarea id="topic-articles" class="batch-input" 
+                                          placeholder="Paste article content or URLs here..."></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="topic-count">Number of Topics</label>
+                                    <input type="number" id="topic-count" class="form-control" 
+                                           value="5" min="1" max="10">
+                                </div>
+                                <div class="form-group">
+                                    <button type="button" class="btn btn-primary" id="topic-analyze-btn" 
+                                            onclick="contentClassifierUI.analyzeTopics()">
+                                        🏷️ Discover Topics
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analysis Results -->
+            <section class="card analysis-results">
+                <div class="card-header">
+                    <div class="card-title">📊 Analysis Results</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="contentClassifierUI.exportResults()">
+                            📤 Export
+                        </button>
+                        <button class="btn btn-secondary" onclick="contentClassifierUI.clearResults()">
+                            🗑️ Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div id="results-container">
+                        <div class="empty-state">
+                            <p>🎯 Run an analysis to see results here</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Jobs -->
+            <section class="card recent-jobs">
+                <div class="card-header">
+                    <div class="card-title">⏱️ Recent Analysis Jobs</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="contentClassifierUI.refreshJobs()">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div id="jobs-list">
+                        <div class="loading-placeholder">Loading recent jobs...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cost Analytics -->
+            <section class="card cost-analytics">
+                <div class="card-header">
+                    <div class="card-title">💰 Cost Analytics</div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="contentClassifierUI.refreshCosts()">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="total-cost">-</div>
+                            <div class="metric-label">Total Cost</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="avg-cost-per-article">-</div>
+                            <div class="metric-label">Avg Cost/Article</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="total-tokens">-</div>
+                            <div class="metric-label">Tokens Used</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="cost-efficiency">-</div>
+                            <div class="metric-label">Cost Efficiency</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Controls (Admin Only) -->
+            <section class="card admin-controls admin-only" style="display: none;">
+                <div class="card-header">
+                    <div class="card-title">⚙️ Admin Controls</div>
+                </div>
+                <div class="card-content">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <h4>Job Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="contentClassifierUI.viewAdminStats()">
+                                    📈 View Admin Stats
+                                </button>
+                                <button class="btn btn-warning" onclick="contentClassifierUI.cancelAllJobs()">
+                                    ⏹️ Cancel Running Jobs
+                                </button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <h4>Cost Management</h4>
+                            <div class="control-buttons">
+                                <button class="btn btn-secondary" onclick="contentClassifierUI.viewCostBreakdown()">
+                                    💰 Cost Breakdown
+                                </button>
+                                <button class="btn btn-secondary" onclick="contentClassifierUI.exportCostReport()">
+                                    📊 Export Cost Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Load shared scripts -->
+    <script src="/js/shared/api.js"></script>
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/shared/ui.js"></script>
+    
+    <!-- Load worker-specific script -->
+    <script src="/js/workers/content-classifier.js"></script>
+    
+    <script>
+        // Initialize the Content Classifier UI
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            if (!window.authClient || !window.authClient.isAuthenticated()) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            // Initialize UI
+            window.contentClassifierUI = new ContentClassifierUI();
+            await contentClassifierUI.init();
+        });
+    </script>
+</body>
+</html>
