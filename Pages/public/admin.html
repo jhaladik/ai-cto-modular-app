@@ -15,20 +15,20 @@
         </div>
     </div>
 
-    <!-- Core Scripts -->
-    <script src="./js/shared/auth.js"></script>
-    <script src="./js/shared/api.js"></script>
-    <script src="./js/core/api-client.js"></script>
-    <script src="./js/core/session-manager.js"></script>
-    <script src="./js/core/kam-context-manager.js"></script>    
-    
+    <!-- Core Scripts - Fixed syntax errors -->
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/shared/api.js"></script>
+    <script src="/js/core/api-client.js"></script>
+    <script src="/js/core/kam-router.js"></script>
+    <script src="/js/core/kam-context-manager.js"></script>
+    <script src="/js/core/session-manager.js"></script>
     <script src="/js/components/ui-components.js"></script>
     
     <!-- Admin Components -->
     <script src="/js/admin-components.js"></script>
 
     <script>
-        // Simple direct initialization with better error handling
+        // Enhanced initialization with better dependency checking
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingScreen = document.getElementById('loading-screen');
             const appContainer = document.getElementById('app-container');
@@ -68,16 +68,10 @@
                 // Fix localStorage keys for consistency
                 localStorage.setItem('bitware-session-data', userInfo);
                 
-                // Wait for all dependencies to be available
-                if (!window.AIFactoryAPIClient) {
-                    throw new Error('API Client not loaded');
-                }
+                // Wait for dependencies with timeout
+                await waitForDependencies();
                 
-                if (!window.ComponentRegistry) {
-                    throw new Error('UI Components not loaded');
-                }
-                
-                // Load dashboard directly
+                // Load dashboard
                 await loadSimpleDashboard();
                 
                 // Hide loading screen safely
@@ -89,29 +83,49 @@
                 
             } catch (error) {
                 console.error('❌ Admin initialization failed:', error);
-                
-                // Show error safely
-                if (loadingScreen) {
-                    loadingScreen.innerHTML = `
-                        <div class="error-state">
-                            <h3>⚠️ Initialization Failed</h3>
-                            <p>${error.message}</p>
-                            <button onclick="clearAndReload()">🔄 Clear & Retry</button>
-                            <button onclick="forceLogout()">🚪 Force Logout</button>
-                        </div>
-                    `;
-                } else if (appContainer) {
-                    appContainer.innerHTML = `
-                        <div class="error-state" style="padding: 2rem; text-align: center;">
-                            <h3>⚠️ Initialization Failed</h3>
-                            <p>${error.message}</p>
-                            <button onclick="clearAndReload()">🔄 Clear & Retry</button>
-                            <button onclick="forceLogout()">🚪 Force Logout</button>
-                        </div>
-                    `;
-                }
+                showInitializationError(error);
             }
         });
+
+        // Wait for all required dependencies to load
+        async function waitForDependencies() {
+            const maxWaitTime = 10000; // 10 seconds
+            const checkInterval = 100; // 100ms
+            let elapsed = 0;
+            
+            return new Promise((resolve, reject) => {
+                const checkDependencies = () => {
+                    // Check for required classes
+                    const required = [
+                        'AIFactoryAPIClient',
+                        'ComponentRegistry',
+                        'DashboardLayout',
+                        'StatCard',
+                        'WorkerCard',
+                        'AdminDashboard'
+                    ];
+                    
+                    const missing = required.filter(className => !window[className]);
+                    
+                    if (missing.length === 0) {
+                        console.log('✅ All dependencies loaded');
+                        resolve();
+                        return;
+                    }
+                    
+                    elapsed += checkInterval;
+                    if (elapsed >= maxWaitTime) {
+                        reject(new Error(`Missing dependencies: ${missing.join(', ')}`));
+                        return;
+                    }
+                    
+                    console.log(`⏳ Waiting for dependencies: ${missing.join(', ')}`);
+                    setTimeout(checkDependencies, checkInterval);
+                };
+                
+                checkDependencies();
+            });
+        }
 
         // Load dashboard without complex dependencies
         async function loadSimpleDashboard() {
@@ -126,11 +140,54 @@
                 throw new Error('AdminDashboard class not loaded - check script loading order');
             }
             
+            // Initialize global worker registry if not exists
+            if (!window.workerRegistry) {
+                window.workerRegistry = new Map();
+            }
+            
             // Create and mount dashboard
             window.adminDashboard = new AdminDashboard();
             const content = await window.adminDashboard.render();
             container.innerHTML = content;
             await window.adminDashboard.mount();
+        }
+
+        // Show initialization error with detailed info
+        function showInitializationError(error) {
+            const loadingScreen = document.getElementById('loading-screen');
+            const appContainer = document.getElementById('app-container');
+            
+            const errorHtml = `
+                <div class="error-state" style="padding: 2rem; text-align: center; max-width: 600px; margin: 0 auto;">
+                    <h3>⚠️ Initialization Failed</h3>
+                    <p style="color: #dc2626; margin: 1rem 0;">${error.message}</p>
+                    
+                    <div style="margin: 1.5rem 0; padding: 1rem; background: #f3f4f6; border-radius: 8px; text-align: left;">
+                        <h4>Troubleshooting Steps:</h4>
+                        <ol style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                            <li>Check browser console for script loading errors</li>
+                            <li>Verify all JavaScript files are accessible</li>
+                            <li>Clear browser cache and reload</li>
+                            <li>Check network connection</li>
+                        </ol>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+                        <button onclick="clearAndReload()" style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            🔄 Clear Cache & Retry
+                        </button>
+                        <button onclick="forceLogout()" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            🚪 Force Logout
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            if (loadingScreen) {
+                loadingScreen.innerHTML = errorHtml;
+            } else if (appContainer) {
+                appContainer.innerHTML = errorHtml;
+            }
         }
 
         // Global functions
@@ -148,9 +205,43 @@
         }
         
         function clearAndReload() {
+            console.log('🔄 Clearing cache and reloading...');
+            
+            // Clear various caches
             localStorage.clear();
-            window.location.reload();
+            sessionStorage.clear();
+            
+            // Clear any cached scripts
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            
+            // Force reload with cache bypass
+            window.location.reload(true);
         }
+
+        // Error handling for script loading
+        window.addEventListener('error', (event) => {
+            if (event.target.tagName === 'SCRIPT') {
+                console.error('Script loading error:', event.target.src, event.error);
+                
+                // Show specific error for missing scripts
+                const fileName = event.target.src.split('/').pop();
+                const error = new Error(`Failed to load script: ${fileName}`);
+                showInitializationError(error);
+            }
+        });
+
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            
+            if (event.reason && event.reason.message) {
+                showInitializationError(event.reason);
+            }
+        });
     </script>
 </body>
 </html>
