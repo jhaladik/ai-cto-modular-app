@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My AI Factory</title>
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/admin-modern.css">
+
+    
+    <style>
+        /* Client-specific styling overrides */
+        .upgrade-card {
+            border: 2px solid #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+        
+        .tier-limitations {
+            margin-top: 0.5rem; 
+            padding: 0.5rem; 
+            background: #f3f4f6; 
+            border-radius: 4px; 
+            font-size: 0.75rem; 
+            color: #6b7280;
+        }
+        
+        .report-item {
+            padding: 1rem; 
+            border: 1px solid #e5e7eb; 
+            border-radius: 6px; 
+            margin-bottom: 1rem;
+            transition: box-shadow 0.2s ease;
+        }
+        
+        .report-item:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dashboard-header h1 {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .client-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: #ddd6fe;
+            color: #5b21b6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div class="loading-screen" id="loading-screen">
+            <div class="loading-spinner">🔄</div>
+            <p>Loading your AI Factory dashboard...</p>
+        </div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="./js/shared/auth.js"></script>
+    <script src="./js/shared/api.js"></script>
+    <script src="./js/core/api-client.js"></script>
+    <script src="./js/core/session-manager.js"></script>
+    <script src="./js/core/kam-context-manager.js"></script>    
+    <script src="./js/components/ui-components.js"></script>
+
+    <!-- Dashboard Scripts -->
+    <script src="./js/dashboards/client-dashboard.js"></script>
+
+    <script>
+        // Client dashboard initialization
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const appContainer = document.getElementById('app-container');
+            
+            try {
+                console.log('🚀 Starting AI Factory Client Dashboard...');
+                
+                // Check authentication first
+                const sessionToken = localStorage.getItem('bitware-session-token');
+                const userInfo = localStorage.getItem('bitware-user-info');
+                
+                if (!sessionToken || !userInfo) {
+                    console.log('❌ No valid session, redirecting to login');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                // Parse user info
+                let user;
+                try {
+                    user = JSON.parse(userInfo);
+                } catch (e) {
+                    console.error('Invalid user info:', e);
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                // Allow both admin and client users to access client dashboard
+                // Admins can preview client experience
+                if (!user.role && !user.userType) {
+                    console.log('❌ Invalid user type');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                console.log('✅ User validated:', user.username, 'Type:', user.role || user.userType);
+                
+                // Fix localStorage keys for consistency
+                localStorage.setItem('bitware-session-data', userInfo);
+                
+                // Wait for all dependencies to be available
+                if (!window.AIFactoryAPIClient) {
+                    throw new Error('API Client not loaded');
+                }
+                
+                if (!window.ComponentRegistry) {
+                    throw new Error('UI Components not loaded');
+                }
+                
+                // Load client dashboard
+                await loadClientDashboard();
+                
+                // Hide loading screen safely
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+                
+                console.log('✅ AI Factory Client Dashboard ready');
+                
+            } catch (error) {
+                console.error('❌ Client dashboard initialization failed:', error);
+                
+                // Show error safely
+                if (loadingScreen) {
+                    loadingScreen.innerHTML = `
+                        <div class="error-state">
+                            <h3>⚠️ Dashboard Loading Failed</h3>
+                            <p>${error.message}</p>
+                            <button onclick="clearAndReload()">🔄 Clear & Retry</button>
+                            <button onclick="forceLogout()">🚪 Force Logout</button>
+                            <button onclick="goToAdmin()">🔧 Admin Dashboard</button>
+                        </div>
+                    `;
+                } else if (appContainer) {
+                    appContainer.innerHTML = `
+                        <div class="error-state" style="padding: 2rem; text-align: center;">
+                            <h3>⚠️ Dashboard Loading Failed</h3>
+                            <p>${error.message}</p>
+                            <button onclick="clearAndReload()">🔄 Clear & Retry</button>
+                            <button onclick="forceLogout()">🚪 Force Logout</button>
+                            <button onclick="goToAdmin()">🔧 Admin Dashboard</button>
+                        </div>
+                    `;
+                }
+            }
+        });
+
+        // Load client dashboard without complex dependencies
+        async function loadClientDashboard() {
+            const container = document.getElementById('app-container');
+            
+            if (!container) {
+                throw new Error('App container not found');
+            }
+            
+            // Ensure ClientDashboard class is available
+            if (!window.ClientDashboard) {
+                throw new Error('ClientDashboard class not loaded - check script loading order');
+            }
+            
+            // Create and mount client dashboard
+            window.clientDashboard = new ClientDashboard();
+            const content = await window.clientDashboard.render();
+            container.innerHTML = content;
+            await window.clientDashboard.mount();
+        }
+
+        // Global functions
+        function logout() {
+            console.log('🚪 Logging out...');
+            localStorage.removeItem('bitware-session-token');
+            localStorage.removeItem('bitware-session-data');
+            localStorage.removeItem('bitware-user-info');
+            window.location.href = '/login.html';
+        }
+        
+        function forceLogout() {
+            localStorage.clear();
+            window.location.href = '/login.html';
+        }
+        
+        function clearAndReload() {
+            localStorage.clear();
+            window.location.reload();
+        }
+        
+        function goToAdmin() {
+            window.location.href = '/admin.html';
+        }
+    </script>
+</body>
+</html>

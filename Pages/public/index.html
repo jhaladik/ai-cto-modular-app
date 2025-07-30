@@ -1,12 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Factory</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f9fafb;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+        }
+        h1 {
+            color: #111827;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            margin: 0.5rem;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #1d4ed8;
+        }
+        .btn-secondary {
+            background: #6b7280;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+    </style>
 </head>
 <body>
-    <script>
-        // Always redirect to login for now
-        window.location.href = '/login.html';
-    </script>
+    <div class="container">
+        <h1>🎛️ AI Factory</h1>
+        <p>Welcome to AI Factory Management System</p>
+        
+        <div>
+            <a href="/admin.html" class="btn">🔧 Admin Dashboard</a>
+        </div>
+        
+        <div>
+            <a href="/client.html" class="btn">🎛️ Client Dashboard</a>
+        </div>
+        
+        <div>
+            <a href="/login.html" class="btn btn-secondary">🚪 Login</a>
+        </div>
+        
+        <script>
+            // Auto-redirect if logged in
+            document.addEventListener('DOMContentLoaded', () => {
+                const sessionToken = localStorage.getItem('bitware-session-token');
+                const userInfo = localStorage.getItem('bitware-user-info');
+                
+                if (sessionToken && userInfo) {
+                    try {
+                        const user = JSON.parse(userInfo);
+                        if (user.role === 'admin' || user.userType === 'admin' || user.userType === 'internal') {
+                            // Auto-redirect admin users to admin dashboard
+                            window.location.href = '/admin.html';
+                        } else if (user.role === 'client' || user.userType === 'client') {
+                            // Auto-redirect client users to client dashboard
+                            window.location.href = '/client.html';
+                        }
+                        // If no clear role, show the selection page
+                    } catch (e) {
+                        console.log('Invalid user info, staying on index');
+                    }
+                }
+            });
+        </script>
+    </div>
 </body>
 </html>
