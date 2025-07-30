@@ -285,20 +285,45 @@
     <script src="./js/components/worker-specific/worker-specific-components.js"></script>
     <script src="./js/components/phase2/phase2-integration-guide.js"></script>
     <script src="./js/admin-dashboard-components.js"></script>
+    <script src="/js/core/phase3-integration.js"></script>
     <script>
-        // Initialize the admin dashboard
-        let adminDashboard;
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            adminDashboard = new AdminDashboard();
-            adminDashboard.initialize();
+        // Initialize Phase 3 when dashboard loads
+        document.addEventListener('DOMContentLoaded', async () => {
+          await window.phase3Manager.init();
+          
+          // Update existing dashboard to use new worker cards
+          if (window.adminDashboard) {
+            window.adminDashboard.phase3Manager = window.phase3Manager;
+          }
+          
+          // Load Phase 3 workers into grid
+          const workerGrid = document.getElementById('worker-grid');
+          const kamContext = window.kamContext || { userRole: 'admin', clientProfile: { subscription_tier: 'enterprise' }};
+          
+          const phase3Workers = ['content-classifier', 'topic-researcher', 'report-builder'];
+          const workerCards = [];
+          
+          for (const workerId of phase3Workers) {
+            try {
+              const card = await window.phase3Manager.loadWorkerCard(workerId, kamContext);
+              if (card) {
+                workerCards.push(`<div class="worker-card" data-worker="${workerId}">${card.render()}</div>`);
+                setTimeout(() => card.mount(), 100);
+              }
+            } catch (error) {
+              console.error(`Failed to load ${workerId}:`, error);
+            }
+          }
+          
+          workerGrid.innerHTML = workerCards.join('');
         });
-
+        
         // Global functions for backwards compatibility
         function logout() {
             localStorage.removeItem('bitware-session-token');
             window.location.href = '/login.html';
         }
-    </script>
-</body>
+        </script>
+        </body>
+        </html>
 </html>

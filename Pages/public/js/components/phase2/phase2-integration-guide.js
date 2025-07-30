@@ -1,4 +1,4 @@
-/**
+(function() {/**
  * Phase 2: Integration Guide & Implementation Plan
  * How to integrate all Phase 2 components with existing system
  */
@@ -868,3 +868,4 @@ window.addEventListener('DOMContentLoaded', async () => {
 window.Phase2Implementation = Phase2Implementation;
 window.Phase2ComponentRegistry = Phase2ComponentRegistry;
 window.UniversalResearcherCard = UniversalResearcherCard;
+})();
