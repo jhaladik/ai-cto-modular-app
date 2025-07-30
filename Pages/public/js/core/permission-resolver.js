@@ -47,7 +47,7 @@ class PermissionResolver {
 
     getBasicPermission(permission) {
         // Basic fallback permissions when KAM context is not available
-        const sessionData = localStorage.getItem('bitware-session-data');
+        const sessionData = localStorage.getItem('bitware-user-info');
         if (!sessionData) return false;
 
         try {
@@ -93,7 +93,7 @@ class PermissionResolver {
         }
 
         // Fallback: admin can access all, others get basic access
-        const session = localStorage.getItem('bitware-session-data');
+        const session = localStorage.getItem('bitware-user-info');
         if (!session) return false;
 
         try {

@@ -245,6 +245,11 @@ class KAMRouter {
 
     // Check tier requirements
     if (route.tiers && route.tiers.length > 0) {
+      // Skip tier check for admin users
+      if (this.kamContext.userType === 'admin' || this.kamContext.userType === 'internal') {
+        return true;
+      }
+      
       const userTier = this.kamContext.clientProfile?.subscription_tier;
       if (!route.tiers.includes(userTier)) {
         return false;
