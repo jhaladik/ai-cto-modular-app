@@ -62,12 +62,16 @@ if (!window.AdminDashboard) {
                 type: 'percentage'
             }));
     
-            // Create worker cards
-            this.workerCards.set('universal-researcher', new UniversalResearcherCard({
+            // NEW:
+            this.workerCards.set('universal-researcher', new EnhancedUniversalResearcherCard({
                 apiClient: this.apiClient,
-                userContext: { isAdmin: true }
+                userContext: { 
+                    isAdmin: true, 
+                    tier: 'enterprise',
+                    limitations: {} // Admin has no limitations
+                }
             }));
-    
+                
             // Register workers globally for onclick handlers
             if (!window.workerRegistry) {
                 window.workerRegistry = new Map();

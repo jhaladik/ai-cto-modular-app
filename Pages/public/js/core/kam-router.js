@@ -42,13 +42,6 @@ class KAMRouter {
     });
 
     // Worker routes
-    this.routes.set('/workers/topic-researcher', {
-      component: () => this.loadWorkerInterface('topic-researcher'),
-      permissions: ['worker_access'],
-      tiers: ['basic', 'standard', 'premium', 'enterprise'],
-      title: 'Universal Researcher'
-    });
-
     this.routes.set('/workers/content-classifier', {
       component: () => this.loadWorkerInterface('content-classifier'),
       permissions: ['worker_access'],
@@ -61,6 +54,14 @@ class KAMRouter {
       permissions: ['worker_access'],
       tiers: ['premium', 'enterprise'],
       title: 'Report Builder'
+    });
+
+    // In registerRoutes() method, add:
+    this.routes.set('/workers/universal-researcher', {
+      component: () => this.loadWorkerInterface('universal-researcher'),
+      permissions: ['worker_access'],
+      tiers: ['basic', 'standard', 'premium', 'enterprise'],
+      title: 'Universal Researcher'
     });
 
     // Client-specific routes

@@ -74,8 +74,9 @@ class ClientDashboard {
         const availableWorkers = this.getWorkersForTier(userTier);
 
         // Universal Researcher - Available to all tiers
+        // NEW:
         if (availableWorkers.includes('universal-researcher')) {
-            this.workerCards.set('universal-researcher', new ClientUniversalResearcherCard({
+            this.workerCards.set('universal-researcher', new EnhancedClientUniversalResearcherCard({
                 apiClient: this.apiClient,
                 userContext: { 
                     isAdmin: false, 
