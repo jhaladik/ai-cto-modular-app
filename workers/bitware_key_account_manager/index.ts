@@ -163,8 +163,14 @@ export default {
         return handleCreateClient(request, env, corsHeaders);
       }
 
+      // NEW: Client UPDATE operation (PUT /client/{client_id})
       if (pathname.startsWith('/client/') && method === 'PUT') {
-        return handleUpdateClient(request, env, corsHeaders);
+        const pathParts = pathname.split('/');
+        if (pathParts.length === 3 && pathParts[2]) {
+          // /client/{client_id} format
+          return await handleUpdateClient(request, env, corsHeaders);
+        }
+        return notFound('Invalid client update URL format. Use: /client/{client_id}');
       }
 
       if (pathname === '/client/budget-check' && method === 'POST') {

@@ -97,6 +97,64 @@ export interface Client {
       return await this.getClientById(clientId) as Client;
     }
   
+    // NEW: Complete client update functionality
+    async updateClient(clientId: string, updates: Partial<Client>, updatedBy?: string): Promise<Client | null> {
+      // Build dynamic SQL based on provided fields
+      const updateFields: string[] = [];
+      const bindValues: any[] = [];
+      
+      // Updateable fields (exclude system fields)
+      const allowedFields: Record<string, any> = {
+        'company_name': updates.company_name,
+        'primary_contact_name': updates.primary_contact_name, 
+        'primary_contact_email': updates.primary_contact_email,
+        'phone': updates.phone,
+        'website': updates.website,
+        'subscription_tier': updates.subscription_tier,
+        'account_status': updates.account_status,
+        'monthly_budget_usd': updates.monthly_budget_usd,
+        'industry': updates.industry,
+        'company_size': updates.company_size,
+        'use_case_description': updates.use_case_description,
+        'primary_interests': updates.primary_interests,
+        'communication_style': updates.communication_style,
+        'preferred_report_formats': updates.preferred_report_formats,
+        'typical_request_patterns': updates.typical_request_patterns,
+        'success_metrics': updates.success_metrics,
+        'satisfaction_score': updates.satisfaction_score
+      };
+
+      // Build SQL dynamically
+      for (const [field, value] of Object.entries(allowedFields)) {
+        if (value !== undefined) {
+          updateFields.push(`${field} = ?`);
+          bindValues.push(value);
+        }
+      }
+
+      if (updateFields.length === 0) {
+        throw new Error('No valid fields provided for update');
+      }
+
+      // Always update timestamp
+      updateFields.push('updated_at = CURRENT_TIMESTAMP');
+      bindValues.push(clientId);
+
+      const sql = `
+        UPDATE clients 
+        SET ${updateFields.join(', ')} 
+        WHERE client_id = ?
+      `;
+
+      const result = await this.db.prepare(sql).bind(...bindValues).run();
+      
+      if (result.changes === 0) {
+        return null; // Client not found
+      }
+
+      return await this.getClientById(clientId);
+    }
+
     async updateClientBudget(clientId: string, usedAmount: number): Promise<void> {
       await this.db.prepare(`
         UPDATE clients 
