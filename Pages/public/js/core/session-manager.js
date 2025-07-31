@@ -112,13 +112,12 @@ class SessionManager {
             
             if (this.sessionData.user.email) {
                 try {
-                    // Query KAM worker for client context
-                    const clientData = await this.apiClient.callWorker(
-                        'key-account-manager', 
+                    const response = await this.apiClient.kamRequest(
                         `/client?email=${encodeURIComponent(this.sessionData.user.email)}`
                     );
                     
-                    if (clientData) {
+                    if (response && response.success && response.client) {
+                        const clientData = response.client;
                         kamContext = {
                             client_id: clientData.client_id,
                             company_name: clientData.company_name,
