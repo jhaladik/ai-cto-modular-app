@@ -36,10 +36,19 @@ class ClientDetailPage {
     async render() {
         console.log(`🎨 Rendering client detail page for: ${this.clientId}`);
         
+        // FIXED: Proper logic to determine when to show content
+        const hasClientData = !!(this.clientData && (this.clientData.client_id || this.clientData.company_name));
+        const showContent = hasClientData && !this.error;
+        const showLoading = !hasClientData && this.isLoading && !this.error;
+        
+        console.log('- Has client data:', hasClientData);
+        console.log('- Will show content:', showContent);
+        console.log('- Will show loading:', showLoading);
+        
         return `
             <div class="client-detail-page">
-                <!-- Loading State -->
-                <div id="client-detail-loading" class="loading-state" style="display: ${this.isLoading ? 'block' : 'none'};">
+                <!-- Loading State - ONLY show if no data and actually loading -->
+                <div id="client-detail-loading" class="loading-state" style="display: ${showLoading ? 'block' : 'none'};">
                     <div class="loading-spinner">🔄</div>
                     <p>Loading client details...</p>
                 </div>
@@ -49,13 +58,13 @@ class ClientDetailPage {
                     <div class="error-icon">❌</div>
                     <h3>Error Loading Client Details</h3>
                     <p>${this.error || 'An unexpected error occurred'}</p>
-                    <button class="btn btn-primary" onclick="clientDetailPage.loadClientData()">
+                    <button class="btn btn-primary" onclick="window.clientDetailPage.loadClientData()">
                         🔄 Retry
                     </button>
                 </div>
                 
-                <!-- Main Content -->
-                <div id="client-detail-content" style="display: ${this.clientData ? 'block' : 'none'};">
+                <!-- Main Content - Show if we have data -->
+                <div id="client-detail-content" style="display: ${showContent ? 'block' : 'none'};">
                     <!-- Breadcrumb Navigation -->
                     ${this.renderBreadcrumb()}
                     
@@ -71,22 +80,22 @@ class ClientDetailPage {
                     <!-- Tab Content Areas -->
                     <div class="tab-content">
                         <div id="communications-content" 
-                             class="tab-pane ${this.activeTab === 'communications' ? 'active' : ''}">
+                            class="tab-pane ${this.activeTab === 'communications' ? 'active' : ''}">
                             ${this.renderCommunicationsTab()}
                         </div>
                         
                         <div id="analytics-content" 
-                             class="tab-pane ${this.activeTab === 'analytics' ? 'active' : ''}">
+                            class="tab-pane ${this.activeTab === 'analytics' ? 'active' : ''}">
                             ${this.renderAnalyticsTab()}
                         </div>
                         
                         <div id="requests-content" 
-                             class="tab-pane ${this.activeTab === 'requests' ? 'active' : ''}">
+                            class="tab-pane ${this.activeTab === 'requests' ? 'active' : ''}">
                             ${this.renderRequestsTab()}
                         </div>
                         
                         <div id="settings-content" 
-                             class="tab-pane ${this.activeTab === 'settings' ? 'active' : ''}">
+                            class="tab-pane ${this.activeTab === 'settings' ? 'active' : ''}">
                             ${this.renderSettingsTab()}
                         </div>
                     </div>
@@ -94,7 +103,6 @@ class ClientDetailPage {
             </div>
         `;
     }
-
     /**
      * Render breadcrumb navigation
      */
@@ -116,58 +124,69 @@ class ClientDetailPage {
      * Render client profile header
      */
     renderClientHeader() {
+        // HANDLE MISSING DATA GRACEFULLY
         if (!this.clientData) {
-            return '<div class="client-header placeholder">Loading client information...</div>';
+            return `
+                <div class="client-header" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+                    <div style="text-align: center; color: #6b7280;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">👤</div>
+                        <p>Loading client information...</p>
+                    </div>
+                </div>
+            `;
         }
 
         const client = this.clientData;
-        const budgetUsage = client.monthly_budget_usd > 0 ? 
-            (client.used_budget_current_month / client.monthly_budget_usd * 100).toFixed(1) + '%' : 'N/A';
+        const clientName = client.company_name || client.name || 'Unknown Client';
+        const clientEmail = client.primary_contact_email || client.email || 'No email available';
+        const contactName = client.primary_contact_name || client.contact_name || 'Not specified';
+        const tier = client.service_tier || client.tier || 'Standard';
+        const status = client.status || 'Active';
+        const monthlyBudget = client.monthly_budget_usd || client.monthly_budget || 'Unlimited';
         
         return `
-            <div class="client-header">
-                <div class="client-avatar">
-                    <div class="avatar-circle">
-                        ${client.company_name.charAt(0).toUpperCase()}
+            <div class="client-header" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div class="client-avatar">
+                        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #3b82f6); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 600; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+                            ${clientName.charAt(0).toUpperCase()}
+                        </div>
                     </div>
-                </div>
-                
-                <div class="client-info">
-                    <h1 class="client-name">${client.company_name}</h1>
-                    <div class="client-meta">
-                        <span class="tier-badge tier-${client.subscription_tier}">
-                            ${client.subscription_tier.toUpperCase()}
-                        </span>
-                        <span class="status-badge status-${client.account_status}">
-                            ${client.account_status.toUpperCase()}
-                        </span>
-                        <span class="budget-info">
-                            $${client.used_budget_current_month?.toFixed(2) || '0.00'} / $${client.monthly_budget_usd?.toFixed(2) || '0.00'} (${budgetUsage})
-                        </span>
+                    <div class="client-info" style="flex: 1;">
+                        <h1 class="client-name" style="font-size: 1.75rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #111827;">
+                            ${clientName}
+                        </h1>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                            <span class="tier-badge" style="padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: #e0f2fe; color: #0277bd;">
+                                ${tier}
+                            </span>
+                            <span class="status-badge" style="padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; background: #e8f5e8; color: #2e7d32;">
+                                ${status}
+                            </span>
+                            <span class="budget-info" style="font-size: 0.875rem; color: #6b7280; font-family: monospace;">
+                                Budget: $${monthlyBudget}/month
+                            </span>
+                        </div>
+                        <div class="client-contact" style="display: flex; align-items: center; gap: 1rem; color: #6b7280; font-size: 0.875rem; flex-wrap: wrap;">
+                            <span class="contact-email">📧 <a href="mailto:${clientEmail}" style="color: #2563eb; text-decoration: none;">${clientEmail}</a></span>
+                            <span class="contact-name">👤 ${contactName}</span>
+                        </div>
                     </div>
-                    <div class="client-contact">
-                        <span class="contact-name">${client.primary_contact_name || 'No contact name'}</span>
-                        <span class="contact-email">
-                            <a href="mailto:${client.primary_contact_email}">${client.primary_contact_email}</a>
-                        </span>
+                    <div class="client-actions" style="display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0;">
+                        <button onclick="alert('Edit client functionality')" style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: background 0.2s;">
+                            ✏️ Edit Client
+                        </button>
+                        <button onclick="alert('Message client functionality')" style="padding: 0.5rem 1rem; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: background 0.2s;">
+                            💬 Send Message
+                        </button>
+                        <button onclick="alert('View client activity')" style="padding: 0.5rem 1rem; background: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: background 0.2s;">
+                            📊 Activity
+                        </button>
                     </div>
-                </div>
-                
-                <div class="client-actions">
-                    <button class="btn btn-primary" onclick="clientDetailPage.sendMessage()">
-                        💬 Send Message
-                    </button>
-                    <button class="btn btn-secondary" onclick="clientDetailPage.editClient()">
-                        ✏️ Edit Client
-                    </button>
-                    <button class="btn btn-secondary" onclick="clientDetailPage.refresh()">
-                        🔄 Refresh
-                    </button>
                 </div>
             </div>
         `;
     }
-
     /**
      * Render quick stats cards
      */
@@ -370,19 +389,28 @@ class ClientDetailPage {
         
         try {
             await this.loadClientData();
-            this.startAutoRefresh();
-            console.log('✅ Client detail page mounted successfully');
+            
+            // DISABLED: Auto-refresh to prevent loops
+            // this.startAutoRefresh();
+            
+            console.log('✅ Client detail page mounted successfully (auto-refresh disabled)');
         } catch (error) {
             console.error('❌ Failed to mount client detail page:', error);
             this.error = error.message;
             this.updateErrorDisplay();
         }
     }
-
     /**
      * Load client data from API
      */
     async loadClientData() {
+        // PREVENT MULTIPLE SIMULTANEOUS LOADS
+        if (this._isCurrentlyLoading) {
+            console.log('⚠️ Load already in progress, skipping...');
+            return;
+        }
+        
+        this._isCurrentlyLoading = true;
         console.log(`📡 Loading data for client: ${this.clientId}`);
         
         this.isLoading = true;
@@ -393,22 +421,33 @@ class ClientDetailPage {
             // Use the batch method from API client
             const dashboardData = await this.apiClient.getClientDetailDashboard(this.clientId);
             
-            this.clientData = dashboardData.client?.client || null;
+            // Store the loaded data
+            this.clientData = dashboardData.client?.client || dashboardData.client;
             this.analytics = dashboardData.analytics || {};
-            this.communications = dashboardData.communications || [];
-            this.requests = dashboardData.requests || [];
-
-            console.log('✅ Client data loaded successfully:', this.clientData?.company_name);
+            this.communications = dashboardData.communications?.data || [];
+            this.requests = dashboardData.requests?.data || [];
+            
+            this.isLoading = false;
+            this.error = null;
+            
+            console.log('✅ Client data loaded successfully:', this.clientData?.company_name || this.clientData?.name);
+            
+            // CRITICAL: Update the display after loading data
+            this.updateDisplay();
+            
+            // Also update the page content with loaded data
+            this.refreshPageContent();
             
         } catch (error) {
             console.error('❌ Failed to load client data:', error);
             this.error = error.message;
         } finally {
             this.isLoading = false;
+            this._isCurrentlyLoading = false; // RESET THE LOCK
             this.updateDisplay();
         }
-    }
-
+    }    
+    
     /**
      * Handle tab changes
      */
@@ -487,6 +526,70 @@ class ClientDetailPage {
         }
     }
 
+    /**
+     * Refresh page content with loaded data
+     */
+    refreshPageContent() {
+        if (!this.clientData) return;
+        
+        console.log('🎨 Refreshing page content with client data...');
+        
+        // Update breadcrumb
+        const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
+        if (breadcrumbCurrent) {
+            const clientName = this.clientData.company_name || this.clientData.name || 'Unknown Client';
+            breadcrumbCurrent.textContent = clientName;
+            console.log('✅ Updated breadcrumb to:', clientName);
+        }
+        
+        // Update page title elements
+        const clientNameElements = document.querySelectorAll('.client-name, .page-title');
+        clientNameElements.forEach(element => {
+            if (element.textContent.includes('Loading') || 
+                element.textContent.includes('Ready') || 
+                element.textContent.trim() === '') {
+                const clientName = this.clientData.company_name || this.clientData.name || 'Client Details';
+                element.textContent = clientName;
+                console.log('✅ Updated element text to:', clientName);
+            }
+        });
+        
+        // Hide any remaining loading states
+        document.querySelectorAll('.loading-state').forEach(el => {
+            if (el.style.display !== 'none') {
+                el.style.display = 'none';
+                console.log('🙈 Hidden loading state');
+            }
+        });
+        
+        // Show main content
+        const contentElement = document.getElementById('client-detail-content');
+        if (contentElement) {
+            contentElement.style.display = 'block';
+            console.log('✅ Showed main content');
+        }
+        
+        // Update any text that still shows "Ready..."
+        const walker = document.createTreeWalker(
+            document.querySelector('.client-detail-page') || document.body,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        let textNode;
+        while (textNode = walker.nextNode()) {
+            if (textNode.nodeValue && textNode.nodeValue.includes('Ready')) {
+                if (textNode.nodeValue.includes('Ready statistics')) {
+                    textNode.nodeValue = 'Client Statistics';
+                } else if (textNode.nodeValue.includes('Ready...')) {
+                    textNode.nodeValue = this.clientData.company_name || this.clientData.name || 'Client Details';
+                }
+            }
+        }
+        
+        console.log('🎨 Page content refresh completed');
+    }
     /**
      * Update display based on current state
      */

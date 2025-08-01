@@ -44,7 +44,87 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingScreen = document.getElementById('loading-screen');
             const appContainer = document.getElementById('app-container');
-            
+
+                try {
+                if (!window.router && window.KAMRouter) {
+                    console.log('🚀 Initializing KAM Router...');
+                    window.router = new window.KAMRouter();
+                    
+                    if (window.router.start) {
+                        window.router.start();
+                    } else if (window.router.init) {
+                        window.router.init();
+                    }
+                }
+                
+                window.addEventListener('hashchange', function() {
+                    const hash = window.location.hash.replace('#', '');
+                    const clientDetailMatch = hash.match(/^\/clients\/(.+)$/);
+                    
+                    if (clientDetailMatch) {
+                        const clientId = clientDetailMatch[1];
+                        console.log('🔍 Loading client detail for:', clientId);
+                        
+                        if (window.ClientDetailPage) {
+                            const clientDetailPage = new window.ClientDetailPage(clientId, window.apiClient);
+                            
+                            clientDetailPage.render().then(html => {
+                                const contentArea = document.querySelector('.ai-factory-content');
+                                if (contentArea) {
+                                    contentArea.innerHTML = html;
+                                    return clientDetailPage.mount();
+                                }
+                            }).then(() => {
+                                console.log('✅ Client detail loaded via hash change');
+                            }).catch(error => {
+                                console.error('❌ Client detail loading failed:', error);
+                            });
+                        }
+                    }
+                });
+                
+                const currentHash = window.location.hash;
+                if (currentHash.includes('/clients/')) {
+                    window.dispatchEvent(new HashChangeEvent('hashchange'));
+                }
+                
+                console.log('✅ Router initialization complete');
+                
+            } catch (error) {
+                console.error('❌ Router initialization failed:', error);
+            }
+        // Prevent Universal Researcher from blocking other functionality
+        setTimeout(() => {
+            const universalResearcherElements = document.querySelectorAll('*');
+            universalResearcherElements.forEach(element => {
+                if (element.textContent && element.textContent.includes('Loading Universal Researcher')) {
+                    console.log('🔍 Found Universal Researcher loading, setting timeout...');
+                    
+                        // Replace with placeholder after 10 seconds if still loading
+                        setTimeout(() => {
+                            if (element.textContent.includes('Loading Universal Researcher')) {
+                                console.log('⏱️ Universal Researcher timeout - replacing with placeholder');
+                                
+                                let parent = element.parentElement;
+                                for (let i = 0; i < 5; i++) {
+                                    if (parent && (parent.className.includes('card') || parent.className.includes('component'))) {
+                                        parent.innerHTML = `
+                                            <div style="padding: 20px; text-align: center; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                                                <div style="font-size: 2rem; margin-bottom: 12px;">🔍</div>
+                                                <h3 style="margin: 0 0 8px 0; color: #374151;">Universal Researcher</h3>
+                                                <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 0.875rem;">Service temporarily unavailable</p>
+                                                <button onclick="location.reload()" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">🔄 Retry</button>
+                                            </div>
+                                        `;
+                                        break;
+                                    }
+                                    parent = parent.parentElement;
+                                }
+                            }
+                        }, 10000); // 10 second timeout
+                    }
+                });
+            }, 5000); // Check after 5 seconds
             try {
                 console.log('🚀 Starting AI Factory Admin (Enhanced Version)...');
                 
