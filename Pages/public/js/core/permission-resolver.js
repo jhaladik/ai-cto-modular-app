@@ -45,6 +45,13 @@ class PermissionResolver {
         }
     }
 
+    // Enhanced Permission Resolver - Client Detail Permissions
+    // File: Pages/public/js/core/permission-resolver.js
+    // Add these permissions to the existing getBasicPermission method
+
+    // Modify the getBasicPermission method to include client detail permissions:
+    // Replace the existing basicPermissions array with this enhanced version:
+
     getBasicPermission(permission) {
         // Basic fallback permissions when KAM context is not available
         const sessionData = localStorage.getItem('bitware-user-info');
@@ -59,7 +66,19 @@ class PermissionResolver {
                 return true;
             }
 
-            // Basic permissions for non-admin users
+            // Account managers get client management permissions
+            if (role === 'account_manager') {
+                const accountManagerPermissions = [
+                    'dashboard_access',
+                    'view_own_data',
+                    'admin_access',        // Limited admin access
+                    'view_client_details', // NEW: Can view client details
+                    'manage_clients'       // NEW: Can manage assigned clients
+                ];
+                return accountManagerPermissions.includes(permission);
+            }
+
+            // Basic permissions for regular users
             const basicPermissions = [
                 'dashboard_access',
                 'view_own_data'
@@ -71,6 +90,61 @@ class PermissionResolver {
             console.error('Basic permission check failed:', error);
             return false;
         }
+    }
+
+    // Add new method for client-specific permission checking:
+    async canViewClientDetails(clientId) {
+        try {
+            // Admin can view all client details
+            const hasAdminAccess = await this.hasPermission('admin_access');
+            if (hasAdminAccess) {
+                return { allowed: true, reason: 'Admin access' };
+            }
+
+            // Account managers can view assigned clients
+            const hasClientDetailAccess = await this.hasPermission('view_client_details');
+            if (hasClientDetailAccess) {
+                // TODO: Add logic to check if account manager is assigned to this client
+                // For now, allow all account managers to view all clients
+                return { allowed: true, reason: 'Account manager access' };
+            }
+
+            // Clients can only view their own details
+            if (this.kamContext?.clientProfile?.client_id === clientId) {
+                return { allowed: true, reason: 'Own client record' };
+            }
+
+            return { allowed: false, reason: 'Insufficient permissions' };
+
+        } catch (error) {
+            console.error('Client detail permission check failed:', error);
+            return { allowed: false, reason: 'Permission check error' };
+        }
+    }
+
+    // Add method to check bulk client operations:
+    async canPerformClientBulkOperations() {
+        const hasAdminAccess = await this.hasPermission('admin_access');
+        const hasClientManagement = await this.hasPermission('manage_clients');
+        
+        return hasAdminAccess || hasClientManagement;
+    }
+
+    // Update the canAccessComponent method to include client detail component:
+    async canAccessComponent(componentName) {
+        const componentPermissions = {
+            'executiveSummary': 'admin_access',
+            'workerGrid': 'worker_access',
+            'clientGrid': 'admin_access',
+            'clientDetailPage': 'view_client_details',  // NEW: Client detail page
+            'clientManagement': 'admin_access',         // NEW: Client management
+            'financialDashboard': 'admin_access',
+            'systemAnalytics': 'dashboard_access',
+            'userProfile': 'dashboard_access'
+        };
+
+        const requiredPermission = componentPermissions[componentName] || 'dashboard_access';
+        return await this.hasPermission(requiredPermission);
     }
 
     async canAccessComponent(componentName) {

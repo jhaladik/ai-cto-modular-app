@@ -153,6 +153,14 @@ class KAMRouter {
       title: 'Client Management'
     });
 
+    // NEW: Client detail route (add after line ~70 in registerRoutes)
+    this.routes.set('/clients/:clientId', {
+      component: (params) => this.loadClientDetail(params.clientId),
+      permissions: ['admin_access', 'view_client_details'],
+      roles: ['admin', 'account_manager'],
+      title: 'Client Details'
+    });
+
     // Worker routes
     this.routes.set('/workers/universal-researcher', {
       component: () => this.loadWorkerInterface('universal-researcher'),
@@ -234,7 +242,14 @@ class KAMRouter {
       window.location.hash = '#/' + path;
     }
   }
-
+  /**
+   * Navigate to client detail page
+   */
+  navigateToClientDetail(clientId) {
+    console.log(`🧭 Navigating to client detail: ${clientId}`);
+    this.navigate(`/clients/${clientId}`);
+  }
+  
   async navigateToRoute(path) {
     if (!this.initialized) {
       console.warn('⚠️ Router not initialized, skipping navigation');
@@ -515,6 +530,50 @@ class KAMRouter {
       render: () => clientsPage.render(),
       mount: () => clientsPage.mount()
     };
+  }
+
+  /**
+   * Load client detail page
+   */
+  async loadClientDetail(clientId) {
+    console.log(`🔍 Loading client detail for ID: ${clientId}`);
+    
+    // Check if ClientDetailPage is available
+    if (!window.ClientDetailPage) {
+      console.error('❌ ClientDetailPage component not found');
+      return this.getPlaceholderPage(
+        'Client Details', 
+        'Client detail component is loading...'
+      );
+    }
+
+    try {
+      // Create client detail page instance
+      const clientDetailPage = new window.ClientDetailPage(clientId, window.apiClient);
+      
+      return {
+        render: async (params) => {
+          console.log(`🎨 Rendering client detail for: ${clientId}`, params);
+          return await clientDetailPage.render();
+        },
+        mount: async () => {
+          console.log(`🔧 Mounting client detail for: ${clientId}`);
+          return await clientDetailPage.mount();
+        },
+        destroy: () => {
+          console.log(`🧹 Destroying client detail for: ${clientId}`);
+          if (clientDetailPage.destroy) {
+            clientDetailPage.destroy();
+          }
+        }
+      };
+    } catch (error) {
+      console.error('❌ Failed to create ClientDetailPage:', error);
+      return this.getPlaceholderPage(
+        'Client Details Error', 
+        `Failed to load client details: ${error.message}`
+      );
+    }
   }
 
   async loadWorkerInterface(workerId) {

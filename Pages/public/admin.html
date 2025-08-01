@@ -6,6 +6,7 @@
     <title>AI Factory Admin</title>
     <link rel="stylesheet" href="/css/shared.css">
     <link rel="stylesheet" href="/css/admin-modern.css">
+    <link rel="stylesheet" href="/css/components/client-detail.css">
 </head>
 <body>
     <div id="app-container">
@@ -21,17 +22,25 @@
     <script src="/js/core/api-client.js"></script>
     <script src="/js/core/session-manager.js"></script>
     <script src="/js/core/kam-context-manager.js"></script>
+    
+    <!-- ADD: Missing core scripts -->
+    <script src="/js/core/permission-resolver.js"></script>
+    <script src="/js/core/kam-router.js"></script>
+    
     <script src="/js/components/ui-components.js"></script>
     <script src="/js/components/enhanced-universal-researcher-card.js"></script>
     <script src="/js/components/client-list-manager.js"></script>    
     <script src="/js/admin-components.js"></script>
 
-    <!-- NEW: Enhanced layout components (optional) -->
+    <!-- Enhanced layout components -->
     <script src="/js/components/ai-factory-layout.js"></script>
     <script src="/js/components/clients-page.js"></script>
-
+    
+    <!-- ADD: Client Detail Component -->
+    <script src="/js/components/client-detail-page.js"></script>
     <script>
-        // ENHANCED: Safe integration with fallback to working dashboard
+
+    // ENHANCED: Safe integration with fallback to working dashboard
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingScreen = document.getElementById('loading-screen');
             const appContainer = document.getElementById('app-container');

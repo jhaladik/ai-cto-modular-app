@@ -92,7 +92,174 @@ class AIFactoryAPIClient {
     async getClients() {
         return this.kamRequest('/admin/clients');
     }
+    // Enhanced API Client - Client Detail Methods
+    // File: Pages/public/js/core/api-client.js
+    // Add these methods to the AIFactoryAPIClient class
 
+    // Add these methods in the KAM Operations section (after getClients() method):
+
+    /**
+     * Get detailed client information by ID or email
+     */
+    async getClientDetail(clientId, email = null) {
+        console.log(`🔍 Fetching client detail for ID: ${clientId}, email: ${email}`);
+        
+        const params = {};
+        if (email) {
+            params.email = email;
+        } else {
+            params.client_id = clientId;
+        }
+        
+        return this.kamRequest('/client', 'GET', params);
+    }
+
+    /**
+     * Get client analytics and usage data
+     */
+    async getClientAnalytics(clientId, timeRange = '30d') {
+        console.log(`📊 Fetching analytics for client: ${clientId}, range: ${timeRange}`);
+        
+        return this.kamRequest('/client-analytics', 'GET', {
+            client_id: clientId,
+            time_range: timeRange
+        });
+    }
+
+    /**
+     * Get client communication history
+     */
+    async getClientCommunications(clientId, limit = 50, offset = 0) {
+        console.log(`💬 Fetching communications for client: ${clientId}`);
+        
+        return this.kamRequest('/client-communications', 'GET', {
+            client_id: clientId,
+            limit,
+            offset
+        });
+    }
+
+    /**
+     * Get client requests and their status
+     */
+    async getClientRequests(clientId, limit = 20, offset = 0, status = null) {
+        console.log(`📋 Fetching requests for client: ${clientId}`);
+        
+        const params = {
+            client_id: clientId,
+            limit,
+            offset
+        };
+        
+        if (status) {
+            params.status = status;
+        }
+        
+        return this.kamRequest('/client-requests', 'GET', params);
+    }
+
+    /**
+     * Get client deliverables and reports
+     */
+    async getClientDeliverables(clientId, limit = 20, offset = 0) {
+        console.log(`📄 Fetching deliverables for client: ${clientId}`);
+        
+        return this.kamRequest('/client-deliverables', 'GET', {
+            client_id: clientId,
+            limit,
+            offset
+        });
+    }
+
+    /**
+     * Update client information
+     */
+    async updateClient(clientId, updates) {
+        console.log(`✏️ Updating client: ${clientId}`, updates);
+        
+        return this.kamRequest('/client', 'PUT', {
+            client_id: clientId,
+            ...updates
+        });
+    }
+
+    /**
+     * Get client's budget and usage information
+     */
+    async getClientBudgetInfo(clientId) {
+        console.log(`💰 Fetching budget info for client: ${clientId}`);
+        
+        return this.kamRequest('/client-budget', 'GET', {
+            client_id: clientId
+        });
+    }
+
+    /**
+     * Send message to client (through communication processing)
+     */
+    async sendClientMessage(clientId, message, channel = 'dashboard') {
+        console.log(`📨 Sending message to client: ${clientId}`);
+        
+        return this.kamRequest('/client-message', 'POST', {
+            client_id: clientId,
+            message,
+            channel,
+            from_admin: true
+        });
+    }
+
+    /**
+     * Get client transparency data for a specific request
+     */
+    async getClientRequestTransparency(clientId, requestId) {
+        console.log(`🔍 Fetching transparency for client: ${clientId}, request: ${requestId}`);
+        
+        return this.kamRequest(`/request/${requestId}/transparency`, 'GET', {
+            client_id: clientId
+        });
+    }
+
+    // Add batch operation for loading complete client detail dashboard data:
+    /**
+     * Get complete client detail dashboard data (multiple API calls in parallel)
+     */
+    async getClientDetailDashboard(clientId) {
+        console.log(`📊 Loading complete dashboard for client: ${clientId}`);
+        
+        try {
+            const [
+                clientDetail,
+                analytics,
+                recentCommunications,
+                recentRequests,
+                budgetInfo
+            ] = await Promise.allSettled([
+                this.getClientDetail(clientId),
+                this.getClientAnalytics(clientId, '30d'),
+                this.getClientCommunications(clientId, 10),
+                this.getClientRequests(clientId, 10),
+                this.getClientBudgetInfo(clientId)
+            ]);
+
+            return {
+                client: clientDetail.status === 'fulfilled' ? clientDetail.value : null,
+                analytics: analytics.status === 'fulfilled' ? analytics.value : {},
+                communications: recentCommunications.status === 'fulfilled' ? recentCommunications.value : [],
+                requests: recentRequests.status === 'fulfilled' ? recentRequests.value : [],
+                budget: budgetInfo.status === 'fulfilled' ? budgetInfo.value : {},
+                errors: {
+                    client: clientDetail.status === 'rejected' ? clientDetail.reason : null,
+                    analytics: analytics.status === 'rejected' ? analytics.reason : null,
+                    communications: recentCommunications.status === 'rejected' ? recentCommunications.reason : null,
+                    requests: recentRequests.status === 'rejected' ? recentRequests.reason : null,
+                    budget: budgetInfo.status === 'rejected' ? budgetInfo.reason : null
+                }
+            };
+        } catch (error) {
+            console.error('Failed to load client detail dashboard:', error);
+            throw error;
+        }
+    }    
     /**
      * Get recent activity
      */

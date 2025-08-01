@@ -165,7 +165,6 @@ class ClientsPage {
             </div>
         `;
     }
-
     /**
      * Render individual client row with expandable details
      */
@@ -223,10 +222,6 @@ class ClientsPage {
             ${isExpanded ? this.renderRowDetails(client) : ''}
         `;
     }
-
-    /**
-     * Render expanded row details
-     */
     renderRowDetails(client) {
         return `
             <div class="row-details" style="display: block;">
@@ -253,7 +248,7 @@ class ClientsPage {
                             </div>
                         </div>
                     </div>
-
+    
                     <div>
                         <h4 style="margin: 0 0 1rem 0; color: var(--text-primary);">Subscription & Usage</h4>
                         <div style="display: grid; gap: 0.75rem;">
@@ -277,10 +272,13 @@ class ClientsPage {
                             </div>
                         </div>
                     </div>
-
+    
                     <div>
                         <h4 style="margin: 0 0 1rem 0; color: var(--text-primary);">Quick Actions</h4>
                         <div style="display: grid; gap: 0.5rem;">
+                            <button class="btn btn-primary btn-sm" onclick="clientsPage.navigateToClientDetail('${client.client_id}'); event.stopPropagation();">
+                                👁️ View Details
+                            </button>
                             <button class="btn btn-secondary btn-sm" onclick="clientsPage.editClient('${client.client_id}'); event.stopPropagation();">
                                 ✏️ Edit Client
                             </button>
@@ -298,6 +296,97 @@ class ClientsPage {
                 </div>
             </div>
         `;
+    }
+
+    renderClientActions(client) {
+        return `
+            <div class="client-actions-row" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <!-- Primary action: View Details -->
+                <button class="btn btn-sm btn-primary" 
+                        onclick="clientsPage.navigateToClientDetail('${client.client_id}')"
+                        title="View detailed client profile and analytics">
+                    👁️ View Details
+                </button>
+                
+                <!-- Secondary actions -->
+                <button class="btn btn-sm btn-secondary" 
+                        onclick="clientsPage.sendClientMessage('${client.client_id}')"
+                        title="Send message to client">
+                    💬 Message
+                </button>
+                
+                <button class="btn btn-sm btn-secondary" 
+                        onclick="clientsPage.viewClientRequests('${client.client_id}')"
+                        title="View client's recent requests">
+                    📋 Requests
+                </button>
+                
+                <button class="btn btn-sm btn-secondary" 
+                        onclick="clientsPage.editClientInfo('${client.client_id}')"
+                        title="Edit client information">
+                    ✏️ Edit
+                </button>
+                
+                <!-- Tier-specific actions -->
+                ${client.subscription_tier !== 'enterprise' ? `
+                    <button class="btn btn-sm btn-outline" 
+                            onclick="clientsPage.showUpgradeOptions('${client.client_id}')"
+                            title="Upgrade subscription tier">
+                        ⬆️ Upgrade
+                    </button>
+                ` : ''}
+                
+                <!-- Budget actions for clients approaching limits -->
+                ${(client.used_budget_current_month / client.monthly_budget_usd) > 0.8 ? `
+                    <button class="btn btn-sm btn-warning" 
+                            onclick="clientsPage.adjustBudget('${client.client_id}')"
+                            title="Adjust monthly budget">
+                        💰 Budget
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Add navigation method:
+    navigateToClientDetail(clientId) {
+        console.log(`🧭 Navigating to client detail: ${clientId}`);
+        
+        // Use the router to navigate
+        if (window.kamRouter && window.kamRouter.initialized) {
+            window.kamRouter.navigateToClientDetail(clientId);
+        } else {
+            // Fallback: direct hash navigation
+            window.location.hash = `#/clients/${clientId}`;
+        }
+    }
+
+    // Add placeholder methods for other actions:
+    sendClientMessage(clientId) {
+        alert(`Message functionality for client ${clientId} coming soon!`);
+        // TODO: Open message composer modal
+    }
+
+    viewClientRequests(clientId) {
+        console.log(`📋 Viewing requests for client: ${clientId}`);
+        // For now, navigate to detail page and focus on requests tab
+        this.navigateToClientDetail(clientId);
+        // TODO: Add hash parameter to open requests tab: #/clients/${clientId}#requests
+    }
+
+    editClientInfo(clientId) {
+        alert(`Edit functionality for client ${clientId} coming soon!`);
+        // TODO: Open client edit modal
+    }
+
+    showUpgradeOptions(clientId) {
+        alert(`Upgrade options for client ${clientId} coming soon!`);
+        // TODO: Open subscription upgrade modal
+    }
+
+    adjustBudget(clientId) {
+        alert(`Budget adjustment for client ${clientId} coming soon!`);
+        // TODO: Open budget adjustment modal
     }
 
     /**
