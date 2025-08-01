@@ -1,9 +1,6 @@
-// AI Factory UI Components Library
-// File: /js/components/ui-components.js
-
 /**
- * Reusable UI Components for AI Factory
- * Used by both admin and client dashboards
+ * UI Components - Clean Version
+ * Essential UI components only - NO SEARCH, NO COMPLEX FUNCTIONALITY
  */
 
 // =============================================================================
@@ -12,649 +9,584 @@
 
 class StatCard {
     constructor(config) {
-        this.id = config.id;
-        this.label = config.label;
-        this.value = config.value || '-';
-        this.change = config.change || null;
-        this.icon = config.icon || '';
-        this.type = config.type || 'default'; // 'default', 'currency', 'percentage'
+        this.label = config.label || 'Stat';
+        this.value = config.value || '0';
+        this.icon = config.icon || '📊';
+        this.color = config.color || 'primary';
+        this.trend = config.trend || null; // 'up', 'down', 'stable'
+        this.trendValue = config.trendValue || null;
     }
 
     render() {
-        const formattedValue = this.formatValue(this.value);
-        const changeHtml = this.renderChange();
-        
+        const trendIcon = {
+            'up': '📈',
+            'down': '📉',
+            'stable': '➡️'
+        };
+
         return `
-            <div class="stat-card" data-stat="${this.id}">
-                <div class="stat-value" id="stat-${this.id}">
-                    ${this.icon} ${formattedValue}
+            <div class="stat-card stat-card-${this.color}">
+                <div class="stat-card-content">
+                    <div class="stat-icon">${this.icon}</div>
+                    <div class="stat-details">
+                        <div class="stat-value">${this.value}</div>
+                        <div class="stat-label">${this.label}</div>
+                        ${this.trend ? `
+                            <div class="stat-trend trend-${this.trend}">
+                                ${trendIcon[this.trend]} ${this.trendValue}
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
-                <div class="stat-label">${this.label}</div>
-                ${changeHtml}
             </div>
         `;
-    }
-
-    formatValue(value) {
-        if (value === null || value === undefined || value === '-') return '-';
-        
-        switch (this.type) {
-            case 'currency':
-                return `$${Number(value).toFixed(2)}`;
-            case 'percentage':
-                return `${Number(value).toFixed(1)}%`;
-            default:
-                return String(value);
-        }
-    }
-
-    renderChange() {
-        if (!this.change) return '';
-        
-        const { value, label, isPercent } = this.change;
-        if (value === null || value === undefined) return '';
-        
-        const isPositive = value > 0;
-        const symbol = isPositive ? '+' : '';
-        const suffix = isPercent ? '%' : '';
-        const className = `stat-change ${isPositive ? 'positive' : 'negative'}`;
-        
-        return `
-            <div class="${className}">
-                ${symbol}${value}${suffix} ${label}
-            </div>
-        `;
-    }
-
-    update(newValue, newChange = null) {
-        this.value = newValue;
-        this.change = newChange;
-        
-        const element = document.getElementById(`stat-${this.id}`);
-        if (element) {
-            element.innerHTML = `${this.icon} ${this.formatValue(newValue)}`;
-        }
-        
-        if (newChange) {
-            const changeEl = element?.parentElement?.querySelector('.stat-change');
-            if (changeEl) {
-                const { value, label, isPercent } = newChange;
-                const isPositive = value > 0;
-                const symbol = isPositive ? '+' : '';
-                const suffix = isPercent ? '%' : '';
-                changeEl.className = `stat-change ${isPositive ? 'positive' : 'negative'}`;
-                changeEl.textContent = `${symbol}${value}${suffix} ${label}`;
-            }
-        }
     }
 }
 
 // =============================================================================
-// WORKER CARD COMPONENT
+// CLIENT CARD COMPONENT
 // =============================================================================
 
-class WorkerCard {
-    constructor(config) {
-        this.workerId = config.workerId;
-        this.name = config.name;
-        this.icon = config.icon;
-        this.apiClient = config.apiClient || window.apiClient;
-        this.userContext = config.userContext || {};
-        this.containerId = `worker-${this.workerId}`;
-        this.statusId = `status-${this.workerId}`;
+class ClientCard {
+    constructor(clientData) {
+        this.clientData = clientData;
     }
 
     render() {
+        const client = this.clientData;
+        const budgetPercentage = client.monthly_budget_usd > 0 
+            ? (client.used_budget_current_month / client.monthly_budget_usd) * 100 
+            : 0;
+
         return `
-            <div class="card worker-card" data-worker="${this.workerId}">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        ${this.icon} ${this.name}
-                        <span class="worker-status" id="${this.statusId}">
-                            <span class="status-dot"></span>
-                            Loading...
+            <div class="client-card" onclick="router.navigate('/clients/${client.client_id}')">
+                <div class="client-card-header">
+                    <div class="client-basic-info">
+                        <h3 class="client-company-name">${client.company_name}</h3>
+                        <p class="client-email">${client.contact_email}</p>
+                    </div>
+                    <div class="client-badges">
+                        <span class="tier-badge tier-${client.subscription_tier}">
+                            ${this.formatTierName(client.subscription_tier)}
                         </span>
-                    </h3>
+                        <span class="status-badge status-${client.account_status}">
+                            ${client.account_status}
+                        </span>
+                    </div>
                 </div>
-                <div class="card-content" id="${this.containerId}">
-                    <div class="loading-state">Loading worker...</div>
+                
+                <div class="client-card-body">
+                    <div class="client-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Industry</span>
+                            <span class="stat-value">${client.industry || 'N/A'}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Budget Usage</span>
+                            <span class="stat-value">${budgetPercentage.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="budget-bar">
+                        <div class="budget-progress" style="width: ${Math.min(budgetPercentage, 100)}%"></div>
+                    </div>
+                    
+                    <div class="budget-text">
+                        $${client.used_budget_current_month} / $${client.monthly_budget_usd}
+                    </div>
+                </div>
+                
+                <div class="client-card-footer">
+                    <span class="created-date">
+                        Added ${new Date(client.created_at).toLocaleDateString()}
+                    </span>
+                    <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); router.navigate('/clients/${client.client_id}')">
+                        View Details
+                    </button>
                 </div>
             </div>
         `;
     }
 
-    async mount() {
-        // Override in specific worker implementations
-        await this.loadInterface();
-        await this.checkHealth();
+    formatTierName(tier) {
+        const tierNames = {
+            'basic': '🥉 Basic',
+            'standard': '🥈 Standard',
+            'premium': '🥇 Premium',
+            'enterprise': '💎 Enterprise'
+        };
+        return tierNames[tier] || '🔧 Unknown';
+    }
+}
+
+// =============================================================================
+// SIMPLE MODAL COMPONENT
+// =============================================================================
+
+class SimpleModal {
+    constructor(config) {
+        this.title = config.title || 'Modal';
+        this.content = config.content || '';
+        this.actions = config.actions || [];
+        this.size = config.size || 'medium'; // small, medium, large
+        this.onClose = config.onClose || null;
+        this.id = config.id || `modal-${Date.now()}`;
     }
 
-    async loadInterface() {
-        // Default implementation - override in specific workers
-        const container = document.getElementById(this.containerId);
-        if (container) {
-            container.innerHTML = `
-                <div class="worker-interface">
-                    <p>Worker interface not implemented yet.</p>
-                    <div class="worker-actions">
-                        <button class="btn btn-secondary btn-small" onclick="this.checkHealth()">
-                            💚 Health Check
+    render() {
+        return `
+            <div class="modal-overlay" id="${this.id}" onclick="this.close()">
+                <div class="modal modal-${this.size}" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 class="modal-title">${this.title}</h3>
+                        <button class="modal-close" onclick="document.getElementById('${this.id}').close()">
+                            ✕
                         </button>
                     </div>
+                    
+                    <div class="modal-body">
+                        ${this.content}
+                    </div>
+                    
+                    ${this.actions.length > 0 ? `
+                        <div class="modal-footer">
+                            ${this.actions.map(action => `
+                                <button class="btn ${action.class || 'btn-secondary'}" 
+                                        onclick="${action.onclick}">
+                                    ${action.text}
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
-            `;
-        }
-    }
-
-    async checkHealth() {
-        const statusEl = document.getElementById(this.statusId);
-        if (!statusEl) return;
-        
-        try {
-            const health = await this.apiClient.getWorkerHealth(this.workerId);
-            this.updateStatus(statusEl, health);
-        } catch (error) {
-            this.updateStatus(statusEl, { status: 'error', message: error.message });
-        }
-    }
-
-    updateStatus(statusEl, health) {
-        const isHealthy = health.status === 'healthy';
-        statusEl.className = `worker-status ${isHealthy ? 'healthy' : 'error'}`;
-        statusEl.innerHTML = `
-            <span class="status-dot ${isHealthy ? 'online' : 'offline'}"></span>
-            ${isHealthy ? 'Healthy' : 'Error'}
-        `;
-    }
-
-    showError(error) {
-        const container = document.getElementById(this.containerId);
-        if (container) {
-            container.innerHTML = `
-                <div class="error-state">
-                    <h4>⚠️ Worker Unavailable</h4>
-                    <p>${error.message}</p>
-                    <button class="btn btn-small btn-secondary" onclick="window.workerRegistry?.get('${this.workerId}')?.mount()">
-                        🔄 Retry
-                    </button>
-                </div>
-            `;
-        }
-    }
-}
-
-// =============================================================================
-// UNIVERSAL RESEARCHER CARD (Specific Implementation)
-// =============================================================================
-
-class UniversalResearcherCard extends WorkerCard {
-    constructor(config) {
-        super({
-            workerId: 'universal-researcher',
-            name: 'Universal Researcher',
-            icon: '🔬',
-            ...config
-        });
-    }
-
-    async loadInterface() {
-        const container = document.getElementById(this.containerId);
-        if (!container) return;
-        
-        container.innerHTML = `
-            <div class="worker-interface">
-                <div class="form-group">
-                    <label class="form-label">Research Topic</label>
-                    <input type="text" class="form-input" id="research-topic-${this.workerId}" 
-                           placeholder="Enter research topic...">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Research Depth</label>
-                    <select class="form-input" id="research-depth-${this.workerId}">
-                        <option value="1">Quick (1 depth)</option>
-                        <option value="2" selected>Standard (2 depth)</option>
-                        <option value="3">Deep (3 depth)</option>
-                    </select>
-                </div>
-                
-                <div class="worker-actions">
-                    <button class="btn btn-primary" onclick="window.workerRegistry?.get('${this.workerId}')?.executeResearch()" id="research-btn-${this.workerId}">
-                        🔍 Start Research
-                    </button>
-                    <button class="btn btn-secondary btn-small" onclick="window.workerRegistry?.get('${this.workerId}')?.checkHealth()" id="health-btn-${this.workerId}">
-                        💚 Health Check
-                    </button>
-                </div>
-                
-                <div id="research-results-${this.workerId}" class="research-results" style="margin-top: 1rem;"></div>
             </div>
         `;
     }
 
-    async executeResearch() {
-        const topic = document.getElementById(`research-topic-${this.workerId}`)?.value;
-        const depth = document.getElementById(`research-depth-${this.workerId}`)?.value || '2';
-        const resultsEl = document.getElementById(`research-results-${this.workerId}`);
-        const btn = document.getElementById(`research-btn-${this.workerId}`);
+    show() {
+        const modalHtml = this.render();
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
         
-        if (!topic) {
-            alert('Please enter a research topic');
-            return;
-        }
-
-        try {
-            // Update UI
-            btn.textContent = '⏳ Researching...';
-            btn.disabled = true;
-            resultsEl.innerHTML = '<div class="loading-state">Researching topic...</div>';
-            
-            // Execute research via API client
-            const result = await this.apiClient.executeResearch(topic, parseInt(depth));
-            this.displayResults(result);
-            
-        } catch (error) {
-            console.error('Research failed:', error);
-            resultsEl.innerHTML = `
-                <div class="error-state">
-                    <h4>Research Failed</h4>
-                    <p>${error.message}</p>
-                </div>
-            `;
-        } finally {
-            btn.textContent = '🔍 Start Research';
-            btn.disabled = false;
-        }
+        const modalElement = document.getElementById(this.id);
+        modalElement.style.display = 'flex';
+        
+        // Add close functionality
+        modalElement.close = () => {
+            modalElement.remove();
+            if (this.onClose) this.onClose();
+        };
+        
+        return modalElement;
     }
 
-    displayResults(result) {
-        const resultsEl = document.getElementById(`research-results-${this.workerId}`);
-        
-        if (result.sources && result.sources.length > 0) {
-            resultsEl.innerHTML = `
-                <div class="research-success">
-                    <h4>✅ Research Complete</h4>
-                    <p><strong>${result.sources.length}</strong> sources found</p>
-                    <p><strong>Session ID:</strong> ${result.session_id}</p>
-                    <p><strong>Quality Score:</strong> ${(result.quality_score * 100).toFixed(1)}%</p>
-                    <details style="margin-top: 0.5rem;">
-                        <summary>View Sources</summary>
-                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-                            ${result.sources.slice(0, 5).map(source => 
-                                `<li><a href="${source.url}" target="_blank">${source.title}</a></li>`
-                            ).join('')}
-                            ${result.sources.length > 5 ? `<li>... and ${result.sources.length - 5} more</li>` : ''}
-                        </ul>
-                    </details>
-                </div>
-            `;
-        } else {
-            resultsEl.innerHTML = `
-                <div class="error-state">
-                    <h4>No Results</h4>
-                    <p>No sources found for this topic.</p>
-                </div>
-            `;
-        }
+    static show(config) {
+        const modal = new SimpleModal(config);
+        return modal.show();
     }
 }
 
 // =============================================================================
-// DASHBOARD LAYOUT COMPONENT
+// LOADING COMPONENT
 // =============================================================================
 
-class DashboardLayout {
+class LoadingComponent {
+    constructor(config = {}) {
+        this.message = config.message || 'Loading...';
+        this.size = config.size || 'medium'; // small, medium, large
+        this.type = config.type || 'spinner'; // spinner, dots, bars
+    }
+
+    render() {
+        const spinners = {
+            'spinner': '🔄',
+            'dots': '⋯',
+            'bars': '▪▫▪'
+        };
+
+        return `
+            <div class="loading-component loading-${this.size}">
+                <div class="loading-icon loading-${this.type}">
+                    ${spinners[this.type] || spinners.spinner}
+                </div>
+                <div class="loading-message">${this.message}</div>
+            </div>
+        `;
+    }
+
+    static show(container, config = {}) {
+        const loading = new LoadingComponent(config);
+        if (typeof container === 'string') {
+            container = document.getElementById(container);
+        }
+        if (container) {
+            container.innerHTML = loading.render();
+        }
+        return loading;
+    }
+}
+
+// =============================================================================
+// ERROR COMPONENT
+// =============================================================================
+
+class ErrorComponent {
     constructor(config) {
-        this.title = config.title || 'AI Factory';
-        this.userInfo = config.userInfo || {};
-        this.showHeader = config.showHeader !== false;
-        this.showStats = config.showStats !== false;
-        this.showWorkers = config.showWorkers !== false;
-        this.customActions = config.customActions || [];
+        this.title = config.title || 'Error';
+        this.message = config.message || 'Something went wrong';
+        this.actions = config.actions || [];
+        this.type = config.type || 'error'; // error, warning, info
+    }
+
+    render() {
+        const icons = {
+            'error': '❌',
+            'warning': '⚠️',
+            'info': 'ℹ️'
+        };
+
+        return `
+            <div class="error-component error-${this.type}">
+                <div class="error-icon">${icons[this.type]}</div>
+                <div class="error-content">
+                    <h3 class="error-title">${this.title}</h3>
+                    <p class="error-message">${this.message}</p>
+                    ${this.actions.length > 0 ? `
+                        <div class="error-actions">
+                            ${this.actions.map(action => `
+                                <button class="btn ${action.class || 'btn-primary'}" 
+                                        onclick="${action.onclick}">
+                                    ${action.text}
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    static show(container, config) {
+        const error = new ErrorComponent(config);
+        if (typeof container === 'string') {
+            container = document.getElementById(container);
+        }
+        if (container) {
+            container.innerHTML = error.render();
+        }
+        return error;
+    }
+}
+
+// =============================================================================
+// EMPTY STATE COMPONENT
+// =============================================================================
+
+class EmptyState {
+    constructor(config) {
+        this.title = config.title || 'No Data';
+        this.message = config.message || 'There is nothing to display';
+        this.icon = config.icon || '📭';
+        this.actions = config.actions || [];
     }
 
     render() {
         return `
-            <div class="admin-dashboard">
-                ${this.showHeader ? this.renderHeader() : ''}
-                <div class="dashboard-content">
-                    ${this.showStats ? this.renderStatsSection() : ''}
-                    ${this.showWorkers ? this.renderWorkersSection() : ''}
+            <div class="empty-state">
+                <div class="empty-state-icon">${this.icon}</div>
+                <div class="empty-state-content">
+                    <h3 class="empty-state-title">${this.title}</h3>
+                    <p class="empty-state-message">${this.message}</p>
+                    ${this.actions.length > 0 ? `
+                        <div class="empty-state-actions">
+                            ${this.actions.map(action => `
+                                <button class="btn ${action.class || 'btn-primary'}" 
+                                        onclick="${action.onclick}">
+                                    ${action.text}
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
     }
 
-    renderHeader() {
-        const userName = this.userInfo?.fullName || this.userInfo?.username || 'User';
-        
-        const defaultActions = [
-            { text: '🔄 Refresh', onclick: 'window.currentDashboard?.refresh()', class: 'btn-secondary btn-small' },
-            { text: '🚪 Logout', onclick: 'logout()', class: 'btn-secondary btn-small' }
-        ];
-        
-        const allActions = [...this.customActions, ...defaultActions];
-        
-        return `
-            <header class="dashboard-header">
-                <h1>${this.title}</h1>
-                <div class="header-actions">
-                    <span class="user-info">Welcome, ${userName}</span>
-                    ${allActions.map(action => 
-                        `<button class="btn ${action.class}" onclick="${action.onclick}">${action.text}</button>`
-                    ).join('')}
-                </div>
-            </header>
-        `;
-    }
-
-    renderStatsSection() {
-        return `
-            <div class="stats-grid" id="stats-grid">
-                <!-- Stats cards will be inserted here -->
-            </div>
-        `;
-    }
-
-    renderWorkersSection() {
-        return `
-            <div class="dashboard-grid" id="workers-grid">
-                <!-- Worker cards will be inserted here -->
-            </div>
-        `;
-    }
-}
-
-// =============================================================================
-// COMPONENT REGISTRY
-// =============================================================================
-
-class ComponentRegistry {
-    constructor() {
-        this.components = new Map();
-        this.instances = new Map();
-    }
-
-    register(name, componentClass) {
-        this.components.set(name, componentClass);
-    }
-
-    create(name, config) {
-        const ComponentClass = this.components.get(name);
-        if (!ComponentClass) {
-            throw new Error(`Component '${name}' not found`);
+    static show(container, config) {
+        const emptyState = new EmptyState(config);
+        if (typeof container === 'string') {
+            container = document.getElementById(container);
         }
-        
-        const instance = new ComponentClass(config);
-        this.instances.set(`${name}-${Date.now()}`, instance);
-        return instance;
-    }
-
-    getInstances(name) {
-        return Array.from(this.instances.values()).filter(instance => 
-            instance.constructor.name === name || instance.workerId === name
-        );
+        if (container) {
+            container.innerHTML = emptyState.render();
+        }
+        return emptyState;
     }
 }
 
 // =============================================================================
-// ADDITIONAL WORKER CARDS (for client dashboard)
+// TOAST NOTIFICATION COMPONENT
 // =============================================================================
 
-class ContentClassifierCard extends WorkerCard {
+class Toast {
     constructor(config) {
-        super({
-            workerId: 'content-classifier',
-            name: 'Content Classifier',
-            icon: '🧠',
-            ...config
-        });
+        this.message = config.message || 'Notification';
+        this.type = config.type || 'info'; // success, error, warning, info
+        this.duration = config.duration || 3000;
+        this.action = config.action || null;
+        this.id = `toast-${Date.now()}`;
     }
 
-    async loadInterface() {
-        const container = document.getElementById(this.containerId);
-        if (!container) return;
-        
-        container.innerHTML = `
-            <div class="worker-interface">
-                <div class="form-group">
-                    <label class="form-label">Content to Classify</label>
-                    <textarea class="form-input form-textarea" id="content-input-${this.workerId}" 
-                              placeholder="Paste content to analyze and classify..." rows="4"></textarea>
+    render() {
+        const icons = {
+            'success': '✅',
+            'error': '❌',
+            'warning': '⚠️',
+            'info': 'ℹ️'
+        };
+
+        return `
+            <div class="toast toast-${this.type}" id="${this.id}">
+                <div class="toast-content">
+                    <span class="toast-icon">${icons[this.type]}</span>
+                    <span class="toast-message">${this.message}</span>
                 </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Classification Type</label>
-                    <select class="form-input" id="classification-type-${this.workerId}">
-                        <option value="sentiment">Sentiment Analysis</option>
-                        <option value="category">Content Category</option>
-                        <option value="quality">Quality Assessment</option>
-                        <option value="relevance">Topic Relevance</option>
-                    </select>
-                </div>
-                
-                <div class="worker-actions">
-                    <button class="btn btn-primary" onclick="window.workerRegistry?.get('${this.workerId}')?.classifyContent()" id="classify-btn-${this.workerId}">
-                        🧠 Classify Content
+                ${this.action ? `
+                    <button class="toast-action" onclick="${this.action.onclick}">
+                        ${this.action.text}
                     </button>
-                    <button class="btn btn-secondary btn-small" onclick="window.workerRegistry?.get('${this.workerId}')?.checkHealth()" id="health-btn-${this.workerId}">
-                        💚 Health Check
-                    </button>
-                </div>
-                
-                <div id="classification-results-${this.workerId}" class="classification-results" style="margin-top: 1rem;"></div>
+                ` : ''}
+                <button class="toast-close" onclick="document.getElementById('${this.id}').remove()">
+                    ✕
+                </button>
             </div>
         `;
     }
 
-    async classifyContent() {
-        const content = document.getElementById(`content-input-${this.workerId}`)?.value;
-        const classificationType = document.getElementById(`classification-type-${this.workerId}`)?.value;
-        const resultsEl = document.getElementById(`classification-results-${this.workerId}`);
-        const btn = document.getElementById(`classify-btn-${this.workerId}`);
-        
-        if (!content?.trim()) {
-            alert('Please enter content to classify');
-            return;
+    show() {
+        // Create toast container if it doesn't exist
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container';
+            document.body.appendChild(container);
         }
 
-        try {
-            // Update UI
-            btn.textContent = '⏳ Analyzing...';
-            btn.disabled = true;
-            resultsEl.innerHTML = '<div class="loading-state">Analyzing content...</div>';
-            
-            // Make API call (when content classifier is implemented)
-            const result = await this.apiClient.workerRequest('content-classifier', '/classify', 'POST', {
-                content: content,
-                classification_type: classificationType
-            });
-            
-            this.displayClassificationResults(result);
-            
-        } catch (error) {
-            console.error('Classification failed:', error);
-            resultsEl.innerHTML = `
-                <div class="error-state">
-                    <h4>Classification Failed</h4>
-                    <p>Content Classifier is not available yet. This feature will be added when the worker is implemented.</p>
-                </div>
-            `;
-        } finally {
-            btn.textContent = '🧠 Classify Content';
-            btn.disabled = false;
+        // Add toast
+        container.insertAdjacentHTML('beforeend', this.render());
+        
+        // Auto-remove after duration
+        if (this.duration > 0) {
+            setTimeout(() => {
+                const toastElement = document.getElementById(this.id);
+                if (toastElement) {
+                    toastElement.remove();
+                }
+            }, this.duration);
         }
     }
 
-    displayClassificationResults(result) {
-        const resultsEl = document.getElementById(`classification-results-${this.workerId}`);
-        
-        if (result && result.classification) {
-            resultsEl.innerHTML = `
-                <div class="classification-success">
-                    <h4>✅ Classification Complete</h4>
-                    <div style="margin: 1rem 0;">
-                        <strong>Type:</strong> ${result.classification.type}<br>
-                        <strong>Confidence:</strong> ${(result.classification.confidence * 100).toFixed(1)}%<br>
-                        <strong>Category:</strong> ${result.classification.category}
-                    </div>
-                    ${result.classification.details ? `<p><strong>Details:</strong> ${result.classification.details}</p>` : ''}
-                </div>
-            `;
-        } else {
-            resultsEl.innerHTML = `
-                <div class="error-state">
-                    <h4>No Classification Results</h4>
-                    <p>Unable to classify the provided content.</p>
-                </div>
-            `;
-        }
+    static show(config) {
+        const toast = new Toast(config);
+        toast.show();
+        return toast;
+    }
+
+    static success(message, action = null) {
+        return Toast.show({ message, type: 'success', action });
+    }
+
+    static error(message, action = null) {
+        return Toast.show({ message, type: 'error', duration: 5000, action });
+    }
+
+    static warning(message, action = null) {
+        return Toast.show({ message, type: 'warning', action });
+    }
+
+    static info(message, action = null) {
+        return Toast.show({ message, type: 'info', action });
     }
 }
 
-class ReportBuilderCard extends WorkerCard {
+// =============================================================================
+// BREADCRUMB COMPONENT
+// =============================================================================
+
+class Breadcrumb {
+    constructor(items) {
+        this.items = items || [];
+    }
+
+    render() {
+        if (this.items.length === 0) return '';
+
+        return `
+            <nav class="breadcrumb">
+                ${this.items.map((item, index) => {
+                    const isLast = index === this.items.length - 1;
+                    
+                    if (isLast) {
+                        return `<span class="breadcrumb-current">${item.label}</span>`;
+                    } else {
+                        return `
+                            <a href="#" onclick="${item.onclick}; return false;" class="breadcrumb-link">
+                                ${item.label}
+                            </a>
+                            <span class="breadcrumb-separator">›</span>
+                        `;
+                    }
+                }).join('')}
+            </nav>
+        `;
+    }
+
+    static render(items) {
+        const breadcrumb = new Breadcrumb(items);
+        return breadcrumb.render();
+    }
+}
+
+// =============================================================================
+// PAGINATION COMPONENT
+// =============================================================================
+
+class Pagination {
     constructor(config) {
-        super({
-            workerId: 'report-builder',
-            name: 'Report Builder',
-            icon: '📊',
-            ...config
-        });
+        this.currentPage = config.currentPage || 1;
+        this.totalPages = config.totalPages || 1;
+        this.onPageChange = config.onPageChange || null;
+        this.maxVisiblePages = config.maxVisiblePages || 5;
     }
 
-    async loadInterface() {
-        const container = document.getElementById(this.containerId);
-        if (!container) return;
+    render() {
+        if (this.totalPages <= 1) return '';
+
+        const startPage = Math.max(1, this.currentPage - Math.floor(this.maxVisiblePages / 2));
+        const endPage = Math.min(this.totalPages, startPage + this.maxVisiblePages - 1);
+
+        let pages = [];
         
-        container.innerHTML = `
-            <div class="worker-interface">
-                <div class="form-group">
-                    <label class="form-label">Report Type</label>
-                    <select class="form-input" id="report-type-${this.workerId}">
-                        <option value="executive_summary">Executive Summary</option>
-                        <option value="competitive_intelligence">Competitive Intelligence</option>
-                        <option value="market_analysis">Market Analysis</option>
-                        <option value="trend_report">Trend Report</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Topic/Focus Area</label>
-                    <input type="text" class="form-input" id="report-topic-${this.workerId}" 
-                           placeholder="Enter the main topic for your report...">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Time Range</label>
-                    <select class="form-input" id="time-range-${this.workerId}">
-                        <option value="7d">Last 7 days</option>
-                        <option value="30d" selected>Last 30 days</option>
-                        <option value="90d">Last 90 days</option>
-                        <option value="1y">Last year</option>
-                    </select>
-                </div>
-                
-                <div class="worker-actions">
-                    <button class="btn btn-primary" onclick="window.workerRegistry?.get('${this.workerId}')?.generateReport()" id="generate-btn-${this.workerId}">
-                        📊 Generate Report
-                    </button>
-                    <button class="btn btn-secondary btn-small" onclick="window.workerRegistry?.get('${this.workerId}')?.checkHealth()" id="health-btn-${this.workerId}">
-                        💚 Health Check
-                    </button>
-                </div>
-                
-                <div id="report-results-${this.workerId}" class="report-results" style="margin-top: 1rem;"></div>
+        // Previous button
+        pages.push(`
+            <button class="page-btn" 
+                    ${this.currentPage === 1 ? 'disabled' : ''}
+                    onclick="${this.onPageChange}(${this.currentPage - 1})">
+                ‹ Previous
+            </button>
+        `);
+
+        // Page numbers
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push(`
+                <button class="page-btn ${i === this.currentPage ? 'active' : ''}" 
+                        onclick="${this.onPageChange}(${i})">
+                    ${i}
+                </button>
+            `);
+        }
+
+        // Next button
+        pages.push(`
+            <button class="page-btn" 
+                    ${this.currentPage === this.totalPages ? 'disabled' : ''}
+                    onclick="${this.onPageChange}(${this.currentPage + 1})">
+                Next ›
+            </button>
+        `);
+
+        return `
+            <div class="pagination">
+                ${pages.join('')}
             </div>
         `;
     }
 
-    async generateReport() {
-        const reportType = document.getElementById(`report-type-${this.workerId}`)?.value;
-        const topic = document.getElementById(`report-topic-${this.workerId}`)?.value;
-        const timeRange = document.getElementById(`time-range-${this.workerId}`)?.value;
-        const resultsEl = document.getElementById(`report-results-${this.workerId}`);
-        const btn = document.getElementById(`generate-btn-${this.workerId}`);
-        
-        if (!topic?.trim()) {
-            alert('Please enter a topic for the report');
-            return;
-        }
-
-        try {
-            // Update UI
-            btn.textContent = '⏳ Generating...';
-            btn.disabled = true;
-            resultsEl.innerHTML = '<div class="loading-state">Generating report...</div>';
-            
-            // Make API call (when report builder is implemented)
-            const result = await this.apiClient.workerRequest('report-builder', '/generate', 'POST', {
-                report_type: reportType,
-                topic: topic,
-                time_range: timeRange,
-                output_format: 'json'
-            });
-            
-            this.displayReportResults(result);
-            
-        } catch (error) {
-            console.error('Report generation failed:', error);
-            resultsEl.innerHTML = `
-                <div class="error-state">
-                    <h4>Report Generation Failed</h4>
-                    <p>Report Builder is not available yet. This feature will be added when the worker is implemented.</p>
-                </div>
-            `;
-        } finally {
-            btn.textContent = '📊 Generate Report';
-            btn.disabled = false;
-        }
-    }
-
-    displayReportResults(result) {
-        const resultsEl = document.getElementById(`report-results-${this.workerId}`);
-        
-        if (result && result.report_id) {
-            resultsEl.innerHTML = `
-                <div class="report-success">
-                    <h4>✅ Report Generated</h4>
-                    <div style="margin: 1rem 0;">
-                        <strong>Report ID:</strong> ${result.report_id}<br>
-                        <strong>Title:</strong> ${result.title || 'Generated Report'}<br>
-                        <strong>Pages:</strong> ${result.page_count || 'N/A'}
-                    </div>
-                    <div class="report-actions" style="margin-top: 1rem;">
-                        <button class="btn btn-secondary btn-small">📄 View Report</button>
-                        <button class="btn btn-secondary btn-small">💾 Download PDF</button>
-                        <button class="btn btn-secondary btn-small">🔗 Share Link</button>
-                    </div>
-                </div>
-            `;
-        } else {
-            resultsEl.innerHTML = `
-                <div class="error-state">
-                    <h4>Report Generation Failed</h4>
-                    <p>Unable to generate the requested report.</p>
-                </div>
-            `;
-        }
+    static render(config) {
+        const pagination = new Pagination(config);
+        return pagination.render();
     }
 }
 
-// Create global registry
-window.ComponentRegistry = ComponentRegistry;
-window.componentRegistry = new ComponentRegistry();
+// =============================================================================
+// GLOBAL UTILITY FUNCTIONS
+// =============================================================================
 
-// Register components
-window.componentRegistry.register('StatCard', StatCard);
-window.componentRegistry.register('WorkerCard', WorkerCard);
-window.componentRegistry.register('UniversalResearcherCard', UniversalResearcherCard);
-window.componentRegistry.register('DashboardLayout', DashboardLayout);
+const UIUtils = {
+    /**
+     * Format currency
+     */
+    formatCurrency(amount, currency = 'USD') {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: currency
+        }).format(amount);
+    },
 
-// Export classes
+    /**
+     * Format date
+     */
+    formatDate(date, options = {}) {
+        const defaultOptions = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        };
+        return new Date(date).toLocaleDateString('en-US', { ...defaultOptions, ...options });
+    },
+
+    /**
+     * Format relative time
+     */
+    formatRelativeTime(date) {
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
+        
+        if (diffInSeconds < 60) return 'Just now';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+        if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+        
+        return this.formatDate(date);
+    },
+
+    /**
+     * Truncate text
+     */
+    truncate(text, length = 50) {
+        if (text.length <= length) return text;
+        return text.substring(0, length) + '...';
+    },
+
+    /**
+     * Debounce function
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+};
+
+// =============================================================================
+// EXPORT COMPONENTS TO GLOBAL SCOPE
+// =============================================================================
+
 window.StatCard = StatCard;
-window.WorkerCard = WorkerCard;
-window.UniversalResearcherCard = UniversalResearcherCard;
-window.DashboardLayout = DashboardLayout;
+window.ClientCard = ClientCard;
+window.SimpleModal = SimpleModal;
+window.LoadingComponent = LoadingComponent;
+window.ErrorComponent = ErrorComponent;
+window.EmptyState = EmptyState;
+window.Toast = Toast;
+window.Breadcrumb = Breadcrumb;
+window.Pagination = Pagination;
+window.UIUtils = UIUtils;
 
-// Worker registry for easy access
-window.workerRegistry = new Map();
+console.log('✅ UI Components loaded (clean version)');

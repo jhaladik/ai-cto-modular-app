@@ -12,900 +12,107 @@
     <div id="app-container">
         <div class="loading-screen" id="loading-screen">
             <div class="loading-spinner">🔄</div>
-            <p>Initializing AI Factory...</p>
+            <p>Loading AI Factory...</p>
         </div>
     </div>
 
-    <!-- Keep existing proven scripts -->
+    <!-- Core Scripts Only - No Messy Components -->
     <script src="/js/shared/auth.js"></script>
     <script src="/js/shared/api.js"></script>
     <script src="/js/core/api-client.js"></script>
     <script src="/js/core/session-manager.js"></script>
     <script src="/js/core/kam-context-manager.js"></script>
-    
-    <!-- ADD: Missing core scripts -->
     <script src="/js/core/permission-resolver.js"></script>
     <script src="/js/core/kam-router.js"></script>
     
-    <script src="/js/components/ui-components.js"></script>
-    <script src="/js/components/enhanced-universal-researcher-card.js"></script>
-    <script src="/js/components/client-list-manager.js"></script>    
-    <script src="/js/admin-components.js"></script>
-
-    <!-- Enhanced layout components -->
+    <!-- Essential Components Only -->
     <script src="/js/components/ai-factory-layout.js"></script>
+    <script src="/js/components/ui-components.js"></script>
     <script src="/js/components/clients-page.js"></script>
-    
-    <!-- ADD: Client Detail Component -->
     <script src="/js/components/client-detail-page.js"></script>
-    <script>
 
-    // ENHANCED: Safe integration with fallback to working dashboard
+    <script>
+        // SIMPLE initialization - no complex timeout logic
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingScreen = document.getElementById('loading-screen');
             const appContainer = document.getElementById('app-container');
-
-                try {
-                if (!window.router && window.KAMRouter) {
-                    console.log('🚀 Initializing KAM Router...');
-                    window.router = new window.KAMRouter();
-                    
-                    if (window.router.start) {
-                        window.router.start();
-                    } else if (window.router.init) {
-                        window.router.init();
-                    }
-                }
-                
-                window.addEventListener('hashchange', function() {
-                    const hash = window.location.hash.replace('#', '');
-                    const clientDetailMatch = hash.match(/^\/clients\/(.+)$/);
-                    
-                    if (clientDetailMatch) {
-                        const clientId = clientDetailMatch[1];
-                        console.log('🔍 Loading client detail for:', clientId);
-                        
-                        if (window.ClientDetailPage) {
-                            const clientDetailPage = new window.ClientDetailPage(clientId, window.apiClient);
-                            
-                            clientDetailPage.render().then(html => {
-                                const contentArea = document.querySelector('.ai-factory-content');
-                                if (contentArea) {
-                                    contentArea.innerHTML = html;
-                                    return clientDetailPage.mount();
-                                }
-                            }).then(() => {
-                                console.log('✅ Client detail loaded via hash change');
-                            }).catch(error => {
-                                console.error('❌ Client detail loading failed:', error);
-                            });
-                        }
-                    }
-                });
-                
-                const currentHash = window.location.hash;
-                if (currentHash.includes('/clients/')) {
-                    window.dispatchEvent(new HashChangeEvent('hashchange'));
-                }
-                
-                console.log('✅ Router initialization complete');
-                
-            } catch (error) {
-                console.error('❌ Router initialization failed:', error);
-            }
-        // Prevent Universal Researcher from blocking other functionality
-        setTimeout(() => {
-            const universalResearcherElements = document.querySelectorAll('*');
-            universalResearcherElements.forEach(element => {
-                if (element.textContent && element.textContent.includes('Loading Universal Researcher')) {
-                    console.log('🔍 Found Universal Researcher loading, setting timeout...');
-                    
-                        // Replace with placeholder after 10 seconds if still loading
-                        setTimeout(() => {
-                            if (element.textContent.includes('Loading Universal Researcher')) {
-                                console.log('⏱️ Universal Researcher timeout - replacing with placeholder');
-                                
-                                let parent = element.parentElement;
-                                for (let i = 0; i < 5; i++) {
-                                    if (parent && (parent.className.includes('card') || parent.className.includes('component'))) {
-                                        parent.innerHTML = `
-                                            <div style="padding: 20px; text-align: center; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
-                                                <div style="font-size: 2rem; margin-bottom: 12px;">🔍</div>
-                                                <h3 style="margin: 0 0 8px 0; color: #374151;">Universal Researcher</h3>
-                                                <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 0.875rem;">Service temporarily unavailable</p>
-                                                <button onclick="location.reload()" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">🔄 Retry</button>
-                                            </div>
-                                        `;
-                                        break;
-                                    }
-                                    parent = parent.parentElement;
-                                }
-                            }
-                        }, 10000); // 10 second timeout
-                    }
-                });
-            }, 5000); // Check after 5 seconds
+            
             try {
-                console.log('🚀 Starting AI Factory Admin (Enhanced Version)...');
+                console.log('🚀 Initializing AI Factory Admin...');
                 
-                // STEP 1: Authentication Check (unchanged)
-                const sessionToken = localStorage.getItem('bitware-session-token');
-                const userInfo = localStorage.getItem('bitware-user-info');
+                // Step 1: Initialize authentication
+                if (!window.authClient) {
+                    throw new Error('Authentication client not loaded');
+                }
                 
-                if (!sessionToken || !userInfo) {
-                    console.log('❌ No valid session, redirecting to login');
+                // Step 2: Check if user is already logged in
+                const isLoggedIn = window.authClient.isAuthenticated();
+                if (!isLoggedIn) {
+                    console.log('🔐 User not authenticated, redirecting to login');
                     window.location.href = '/login.html';
                     return;
                 }
-
-                let user;
-                try {
-                    user = JSON.parse(userInfo);
-                } catch (e) {
-                    console.log('❌ Invalid user info, redirecting to login');
-                    window.location.href = '/login.html';
-                    return;
-                }
-
-                console.log('✅ Authentication confirmed for:', user.email || user.username);
-                // Debug Admin vs User Authentication
-                // Add this to your admin.html script section temporarily to see the differences
-
-                // ADD THIS RIGHT AFTER THE USER PARSING IN YOUR ADMIN.HTML:
-
-                console.log('🔍 DEBUG: Authentication Analysis');
-                console.log('Raw userInfo string:', userInfo);
-                console.log('Parsed user object:', user);
-                console.log('User object keys:', Object.keys(user));
-                console.log('User.role:', user.role);
-                console.log('User.userType:', user.userType);
-                console.log('User.email:', user.email);
-                console.log('User.username:', user.username);
-                console.log('User properties:');
-                Object.entries(user).forEach(([key, value]) => {
-                    console.log(`  ${key}:`, value);
-                });
-
-                // Test the determineUserType function
-                const detectedUserType = determineUserType(user);
-                console.log('🎯 Detected user type:', detectedUserType);
-
-                // Test each condition individually
-                console.log('🔍 User type detection analysis:');
-                console.log('  user.role === "admin":', user.role === 'admin');
-                console.log('  user.userType === "admin":', user.userType === 'admin');
-                console.log('  user.userType === "internal":', user.userType === 'internal');
-                console.log('  user.email?.includes("@admin"):', user.email?.includes('@admin'));
-                console.log('  user.isAdmin === true:', user.isAdmin === true);
-
-                // Also check what happens in different scenarios
-                if (detectedUserType === 'admin') {
-                    console.log('✅ Should use admin layout');
-                } else {
-                    console.log('❌ Will use client layout (this might be the problem for admin users)');
-                }
-
-                console.log('🔍 End authentication debug');                
-                // STEP 2: Initialize API Client (unchanged)
-                if (!window.apiClient) {
-                    window.apiClient = new AIFactoryAPIClient();
-                    console.log('✅ API Client initialized');
-                }
-
-                // STEP 3: Initialize KAM Context (unchanged, non-blocking)
-                try {
-                    if (window.KAMContextManager && !window.kamContext) {
-                        window.kamContext = new KAMContextManager(window.apiClient);
-                        const initialized = await window.kamContext.initialize();
-                        console.log(initialized ? '✅ KAM Context initialized' : '⚠️ KAM Context fallback mode');
-                    }
-                } catch (error) {
-                    console.warn('⚠️ KAM Context failed (continuing):', error);
-                }
-
-                // STEP 4: Try Enhanced Layout First
-                let enhancedLayoutSuccess = false;
                 
+                // Step 3: Initialize session manager
+                if (window.SessionManager && window.apiClient) {
+                    window.sessionManager = new SessionManager(window.apiClient);
+                    await window.sessionManager.validateSession();
+                }
+                
+                // Step 4: Initialize router
+                if (window.KAMRouter) {
+                    window.router = new KAMRouter();
+                    await window.router.initialize();
+                }
+                
+                // Step 5: Initialize layout with proper user type
                 if (window.AIFactoryLayout) {
-                    try {
-                        console.log('🎨 Attempting enhanced layout...');
-                        
-                        // Determine user type for layout
-                        const userType = determineUserType(user);
-                        
-                        // Create enhanced layout
-                        const layout = new AIFactoryLayout({
-                            userType: userType,
-                            user: user,
-                            onNavigate: handleEnhancedNavigation,
-                            showSearch: true
-                        });
-
-                        // Render enhanced layout
-                        appContainer.innerHTML = layout.render();
-                        await layout.mount();
-                        
-                        // Set global references
-                        window.aiFactoryLayout = layout;
-                        window.currentLayout = 'enhanced';
-                        
-                        // Load initial dashboard content
-                        await loadDashboardInEnhancedLayout();
-                        
-                        enhancedLayoutSuccess = true;
-                        console.log('✅ Enhanced layout activated');
-                        
-                    } catch (error) {
-                        console.warn('⚠️ Enhanced layout failed:', error);
-                        enhancedLayoutSuccess = false;
-                    }
-                }
-
-                // STEP 5: Fallback to Working Dashboard
-                if (!enhancedLayoutSuccess) {
-                    console.log('📊 Using standard dashboard layout');
-                    await initializeStandardDashboard();
-                }
-
-                // Hide loading screen
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
-
-                console.log('✅ AI Factory Admin initialized successfully');
-
-            } catch (error) {
-                console.error('❌ Initialization failed:', error);
-                showErrorScreen(error.message);
-            }
-        });
-
-        // ENHANCED: Determine user type from user info
-        function determineUserType(user) {
-            if (user.role === 'admin' || 
-                user.userType === 'admin' || 
-                user.userType === 'internal' ||
-                user.email?.includes('@admin') ||
-                user.isAdmin === true) {
-                return 'admin';
-            }
-            return 'client';
-        }
-
-        // ENHANCED: Handle navigation in enhanced layout
-        async function handleEnhancedNavigation(path) {
-            console.log('🧭 Enhanced navigation to:', path);
-            
-            const contentArea = document.getElementById('main-content');
-            if (!contentArea) return;
-
-            // Show loading state
-            contentArea.innerHTML = `
-                <div class="loading-state">
-                    <div class="loading-spinner">🔄</div>
-                    <p>Loading ${path}...</p>
-                </div>
-            `;
-
-            try {
-                switch (path) {
-                    case '/dashboard':
-                        await loadDashboardInEnhancedLayout();
-                        break;
-                    case '/clients':
-                        await loadClientsInEnhancedLayout();
-                        break;
-                    case '/reports':
-                        loadPlaceholderContent('📋 Reports', 'Reports functionality coming soon!');
-                        break;
-                    case '/workers/universal-researcher':
-                        loadPlaceholderContent('🔍 Universal Researcher', 'Worker interface coming soon!');
-                        break;
-                    default:
-                        loadPlaceholderContent('🚧 Coming Soon', `${path} functionality will be available soon.`);
-                }
-            } catch (error) {
-                console.error('Navigation error:', error);
-                contentArea.innerHTML = `
-                    <div class="error-state">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
-                        <h2>Navigation Error</h2>
-                        <p>Failed to load ${path}</p>
-                        <button class="btn btn-primary" onclick="aiFactoryLayout.navigate('/dashboard')">
-                            Return to Dashboard
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // REPLACE THIS FUNCTION in your admin.html:
-        async function loadDashboardInEnhancedLayout() {
-            const contentArea = document.getElementById('main-content');
-            if (!contentArea) return;
-
-            contentArea.innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">📊 Admin Dashboard</h1>
-                    <div class="page-actions">
-                        <button class="btn btn-secondary" onclick="refreshEnhancedDashboard()">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="dashboard-content-area">
-                    <div class="loading-state">
-                        <div class="loading-spinner">🔄</div>
-                        <p>Loading dashboard components...</p>
-                    </div>
-                </div>
-            `;
-
-            // Load ONLY the dashboard content, not the full dashboard
-            setTimeout(async () => {
-                try {
-                    console.log('🔧 Loading dashboard content (content only, no header)...');
+                    const userType = window.sessionManager?.getUserType() || 'admin';
+                    console.log(`🎭 Initializing layout for user type: ${userType}`);
                     
-                    const contentWrapper = document.getElementById('dashboard-content-area');
-                    if (!contentWrapper) return;
-
-                    // Create dashboard content without the full dashboard wrapper
-                    if (window.AdminDashboard && !window.adminDashboard) {
-                        window.adminDashboard = new AdminDashboard();
-                    }
-
-                    if (window.adminDashboard) {
-                        // Instead of loading full dashboard, create just the content part
-                        const dashboardContentHTML = await createDashboardContentOnly();
-                        contentWrapper.innerHTML = dashboardContentHTML;
-                        
-                        // Load stats and initialize components
-                        await loadDashboardStats();
-                        
-                        console.log('✅ Dashboard content loaded (without duplicate header)');
-                    } else {
-                        // Fallback: create basic content
-                        contentWrapper.innerHTML = createBasicDashboardContent();
-                    }
-                } catch (error) {
-                    console.warn('Failed to load dashboard content:', error);
-                    const contentWrapper = document.getElementById('dashboard-content-area');
-                    if (contentWrapper) {
-                        contentWrapper.innerHTML = createBasicDashboardContent();
-                    }
-                }
-            }, 100);
-        }
-        // ENHANCED: Load clients in enhanced layout
-        async function loadClientsInEnhancedLayout() {
-            const contentArea = document.getElementById('main-content');
-            if (!contentArea) return;
-
-            if (window.ClientsPage) {
-                try {
-                    console.log('📋 Loading enhanced clients page...');
-                    const clientsPage = new ClientsPage(window.apiClient);
-                    contentArea.innerHTML = await clientsPage.render();
-                    await clientsPage.mount();
-                    
-                    console.log('✅ Enhanced clients page loaded');
-                } catch (error) {
-                    console.warn('Failed to load ClientsPage:', error);
-                    loadFallbackClientsContent();
-                }
-            } else {
-                loadFallbackClientsContent();
-            }
-        }
-
-        // NEW FUNCTION: Create only dashboard content (no header/wrapper)
-        async function createDashboardContentOnly() {
-            return `
-                <!-- Stats Grid -->
-                <div class="stats-grid" style="margin-bottom: 2rem;">
-                    <div class="stat-card">
-                        <div class="stat-value" id="enhanced-clients-count">-</div>
-                        <div class="stat-label">Total Clients</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="enhanced-revenue-count">-</div>
-                        <div class="stat-label">Monthly Revenue</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="enhanced-requests-count">-</div>
-                        <div class="stat-label">Requests Today</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="enhanced-health-status">-</div>
-                        <div class="stat-label">System Health</div>
-                    </div>
-                </div>
-                
-                <!-- Dashboard Action Cards -->
-                <div class="dashboard-grid">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">👥 Client Management</h3>
-                        </div>
-                        <div class="card-content">
-                            <p>Manage client accounts and view detailed information with expandable rows.</p>
-                            <div style="margin-top: 1rem;">
-                                <button class="btn-primary" onclick="aiFactoryLayout.navigate('/clients')">
-                                    📋 View Clients (Enhanced)
-                                </button>
-                                <button class="btn-secondary" style="margin-left: 0.5rem;" onclick="showClients()">
-                                    📝 Classic Modal
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">🔧 AI Workers</h3>
-                        </div>
-                        <div class="card-content">
-                            <p>Monitor and manage AI worker health and performance.</p>
-                            <div style="margin-top: 1rem;">
-                                <button class="btn-primary" onclick="aiFactoryLayout.navigate('/workers/universal-researcher')">
-                                    🔍 Universal Researcher
-                                </button>
-                                <button class="btn-secondary" style="margin-left: 0.5rem;" onclick="checkWorkerHealth()">
-                                    ⚡ Check Health
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">📊 Analytics & Reports</h3>
-                        </div>
-                        <div class="card-content">
-                            <p>View system analytics, usage reports, and insights.</p>
-                            <div style="margin-top: 1rem;">
-                                <button class="btn-primary" onclick="aiFactoryLayout.navigate('/reports')">
-                                    📊 View Reports
-                                </button>
-                                <button class="btn-secondary" style="margin-left: 0.5rem;" onclick="aiFactoryLayout.navigate('/analytics')">
-                                    📈 Analytics
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">⚙️ System Management</h3>
-                        </div>
-                        <div class="card-content">
-                            <p>Configure system settings and monitor performance.</p>
-                            <div style="margin-top: 1rem;">
-                                <button class="btn-primary" onclick="aiFactoryLayout.navigate('/settings')">
-                                    ⚙️ Settings
-                                </button>
-                                <button class="btn-secondary" style="margin-left: 0.5rem;" onclick="aiFactoryLayout.navigate('/billing')">
-                                    💳 Billing
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Enhanced Universal Researcher Card -->
-                <div class="card" style="margin-top: 2rem;">
-                    <div class="card-header">
-                        <h3 class="card-title">🔍 Quick Research</h3>
-                    </div>
-                    <div class="card-content">
-                        <div id="enhanced-universal-researcher-container">
-                            <div class="loading-state">
-                                <div class="loading-spinner">🔄</div>
-                                <p>Loading Universal Researcher...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // NEW FUNCTION: Load dashboard stats for enhanced layout
-        async function loadDashboardStats() {
-            try {
-                console.log('📊 Loading enhanced dashboard stats...');
-                
-                // Try to load real stats from existing admin dashboard
-                if (window.adminDashboard && typeof window.adminDashboard.loadStats === 'function') {
-                    // If the admin dashboard has a loadStats method, use it
-                    const stats = await window.adminDashboard.loadStats();
-                    if (stats) {
-                        updateEnhancedStats(stats);
-                        return;
-                    }
-                }
-                
-                // Try to load from API
-                if (window.apiClient && typeof window.apiClient.getSystemStats === 'function') {
-                    const stats = await window.apiClient.getSystemStats();
-                    updateEnhancedStats(stats);
-                    return;
-                }
-                
-                // Fallback: Load mock stats
-                updateEnhancedStats({
-                    clients: 3,
-                    revenue: 1250,
-                    requests: 47,
-                    health: 'Good'
-                });
-                
-                console.log('✅ Enhanced dashboard stats loaded');
-                
-            } catch (error) {
-                console.warn('Failed to load dashboard stats:', error);
-                updateEnhancedStats({
-                    clients: '-',
-                    revenue: '-',
-                    requests: '-',
-                    health: 'Unknown'
-                });
-            }
-            
-            // Load Enhanced Universal Researcher
-            setTimeout(() => {
-                loadEnhancedUniversalResearcher();
-            }, 500);
-        }
-
-        // NEW FUNCTION: Update stats in enhanced layout
-        function updateEnhancedStats(stats) {
-            const elements = {
-                'enhanced-clients-count': stats.clients || '-',
-                'enhanced-revenue-count': stats.revenue ? `$${stats.revenue}` : '-',
-                'enhanced-requests-count': stats.requests || '-',
-                'enhanced-health-status': stats.health === 'Good' ? '✅ Good' : (stats.health || '⚠️ Unknown')
-            };
-            
-            Object.entries(elements).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = value;
-                }
-            });
-        }
-
-        // NEW FUNCTION: Load Enhanced Universal Researcher in dashboard
-        function loadEnhancedUniversalResearcher() {
-            const container = document.getElementById('enhanced-universal-researcher-container');
-            if (!container) return;
-            
-            try {
-                if (window.EnhancedUniversalResearcherCard) {
-                    console.log('🔍 Loading Enhanced Universal Researcher in dashboard...');
-                    
-                    const researcherCard = new EnhancedUniversalResearcherCard({
-                        apiClient: window.apiClient,
-                        userContext: {
-                            userType: 'admin',
-                            permissions: ['worker_access', 'admin_access']
-                        },
-                        containerId: 'enhanced-universal-researcher-container'
+                    window.aiFactoryLayout = new AIFactoryLayout({
+                        userType: userType,
+                        user: window.sessionManager?.sessionData?.user
                     });
                     
-                    researcherCard.mount();
-                    console.log('✅ Enhanced Universal Researcher loaded in dashboard');
-                } else {
-                    container.innerHTML = `
-                        <div style="text-align: center; padding: 1rem; color: var(--text-secondary);">
-                            <p>Enhanced Universal Researcher component not available</p>
-                            <button class="btn btn-secondary btn-sm" onclick="aiFactoryLayout.navigate('/workers/universal-researcher')">
-                                Open Researcher
-                            </button>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.warn('Failed to load Enhanced Universal Researcher:', error);
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 1rem; color: var(--text-secondary);">
-                        <p>Research component loading...</p>
-                    </div>
-                `;
-            }
-        }
-        // ENHANCED: Fallback clients content
-        function loadFallbackClientsContent() {
-            const contentArea = document.getElementById('main-content');
-            if (!contentArea) return;
-
-            contentArea.innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">👥 Client Management</h1>
-                    <div class="page-actions">
-                        <button class="btn btn-primary" onclick="showClients()">
-                            Open Client List
-                        </button>
-                    </div>
-                </div>
-                
-                <div style="text-align: center; padding: 3rem;">
-                    <div style="font-size: 4rem; margin-bottom: 1rem;">👥</div>
-                    <h2>Client Management</h2>
-                    <p>Enhanced client page with expandable rows is loading...</p>
-                    <p style="color: var(--text-secondary); margin-top: 1rem;">
-                        You can use the "Open Client List" button above to access the existing client management modal.
-                    </p>
-                </div>
-            `;
-        }
-
-        // ENHANCED: Load placeholder content
-        function loadPlaceholderContent(title, message) {
-            const contentArea = document.getElementById('main-content');
-            if (!contentArea) return;
-
-            contentArea.innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">${title}</h1>
-                </div>
-                
-                <div style="text-align: center; padding: 3rem;">
-                    <div style="font-size: 4rem; margin-bottom: 1rem;">🚧</div>
-                    <h2>Coming Soon</h2>
-                    <p>${message}</p>
-                    <button class="btn btn-primary" onclick="aiFactoryLayout.navigate('/dashboard')">
-                        Return to Dashboard
-                    </button>
-                </div>
-            `;
-        }
-
-        // STANDARD: Initialize standard dashboard (fallback)
-        async function initializeStandardDashboard() {
-            try {
-                if (window.AdminDashboard) {
-                    if (!window.adminDashboard) {
-                        window.adminDashboard = new AdminDashboard();
-                    }
-                    
-                    // Try different initialization approaches
-                    if (typeof window.adminDashboard.initialize === 'function') {
-                        await window.adminDashboard.initialize();
-                    } else if (typeof window.adminDashboard.render === 'function') {
-                        const content = await window.adminDashboard.render();
-                        document.getElementById('app-container').innerHTML = content;
-                        
-                        if (typeof window.adminDashboard.mount === 'function') {
-                            await window.adminDashboard.mount();
-                        }
-                    } else {
-                        showWorkingAdminDashboard();
-                    }
-                } else {
-                    showWorkingAdminDashboard();
+                    appContainer.innerHTML = window.aiFactoryLayout.render();
+                    await window.aiFactoryLayout.mount();
                 }
                 
-                window.currentLayout = 'standard';
-                console.log('✅ Standard dashboard initialized');
+                // Hide loading screen
+                loadingScreen.style.display = 'none';
+                
+                console.log('✅ AI Factory Admin initialized successfully');
                 
             } catch (error) {
-                console.error('Standard dashboard failed:', error);
-                showWorkingAdminDashboard();
-            }
-        }
-
-        // STANDARD: Working admin dashboard (proven fallback)
-        function showWorkingAdminDashboard() {
-            const appContainer = document.getElementById('app-container');
-            if (!appContainer) return;
-            
-            appContainer.innerHTML = `
-                <div class="admin-dashboard">
-                    <header class="dashboard-header">
-                        <h1>🎛️ AI Factory Admin</h1>
-                        <div class="header-actions">
-                            <button class="btn-secondary" onclick="refreshDashboard()">🔄 Refresh</button>
-                            <button class="btn-secondary" onclick="logout()">🚪 Logout</button>
-                        </div>
-                    </header>
-                    
-                    <div class="dashboard-content">
-                        <!-- Stats Grid -->
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value" id="clients-count">-</div>
-                                <div class="stat-label">Total Clients</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="revenue-count">-</div>
-                                <div class="stat-label">Monthly Revenue</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="requests-count">-</div>
-                                <div class="stat-label">Requests Today</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="health-status">-</div>
-                                <div class="stat-label">System Health</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Action Cards -->
-                        <div class="dashboard-grid">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">👥 Client Management</h3>
-                                </div>
-                                <div class="card-content">
-                                    <p>Manage client accounts, subscriptions, and settings.</p>
-                                    <div style="margin-top: 1rem;">
-                                        <button class="btn-primary" onclick="showClients()">View Clients</button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">🔧 AI Workers</h3>
-                                </div>
-                                <div class="card-content">
-                                    <p>Monitor and manage AI worker health and performance.</p>
-                                    <div style="margin-top: 1rem;">
-                                        <button class="btn-primary" onclick="checkWorkerHealth()">Check Health</button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">🎨 Try Enhanced Layout</h3>
-                                </div>
-                                <div class="card-content">
-                                    <p>Experience the new sidebar + topbar interface.</p>
-                                    <div style="margin-top: 1rem;">
-                                        <button class="btn-primary" onclick="tryEnhancedLayout()">Switch to Enhanced</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            window.currentLayout = 'standard';
-            loadBasicStats();
-        }
-
-        // UTILITY: Create basic dashboard content
-        function createBasicDashboardContent() {
-            return `
-                <div class="basic-dashboard-content">
-                    <!-- Stats Grid -->
-                    <div class="stats-grid" style="margin-bottom: 2rem;">
-                        <div class="stat-card">
-                            <div class="stat-value">3</div>
-                            <div class="stat-label">Total Clients</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">$1,250</div>
-                            <div class="stat-label">Monthly Revenue</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">47</div>
-                            <div class="stat-label">Requests Today</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">✅ Good</div>
-                            <div class="stat-label">System Health</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Action Cards -->
-                    <div class="dashboard-grid">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">👥 Client Management</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Manage client accounts and view detailed information.</p>
-                                <button class="btn-primary" onclick="showClients()">View Clients</button>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">🔧 System Status</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Monitor AI workers and system performance.</p>
-                                <button class="btn-primary" onclick="checkWorkerHealth()">Check Status</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // UTILITY: Global functions
-        window.logout = function() {
-            localStorage.removeItem('bitware-session-token');
-            localStorage.removeItem('bitware-user-info');
-            localStorage.removeItem('bitware-kam-context');
-            window.location.href = '/login.html';
-        };
-
-        window.refreshDashboard = function() {
-            window.location.reload();
-        };
-
-        window.refreshEnhancedDashboard = function() {
-            if (window.aiFactoryLayout) {
-                loadDashboardInEnhancedLayout();
-            } else {
-                window.location.reload();
-            }
-        };
-
-        window.showClients = function() {
-            if (window.currentLayout === 'enhanced' && window.aiFactoryLayout) {
-                window.aiFactoryLayout.navigate('/clients');
-            } else {
-                // Use existing modal
-                if (window.ClientListManager) {
-                    const clientManager = new ClientListManager(window.apiClient);
-                    clientManager.show();
-                } else {
-                    alert('Client management functionality is loading...');
-                }
-            }
-        };
-
-        window.checkWorkerHealth = function() {
-            alert('AI Worker health check functionality coming soon!');
-        };
-
-        window.tryEnhancedLayout = function() {
-            alert('Refreshing to try enhanced layout...');
-            window.location.reload();
-        };
-
-        window.loadBasicStats = function() {
-            // Load basic stats for standard dashboard
-            setTimeout(() => {
-                try {
-                    if (document.getElementById('clients-count')) {
-                        document.getElementById('clients-count').textContent = '3';
-                        document.getElementById('revenue-count').textContent = '$1,250';
-                        document.getElementById('requests-count').textContent = '47';
-                        document.getElementById('health-status').textContent = '✅ Good';
-                    }
-                } catch (error) {
-                    console.warn('Failed to load basic stats:', error);
-                }
-            }, 100);
-        };
-
-        function showErrorScreen(message) {
-            const appContainer = document.getElementById('app-container');
-            if (appContainer) {
+                console.error('❌ Initialization failed:', error);
+                
+                // Simple error display - no complex fallbacks
                 appContainer.innerHTML = `
-                    <div class="error-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; text-align: center;">
+                    <div class="error-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         <div style="font-size: 4rem; margin-bottom: 1rem;">💥</div>
-                        <h2>Initialization Error</h2>
-                        <p>Failed to initialize: ${message}</p>
-                        <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <h2 style="color: #ef4444; margin-bottom: 1rem;">Initialization Error</h2>
+                        <p style="color: #6b7280; margin-bottom: 2rem; max-width: 400px;">${error.message}</p>
+                        <button onclick="window.location.reload()" 
+                                style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
                             🔄 Reload Page
                         </button>
                     </div>
                 `;
-            }
-            
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
+                
                 loadingScreen.style.display = 'none';
             }
-        }
+        });
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('❌ Global error:', event.error);
+        });
+
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('❌ Unhandled promise rejection:', event.reason);
+        });
     </script>
 </body>
 </html>

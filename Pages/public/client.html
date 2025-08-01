@@ -3,258 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My AI Factory</title>
+    <title>AI Factory - Client Portal</title>
     <link rel="stylesheet" href="/css/shared.css">
     <link rel="stylesheet" href="/css/admin-modern.css">
-    <style>
-        /* Client-specific styling overrides */
-        .upgrade-card {
-            border: 2px solid #f59e0b;
-            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-        }
-        
-        .tier-limitations {
-            margin-top: 0.5rem; 
-            padding: 0.5rem; 
-            background: #f3f4f6; 
-            border-radius: 4px; 
-            font-size: 0.75rem; 
-            color: #6b7280;
-        }
-        
-        .report-item {
-            padding: 1rem; 
-            border: 1px solid #e5e7eb; 
-            border-radius: 6px; 
-            margin-bottom: 1rem;
-            transition: box-shadow 0.2s ease;
-        }
-        
-        .report-item:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        .dashboard-header h1 {
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .client-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            background: #ddd6fe;
-            color: #5b21b6;
-            padding: 0.25rem 0.5rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/components/client-detail.css">
 </head>
 <body>
     <div id="app-container">
         <div class="loading-screen" id="loading-screen">
             <div class="loading-spinner">🔄</div>
-            <p>Loading your AI Factory dashboard...</p>
+            <p>Loading your AI Factory portal...</p>
         </div>
     </div>
 
-    <!-- Core Scripts - Keep existing order -->
+    <!-- Core Scripts Only - Same as Admin -->
     <script src="/js/shared/auth.js"></script>
     <script src="/js/shared/api.js"></script>
     <script src="/js/core/api-client.js"></script>
     <script src="/js/core/session-manager.js"></script>
     <script src="/js/core/kam-context-manager.js"></script>
-    
-    <!-- NEW: Add layout components but don't auto-initialize -->
-    <script src="/js/components/ai-factory-layout.js"></script>
-    <script src="/js/components/clients-page.js"></script>
-    
-    <!-- NEW: Load fixed router (no auto-init) -->
+    <script src="/js/core/permission-resolver.js"></script>
     <script src="/js/core/kam-router.js"></script>
     
-    <!-- Existing Components -->
+    <!-- Essential Components Only -->
+    <script src="/js/components/ai-factory-layout.js"></script>
     <script src="/js/components/ui-components.js"></script>
-    <script src="/js/components/enhanced-universal-researcher-card.js"></script>
-    <script src="/js/dashboards/client-dashboard.js"></script>
+    <script src="/js/components/client-detail-page.js"></script> <!-- For viewing own account -->
 
     <script>
-        // FIXED: Proper authentication flow for client dashboard
+        // SIMPLE initialization for client interface
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingScreen = document.getElementById('loading-screen');
             const appContainer = document.getElementById('app-container');
             
             try {
-                console.log('🚀 Starting AI Factory Client Dashboard (Enhanced)...');
+                console.log('🚀 Initializing AI Factory Client Portal...');
                 
-                // STEP 1: Authentication Check (existing logic preserved)
-                const sessionToken = localStorage.getItem('bitware-session-token');
-                const userInfo = localStorage.getItem('bitware-user-info');
+                // Step 1: Check authentication
+                if (!window.authClient) {
+                    throw new Error('Authentication client not loaded');
+                }
                 
-                if (!sessionToken || !userInfo) {
-                    console.log('❌ No valid session, redirecting to login');
+                const isLoggedIn = window.authClient.isAuthenticated();
+                if (!isLoggedIn) {
+                    console.log('🔐 Client not authenticated, redirecting to login');
                     window.location.href = '/login.html';
                     return;
                 }
-
-                let user;
-                try {
-                    user = JSON.parse(userInfo);
-                } catch (e) {
-                    console.log('❌ Invalid user info, redirecting to login');
-                    window.location.href = '/login.html';
-                    return;
-                }
-
-                console.log('✅ Authentication confirmed for:', user.email || user.username);
                 
-                // STEP 2: Initialize API Client (existing logic)
-                if (!window.apiClient) {
-                    window.apiClient = new AIFactoryAPIClient();
-                    console.log('✅ API Client initialized');
+                // Step 2: Initialize session manager
+                if (window.SessionManager && window.apiClient) {
+                    window.sessionManager = new SessionManager(window.apiClient);
+                    await window.sessionManager.validateSession();
                 }
-
-                // STEP 3: Initialize KAM Context (existing logic - but don't block on it)
-                let kamContextInitialized = false;
-                try {
-                    if (window.KAMContextManager && !window.kamContext) {
-                        window.kamContext = new KAMContextManager(window.apiClient);
-                        kamContextInitialized = await window.kamContext.initialize();
-                        console.log(kamContextInitialized ? '✅ KAM Context initialized' : '⚠️ KAM Context fallback mode');
-                    }
-                } catch (error) {
-                    console.warn('⚠️ KAM Context initialization failed (continuing anyway):', error);
-                }
-
-                // STEP 4: Try Enhanced Layout First, Fall Back to Original
-                let layoutInitialized = false;
                 
-                if (window.AIFactoryLayout && window.initializeAIFactoryRouter) {
-                    try {
-                        console.log('🎨 Attempting enhanced client layout initialization...');
-                        layoutInitialized = await window.initializeAIFactoryRouter();
-                        
-                        if (layoutInitialized) {
-                            console.log('✅ Enhanced AI Factory client layout active');
-                            
-                            // Hide loading screen
-                            if (loadingScreen) {
-                                loadingScreen.style.display = 'none';
-                            }
-                            
-                            // Initialize existing client dashboard in the new layout
-                            setTimeout(async () => {
-                                if (window.ClientDashboard && !window.clientDashboard) {
-                                    try {
-                                        window.clientDashboard = new ClientDashboard();
-                                        await window.clientDashboard.initialize();
-                                        console.log('✅ Client dashboard initialized in enhanced layout');
-                                    } catch (error) {
-                                        console.warn('⚠️ Client dashboard initialization failed:', error);
-                                    }
-                                }
-                            }, 100);
-                            
-                            return; // Exit early - enhanced layout is active
-                        }
-                    } catch (error) {
-                        console.warn('⚠️ Enhanced client layout initialization failed:', error);
-                    }
+                // Step 3: Initialize router with client-specific routes
+                if (window.KAMRouter) {
+                    window.router = new KAMRouter();
+                    await window.router.initialize();
                 }
-
-                // STEP 5: Fallback to Original Dashboard (existing logic)
-                console.log('📊 Using original client dashboard layout');
                 
-                if (window.ClientDashboard && !window.clientDashboard) {
-                    window.clientDashboard = new ClientDashboard();
-                    await window.clientDashboard.initialize();
-                    console.log('✅ Original client dashboard initialized');
-                } else {
-                    console.warn('⚠️ ClientDashboard class not found');
-                    appContainer.innerHTML = `
-                        <div class="error-screen">
-                            <div class="error-icon">❌</div>
-                            <h2>Dashboard Loading Failed</h2>
-                            <p>Unable to initialize your dashboard.</p>
-                            <button class="btn-primary" onclick="window.location.reload()">
-                                🔄 Retry
-                            </button>
-                            <button class="btn-secondary" onclick="logout()">
-                                🚪 Logout
-                            </button>
-                        </div>
-                    `;
+                // Step 4: Initialize client layout with proper user type
+                if (window.AIFactoryLayout) {
+                    const userType = window.sessionManager?.getUserType() || 'client';
+                    console.log(`🎭 Initializing client layout for user type: ${userType}`);
+                    
+                    window.aiFactoryLayout = new AIFactoryLayout({
+                        userType: userType, // Use determined type instead of hardcoded 'client'
+                        user: window.sessionManager?.sessionData?.user
+                    });
+                    
+                    appContainer.innerHTML = window.aiFactoryLayout.render();
+                    await window.aiFactoryLayout.mount();
+                    
+                    // Start with CLIENT ACCOUNT (or admin dashboard if they're admin)
+                    const initialRoute = userType === 'admin' ? '/dashboard' : '/my-account';
+                    await window.aiFactoryLayout.navigate(initialRoute);
                 }
-
+                
                 // Hide loading screen
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
-
-            } catch (error) {
-                console.error('❌ Client initialization failed:', error);
+                loadingScreen.style.display = 'none';
                 
-                // Show error screen
+                console.log('✅ AI Factory Client Portal initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Client portal initialization failed:', error);
+                
+                // Simple error display
                 appContainer.innerHTML = `
-                    <div class="error-screen">
-                        <div class="error-icon">💥</div>
-                        <h2>Initialization Error</h2>
-                        <p>Failed to initialize your dashboard: ${error.message}</p>
-                        <div class="error-actions">
-                            <button class="btn-primary" onclick="window.location.reload()">
-                                🔄 Reload Page
+                    <div class="error-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">💥</div>
+                        <h2 style="color: #ef4444; margin-bottom: 1rem;">Portal Error</h2>
+                        <p style="color: #6b7280; margin-bottom: 2rem; max-width: 400px;">${error.message}</p>
+                        <div style="display: flex; gap: 1rem;">
+                            <button onclick="window.location.reload()" 
+                                    style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                                🔄 Reload Portal
                             </button>
-                            <button class="btn-secondary" onclick="logout()">
-                                🚪 Logout
+                            <button onclick="window.location.href='/login.html'" 
+                                    style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                                🔐 Re-login
                             </button>
                         </div>
                     </div>
                 `;
                 
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
+                loadingScreen.style.display = 'none';
             }
         });
 
-        // Global utility functions (preserve existing)
-        window.logout = function() {
-            localStorage.removeItem('bitware-session-token');
-            localStorage.removeItem('bitware-user-info');
-            localStorage.removeItem('bitware-kam-context');
-            window.location.href = '/login.html';
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('❌ Client portal error:', event.error);
+        });
+
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('❌ Unhandled promise rejection in client portal:', event.reason);
+        });
+
+        // Client-specific global functions
+        window.upgradeAccount = function() {
+            alert('Account upgrade functionality coming soon!\n\nContact support for immediate upgrade assistance.');
         };
 
-        // Client-specific navigation helpers
-        window.navigateToReports = function() {
-            if (window.kamRouter && window.kamRouter.initialized) {
-                window.kamRouter.navigate('/reports');
-            } else {
-                alert('Reports section not yet available');
-            }
+        window.contactSupport = function() {
+            window.open('mailto:support@aifactory.com?subject=Support Request');
         };
 
-        window.navigateToAccount = function() {
-            if (window.kamRouter && window.kamRouter.initialized) {
-                window.kamRouter.navigate('/account');
-            } else {
-                alert('Account settings not yet available');
-            }
-        };
-
-        // Debug helper
-        window.debugAIFactory = function() {
-            console.log('=== AI Factory Client Debug Info ===');
-            console.log('Router Initialized:', !!window.kamRouter?.initialized);
-            console.log('Layout Available:', !!window.AIFactoryLayout);
-            console.log('KAM Context:', !!window.kamContext?.initialized);
-            console.log('Client Dashboard:', !!window.clientDashboard);
-            console.log('API Client:', !!window.apiClient);
-            console.log('Session Token:', !!localStorage.getItem('bitware-session-token'));
-            console.log('User Info:', localStorage.getItem('bitware-user-info'));
+        window.viewDocumentation = function() {
+            alert('Documentation portal coming soon!\n\nFor now, contact support for help.');
         };
     </script>
 </body>

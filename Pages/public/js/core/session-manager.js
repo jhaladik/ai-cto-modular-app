@@ -1,117 +1,204 @@
 /**
- * Session Management Extension - KAM Integration
- * Extends existing session management with KAM client context
- * Maintains backward compatibility with current login/logout flows
+ * Session Manager - Clean Version
+ * Manages user sessions with proper interval cleanup and no memory leaks
  */
-
 class SessionManager {
     constructor(apiClient) {
         this.apiClient = apiClient;
         this.sessionData = null;
-        this.kamContext = null;
-        this.sessionKey = 'bitware-session-token';
-        this.userInfoKey = 'bitware-user-info';
-        this.contextKey = 'bitware-kam-context';
-        
-        // Session refresh settings
         this.refreshInterval = null;
-        this.refreshIntervalTime = 15 * 60 * 1000; // 15 minutes
+        this.refreshIntervalTime = 300000; // 5 minutes ONLY - no excessive refreshing
+        this.isDestroyed = false;
         
-        // Initialize from existing session
-        this.loadExistingSession();
+        // Bind methods for event handlers
+        this.validateSession = this.validateSession.bind(this);
+        this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
+        
+        // Auto-cleanup on page unload
+        window.addEventListener('beforeunload', this.handleBeforeUnload);
     }
 
     /**
-     * Load existing session data (backward compatibility)
+     * Validate current session
      */
-    loadExistingSession() {
+    async validateSession() {
+        if (this.isDestroyed) return false;
+        
         try {
-            const sessionToken = localStorage.getItem(this.sessionKey);
-            const userInfo = localStorage.getItem(this.userInfoKey);
-            const kamContext = localStorage.getItem(this.contextKey);
-
-            if (sessionToken && userInfo) {
-                this.sessionData = {
-                    token: sessionToken,
-                    user: JSON.parse(userInfo),
-                    kamContext: kamContext ? JSON.parse(kamContext) : null,
-                    loaded: new Date()
-                };
-                
-                console.log('🔄 Loaded existing session:', this.sessionData.user.email || this.sessionData.user.username);
+            const token = this.getSessionToken();
+            if (!token) {
+                console.warn('⚠️ No session token found');
+                return false;
             }
-        } catch (error) {
-            console.error('❌ Failed to load existing session:', error);
-            this.clearSession();
-        }
-    }
 
-    /**
-     * Enhanced login with KAM context integration
-     * Maintains backward compatibility with existing login flow
-     */
-    async login(username, password, loginType = 'admin') {
-        try {
-            console.log('🔐 Starting enhanced login process...');
-
-            // Use existing auth pattern (from auth.js)
-            const response = await fetch('/api/auth/login', {
+            // Simple session validation
+            const response = await fetch('/api/auth/validate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, loginType })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-bitware-session-token': token
+                }
             });
+
+            if (!response.ok) {
+                throw new Error(`Session validation failed: ${response.status}`);
+            }
 
             const data = await response.json();
             
-            if (!data.success) {
-                return { success: false, error: data.error };
+            if (data.valid) {
+                this.sessionData = {
+                    user: data.user,
+                    authenticated: true,
+                    loaded: new Date().toISOString()
+                };
+                
+                // Initialize KAM context if not already done
+                if (!this.sessionData.kamContext) {
+                    await this.initializeKAMContextFromLogin(data);
+                }
+                
+                return true;
+            } else {
+                console.warn('⚠️ Session invalid');
+                return false;
             }
 
-            // Store session data (existing pattern)
-            this.sessionData = {
-                token: data.sessionToken,
-                user: data.user,
-                kamContext: null,
-                loaded: new Date()
-            };
-
-            localStorage.setItem(this.sessionKey, data.sessionToken);
-            localStorage.setItem(this.userInfoKey, JSON.stringify(data.user));
-
-            console.log('✅ Basic session established');
-
-            // Initialize KAM context asynchronously (doesn't block login)
-            this.initializeKAMContext().catch(error => {
-                console.warn('⚠️ KAM context initialization failed (non-blocking):', error.message);
-            });
-
-            // Start session refresh
-            this.startSessionRefresh();
-
-            return { success: true, user: data.user };
-
         } catch (error) {
-            console.error('❌ Login failed:', error);
-            return { success: false, error: error.message };
+            console.error('❌ Session validation error:', error);
+            return false;
         }
     }
 
     /**
-     * Initialize KAM context after successful login
+     * Determine user type from session data - FOR ROUTING DECISIONS
      */
-    async initializeKAMContext() {
+    determineUserType() {
+        if (!this.sessionData) return 'client';
+        
+        // Method 1: Check explicit user role
+        if (this.sessionData.user?.role) {
+            const role = this.sessionData.user.role.toLowerCase();
+            if (role === 'admin' || role === 'administrator') return 'admin';
+            if (role === 'client' || role === 'customer') return 'client';
+        }
+        
+        // Method 2: Check user type field
+        if (this.sessionData.user?.user_type) {
+            const userType = this.sessionData.user.user_type.toLowerCase();
+            if (userType === 'admin' || userType === 'administrator') return 'admin';
+            if (userType === 'client' || userType === 'customer') return 'client';
+        }
+        
+        // Method 3: Check KAM context
+        if (this.sessionData.kamContext?.is_admin) return 'admin';
+        
+        // Method 4: Check admin indicators
+        if (this.sessionData.user?.is_admin || 
+            this.sessionData.user?.admin || 
+            this.sessionData.kamContext?.client_id === 'admin_user' ||
+            this.sessionData.kamContext?.client_id === 'admin_fallback') {
+            return 'admin';
+        }
+        
+        // Method 5: Check enterprise tier (might indicate admin)
+        if (this.sessionData.kamContext?.subscription_tier === 'enterprise' && 
+            this.sessionData.kamContext?.fallback) {
+            return 'admin';
+        }
+        
+        // Default to client
+        return 'client';
+    }
+
+    /**
+     * Get user type for routing
+     */
+    getUserType() {
+        return this.determineUserType();
+    }
+
+    /**
+     * Check if user is admin
+     */
+    isAdmin() {
+        return this.determineUserType() === 'admin';
+    }
+
+    /**
+     * Check if user is client
+     */
+    isClient() {
+        return this.determineUserType() === 'client';
+    }
+
+    /**
+     * Initialize KAM context from login response - INTEGRATED APPROACH
+     */
+    async initializeKAMContextFromLogin(loginData) {
+        if (this.isDestroyed) return;
+        
         try {
-            if (!this.sessionData?.user) {
-                throw new Error('No user session available');
-            }
+            console.log('🔄 Initializing KAM context from login data...');
 
-            console.log('🔄 Initializing KAM context...');
-
-            // Try to get client context from KAM worker
             let kamContext = null;
             
-            if (this.sessionData.user.email) {
+            // Method 1: Use KAM context from login response if available
+            if (loginData.kamContext) {
+                console.log('✅ Using KAM context from login response');
+                kamContext = loginData.kamContext;
+            }
+            
+            // Method 2: Check if user data indicates client vs admin
+            else if (loginData.user) {
+                const user = loginData.user;
+                console.log('🔍 Analyzing user data for KAM context...', user);
+                
+                // If user has client_id or is marked as client, fetch their context
+                if (user.client_id || user.role === 'client' || user.user_type === 'client') {
+                    try {
+                        const clientId = user.client_id || user.username;
+                        console.log(`📡 Fetching client context for: ${clientId}`);
+                        
+                        const response = await this.apiClient.kamRequest(`/client?client_id=${encodeURIComponent(clientId)}`);
+                        
+                        if (response && response.success && response.client) {
+                            kamContext = {
+                                client_id: response.client.client_id,
+                                company_name: response.client.company_name,
+                                contact_email: response.client.contact_email,
+                                subscription_tier: response.client.subscription_tier,
+                                account_status: response.client.account_status,
+                                monthly_budget_usd: response.client.monthly_budget_usd,
+                                used_budget_current_month: response.client.used_budget_current_month,
+                                fallback: false
+                            };
+                            console.log('✅ Client context loaded from KAM worker');
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Failed to load client context from KAM worker:', error.message);
+                    }
+                }
+                
+                // If user is admin, create admin context
+                else if (user.role === 'admin' || user.user_type === 'admin' || user.is_admin) {
+                    kamContext = {
+                        client_id: 'admin_user',
+                        company_name: 'AI Factory Admin',
+                        contact_email: user.email || user.username,
+                        subscription_tier: 'enterprise',
+                        account_status: 'active',
+                        is_admin: true,
+                        fallback: false
+                    };
+                    console.log('✅ Admin context created');
+                }
+            }
+
+            // Method 3: Try email-based lookup as fallback
+            if (!kamContext && this.sessionData.user?.email) {
                 try {
+                    console.log('🔍 Trying email-based KAM lookup...');
                     const response = await this.apiClient.kamRequest(
                         `/client?email=${encodeURIComponent(this.sessionData.user.email)}`
                     );
@@ -121,245 +208,218 @@ class SessionManager {
                         kamContext = {
                             client_id: clientData.client_id,
                             company_name: clientData.company_name,
-                            subscription_tier: clientData.subscription_tier || 'basic',
-                            monthly_budget_usd: clientData.monthly_budget_usd || 100,
-                            permissions: clientData.permissions || [],
-                            preferences: clientData.preferences || {},
-                            loaded: new Date()
+                            contact_email: clientData.contact_email,
+                            subscription_tier: clientData.subscription_tier,
+                            account_status: clientData.account_status,
+                            monthly_budget_usd: clientData.monthly_budget_usd,
+                            used_budget_current_month: clientData.used_budget_current_month,
+                            fallback: false
                         };
+                        console.log('✅ Email-based KAM context loaded');
                     }
                 } catch (error) {
-                    console.log('📧 Client lookup failed, using fallback context');
+                    console.warn('⚠️ Email-based KAM lookup failed:', error.message);
                 }
             }
 
-            // Fallback context for admin users or when KAM lookup fails
+            // Method 4: Create fallback context
             if (!kamContext) {
-                kamContext = this.createFallbackContext();
+                console.log('🆘 Creating fallback KAM context...');
+                kamContext = {
+                    client_id: 'fallback_user',
+                    company_name: this.sessionData.user?.username || 'Unknown User',
+                    contact_email: this.sessionData.user?.email || 'unknown@example.com',
+                    subscription_tier: 'basic',
+                    account_status: 'active',
+                    fallback: true
+                };
             }
 
-            // Store KAM context
             this.sessionData.kamContext = kamContext;
-            localStorage.setItem(this.contextKey, JSON.stringify(kamContext));
-
-            console.log('✅ KAM context initialized:', kamContext.client_id);
+            
+            console.log('✅ KAM context initialized:', {
+                client_id: kamContext.client_id,
+                company_name: kamContext.company_name,
+                tier: kamContext.subscription_tier,
+                is_admin: kamContext.is_admin || false,
+                fallback: kamContext.fallback
+            });
 
             // Notify components that context is ready
             this.notifyContextReady();
 
         } catch (error) {
-            console.warn('⚠️ KAM context initialization failed:', error);
-            this.sessionData.kamContext = this.createFallbackContext();
-            localStorage.setItem(this.contextKey, JSON.stringify(this.sessionData.kamContext));
+            console.error('❌ KAM context initialization failed:', error);
+            
+            // Set absolute fallback context
+            this.sessionData.kamContext = {
+                client_id: 'error_fallback',
+                company_name: 'Error Fallback',
+                subscription_tier: 'basic',
+                account_status: 'active',
+                fallback: true,
+                error: true
+            };
         }
     }
 
     /**
-     * Create fallback KAM context when client lookup fails
+     * Login user with credentials - INTEGRATED WITH KEY ACCOUNT MANAGER
      */
-    createFallbackContext() {
-        const isAdmin = this.sessionData?.user?.role === 'admin';
-        
-        return {
-            client_id: isAdmin ? 'admin_session' : 'fallback_client',
-            company_name: isAdmin ? 'AI Factory Admin' : 'Unknown Client',
-            subscription_tier: isAdmin ? 'enterprise' : 'basic',
-            monthly_budget_usd: isAdmin ? 10000 : 100,
-            permissions: isAdmin ? ['admin', 'all_workers'] : ['basic_access'],
-            preferences: {
-                communication_style: 'technical',
-                preferred_report_formats: ['detailed']
-            },
-            fallback: true,
-            loaded: new Date()
-        };
-    }
-
-    /**
-     * Enhanced session validation with KAM context
-     */
-    async validateSession() {
+    async login(username, password) {
         try {
-            if (!this.sessionData?.token) {
-                return { valid: false, reason: 'No session token' };
-            }
-
-            // Use existing validation pattern (from auth.js)
-            const response = await fetch('/api/auth/validate', {
+            console.log('🔐 Starting login process...');
+            
+            // Step 1: Call the login API which integrates with key_account_manager
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-bitware-session-token': this.sessionData.token
-                }
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
             });
 
-            const validation = await response.json();
+            if (!response.ok) {
+                throw new Error(`Login failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('📡 Login response received:', data);
             
-            if (!validation.valid) {
-                this.clearSession();
-                return validation;
-            }
+            if (data.success && data.token) {
+                // Store session token
+                localStorage.setItem('bitware-session-token', data.token);
+                
+                // Set initial session data from login response
+                this.sessionData = {
+                    user: data.user,
+                    authenticated: true,
+                    loaded: new Date().toISOString()
+                };
 
-            // Refresh KAM context if missing or stale
-            if (!this.sessionData.kamContext || this.isContextStale()) {
-                await this.refreshKAMContext();
-            }
+                console.log('✅ Login successful, session established');
+                
+                // Step 2: Get full KAM context from key_account_manager worker
+                await this.initializeKAMContextFromLogin(data);
 
-            return { valid: true, session: this.sessionData };
+                // Step 3: Start session refresh with proper cleanup
+                this.startSessionRefresh();
+
+                // Step 4: Determine user type for routing
+                const userType = this.determineUserType();
+                console.log(`👤 User type determined: ${userType}`);
+
+                return { 
+                    success: true, 
+                    user: data.user,
+                    userType: userType,
+                    kamContext: this.sessionData.kamContext
+                };
+            } else {
+                throw new Error(data.message || 'Login failed');
+            }
 
         } catch (error) {
-            console.error('❌ Session validation failed:', error);
-            return { valid: false, reason: error.message };
+            console.error('❌ Login failed:', error);
+            return { success: false, error: error.message };
         }
     }
 
     /**
-     * Check if KAM context is stale and needs refresh
+     * Logout user and cleanup
      */
-    isContextStale() {
-        if (!this.sessionData?.kamContext?.loaded) return true;
-        
-        const contextAge = Date.now() - new Date(this.sessionData.kamContext.loaded).getTime();
-        const maxAge = 30 * 60 * 1000; // 30 minutes
-        
-        return contextAge > maxAge;
-    }
-
-    /**
-     * Refresh KAM context data
-     */
-    async refreshKAMContext() {
+    async logout() {
         try {
-            console.log('🔄 Refreshing KAM context...');
-            await this.initializeKAMContext();
+            const token = this.getSessionToken();
+            
+            if (token) {
+                // Call logout endpoint
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'x-bitware-session-token': token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.warn('⚠️ Logout endpoint failed, continuing with local cleanup');
+                }
+            }
+            
         } catch (error) {
-            console.warn('⚠️ KAM context refresh failed:', error);
+            console.warn('⚠️ Logout request failed:', error);
+        } finally {
+            // Always perform local cleanup
+            this.clearSession();
+            
+            console.log('✅ Logout completed');
+            
+            // Redirect to login
+            window.location.href = '/login.html';
         }
     }
 
     /**
-     * Get current session data including KAM context
+     * Clear session data and cleanup
      */
-    getSession() {
-        return this.sessionData;
-    }
-
-    /**
-     * Get KAM context specifically
-     */
-    getKAMContext() {
-        return this.sessionData?.kamContext || null;
-    }
-
-    /**
-     * Get user info
-     */
-    getUser() {
-        return this.sessionData?.user || null;
+    clearSession() {
+        // Stop refresh interval
+        this.stopSessionRefresh();
+        
+        // Clear stored data
+        localStorage.removeItem('bitware-session-token');
+        localStorage.removeItem('bitware-session-data');
+        
+        // Clear session data
+        this.sessionData = null;
+        
+        // Notify components
+        this.notifySessionCleared();
     }
 
     /**
      * Check if user is authenticated
      */
     isAuthenticated() {
-        return !!(this.sessionData?.token && this.sessionData?.user);
+        return !!(this.sessionData?.authenticated && this.getSessionToken());
     }
 
     /**
-     * Update KAM context data
+     * Get session token
      */
-    async updateKAMContext(updates) {
-        try {
-            if (!this.sessionData?.kamContext) {
-                console.warn('⚠️ No KAM context to update');
-                return false;
-            }
-
-            // Update local context
-            this.sessionData.kamContext = {
-                ...this.sessionData.kamContext,
-                ...updates,
-                updated: new Date()
-            };
-
-            // Save to localStorage
-            localStorage.setItem(this.contextKey, JSON.stringify(this.sessionData.kamContext));
-
-            // Sync to KAM worker if it's a real client (not fallback)
-            if (!this.sessionData.kamContext.fallback && this.sessionData.kamContext.client_id) {
-                try {
-                    await this.apiClient.callWorker(
-                        'key-account-manager',
-                        `/client/${this.sessionData.kamContext.client_id}`,
-                        'PUT',
-                        updates
-                    );
-                } catch (error) {
-                    console.warn('⚠️ Failed to sync context updates to KAM worker:', error);
-                }
-            }
-
-            // Notify components of context change
-            this.notifyContextUpdated();
-            
-            return true;
-
-        } catch (error) {
-            console.error('❌ Failed to update KAM context:', error);
-            return false;
-        }
+    getSessionToken() {
+        return localStorage.getItem('bitware-session-token');
     }
 
     /**
-     * Enhanced logout with KAM context cleanup
-     */
-    logout() {
-        console.log('🚪 Starting enhanced logout...');
-        
-        // Stop session refresh
-        this.stopSessionRefresh();
-        
-        // Clear all session data
-        this.clearSession();
-        
-        // Redirect to login (existing pattern)
-        window.location.href = '/login.html';
-    }
-
-    /**
-     * Clear all session data
-     */
-    clearSession() {
-        this.sessionData = null;
-        localStorage.removeItem(this.sessionKey);
-        localStorage.removeItem(this.userInfoKey);
-        localStorage.removeItem(this.contextKey);
-        
-        // Notify components of session cleared
-        this.notifySessionCleared();
-    }
-
-    /**
-     * Start automatic session refresh
+     * Start automatic session refresh - SINGLE INTERVAL ONLY
      */
     startSessionRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-        }
+        // Always stop existing interval first
+        this.stopSessionRefresh();
+        
+        if (this.isDestroyed) return;
 
+        console.log('⏰ Starting session refresh (5 minute interval)');
+        
         this.refreshInterval = setInterval(async () => {
+            if (this.isDestroyed) {
+                this.stopSessionRefresh();
+                return;
+            }
+            
             try {
-                const validation = await this.validateSession();
-                if (!validation.valid) {
-                    console.log('🔒 Session validation failed during refresh, logging out');
-                    this.logout();
+                const isValid = await this.validateSession();
+                if (!isValid) {
+                    console.warn('⚠️ Session validation failed during refresh');
+                    // Don't auto-logout on refresh failure - let user continue
                 }
             } catch (error) {
                 console.error('❌ Session refresh failed:', error);
+                // Don't spam console or auto-logout on network errors
             }
         }, this.refreshIntervalTime);
-
-        console.log('⏰ Session refresh started');
     }
 
     /**
@@ -377,16 +437,9 @@ class SessionManager {
      * Notify components that KAM context is ready
      */
     notifyContextReady() {
+        if (this.isDestroyed) return;
+        
         window.dispatchEvent(new CustomEvent('kamContextReady', {
-            detail: this.sessionData.kamContext
-        }));
-    }
-
-    /**
-     * Notify components that KAM context was updated
-     */
-    notifyContextUpdated() {
-        window.dispatchEvent(new CustomEvent('kamContextUpdated', {
             detail: this.sessionData.kamContext
         }));
     }
@@ -417,18 +470,27 @@ class SessionManager {
     }
 
     /**
-     * Handle session errors gracefully
+     * Handle page unload - cleanup intervals
      */
-    handleSessionError(error) {
-        console.error('📡 Session error:', error);
+    handleBeforeUnload() {
+        this.destroy();
+    }
+
+    /**
+     * Destroy session manager and cleanup all resources
+     */
+    destroy() {
+        this.isDestroyed = true;
+        this.stopSessionRefresh();
         
-        // Don't auto-logout on every error (existing pattern)
-        // Let components handle errors gracefully
-        return false;
+        // Remove event listeners
+        window.removeEventListener('beforeunload', this.handleBeforeUnload);
+        
+        console.log('🗑️ SessionManager destroyed');
     }
 }
 
-// Initialize global session manager
+// Initialize global session manager when API client is ready
 window.addEventListener('DOMContentLoaded', () => {
     if (window.apiClient && !window.sessionManager) {
         window.sessionManager = new SessionManager(window.apiClient);

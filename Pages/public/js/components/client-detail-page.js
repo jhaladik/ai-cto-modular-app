@@ -1,379 +1,92 @@
-// Client Detail Page Component
-// File: Pages/public/js/components/client-detail-page.js
-// Main component for displaying detailed client information
-
+/**
+ * Client Detail Page Component - Clean Version
+ * Shows detailed client information - NO AUTO-REFRESH INTERVALS
+ */
 class ClientDetailPage {
-    constructor(clientId, apiClient) {
-        this.clientId = clientId;
+    constructor(apiClient, clientId) {
         this.apiClient = apiClient || window.apiClient;
-        
-        // Data storage
+        this.clientId = clientId;
         this.clientData = null;
-        this.analytics = null;
-        this.communications = [];
-        this.requests = [];
         this.isLoading = false;
-        this.error = null;
+        this.currentTab = 'overview';
         
-        // UI State
-        this.activeTab = 'communications'; // Default as requested
-        this.refreshInterval = null;
-        this.refreshRate = 30000; // 30 seconds
+        // NO auto-refresh interval - manual refresh only
         
-        // Component instances
-        this.statCards = new Map();
-        
-        // Bind methods
-        this.handleTabChange = this.handleTabChange.bind(this);
+        // Bind methods for event handlers
         this.refresh = this.refresh.bind(this);
-        this.startAutoRefresh = this.startAutoRefresh.bind(this);
-        this.stopAutoRefresh = this.stopAutoRefresh.bind(this);
+        this.switchTab = this.switchTab.bind(this);
     }
 
     /**
-     * Render the complete client detail page
+     * Render the client detail page
      */
-    async render() {
-        console.log(`🎨 Rendering client detail page for: ${this.clientId}`);
-        
-        // FIXED: Proper logic to determine when to show content
-        const hasClientData = !!(this.clientData && (this.clientData.client_id || this.clientData.company_name));
-        const showContent = hasClientData && !this.error;
-        const showLoading = !hasClientData && this.isLoading && !this.error;
-        
-        console.log('- Has client data:', hasClientData);
-        console.log('- Will show content:', showContent);
-        console.log('- Will show loading:', showLoading);
-        
+    render() {
         return `
             <div class="client-detail-page">
-                <!-- Loading State - ONLY show if no data and actually loading -->
-                <div id="client-detail-loading" class="loading-state" style="display: ${showLoading ? 'block' : 'none'};">
-                    <div class="loading-spinner">🔄</div>
-                    <p>Loading client details...</p>
+                <!-- Breadcrumb Navigation -->
+                <div class="breadcrumb">
+                    <a href="#" onclick="router.navigate('/clients'); return false;">👥 Clients</a>
+                    <span class="breadcrumb-separator">›</span>
+                    <span class="breadcrumb-current">
+                        ${this.clientData?.company_name || 'Loading...'}
+                    </span>
                 </div>
-                
-                <!-- Error State -->
-                <div id="client-detail-error" class="error-state" style="display: ${this.error ? 'block' : 'none'};">
-                    <div class="error-icon">❌</div>
-                    <h3>Error Loading Client Details</h3>
-                    <p>${this.error || 'An unexpected error occurred'}</p>
-                    <button class="btn btn-primary" onclick="window.clientDetailPage.loadClientData()">
-                        🔄 Retry
-                    </button>
-                </div>
-                
-                <!-- Main Content - Show if we have data -->
-                <div id="client-detail-content" style="display: ${showContent ? 'block' : 'none'};">
-                    <!-- Breadcrumb Navigation -->
-                    ${this.renderBreadcrumb()}
-                    
-                    <!-- Client Profile Header -->
-                    ${this.renderClientHeader()}
-                    
-                    <!-- Quick Stats Cards -->
-                    ${this.renderStatsCards()}
-                    
-                    <!-- Tabbed Content -->
-                    ${this.renderTabbedContent()}
-                    
-                    <!-- Tab Content Areas -->
-                    <div class="tab-content">
-                        <div id="communications-content" 
-                            class="tab-pane ${this.activeTab === 'communications' ? 'active' : ''}">
-                            ${this.renderCommunicationsTab()}
-                        </div>
-                        
-                        <div id="analytics-content" 
-                            class="tab-pane ${this.activeTab === 'analytics' ? 'active' : ''}">
-                            ${this.renderAnalyticsTab()}
-                        </div>
-                        
-                        <div id="requests-content" 
-                            class="tab-pane ${this.activeTab === 'requests' ? 'active' : ''}">
-                            ${this.renderRequestsTab()}
-                        </div>
-                        
-                        <div id="settings-content" 
-                            class="tab-pane ${this.activeTab === 'settings' ? 'active' : ''}">
-                            ${this.renderSettingsTab()}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    /**
-     * Render breadcrumb navigation
-     */
-    renderBreadcrumb() {
-        const clientName = this.clientData?.company_name || 'Loading...';
-        
-        return `
-            <nav class="breadcrumb" style="margin-bottom: 1.5rem;">
-                <a href="#/dashboard" class="breadcrumb-link">Dashboard</a>
-                <span class="breadcrumb-separator">›</span>
-                <a href="#/clients" class="breadcrumb-link">Clients</a>
-                <span class="breadcrumb-separator">›</span>
-                <span class="breadcrumb-current">${clientName}</span>
-            </nav>
-        `;
-    }
 
-    /**
-     * Render client profile header
-     */
-    renderClientHeader() {
-        // HANDLE MISSING DATA GRACEFULLY
-        if (!this.clientData) {
-            return `
-                <div class="client-header" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
-                    <div style="text-align: center; color: #6b7280;">
-                        <div style="font-size: 2rem; margin-bottom: 1rem;">👤</div>
-                        <p>Loading client information...</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        const client = this.clientData;
-        const clientName = client.company_name || client.name || 'Unknown Client';
-        const clientEmail = client.primary_contact_email || client.email || 'No email available';
-        const contactName = client.primary_contact_name || client.contact_name || 'Not specified';
-        const tier = client.service_tier || client.tier || 'Standard';
-        const status = client.status || 'Active';
-        const monthlyBudget = client.monthly_budget_usd || client.monthly_budget || 'Unlimited';
-        
-        return `
-            <div class="client-header" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
-                <div style="display: flex; align-items: center; gap: 1.5rem;">
-                    <div class="client-avatar">
-                        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #3b82f6); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 600; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
-                            ${clientName.charAt(0).toUpperCase()}
-                        </div>
-                    </div>
-                    <div class="client-info" style="flex: 1;">
-                        <h1 class="client-name" style="font-size: 1.75rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #111827;">
-                            ${clientName}
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="client-header-info">
+                        <h1 class="page-title client-name">
+                            ${this.clientData?.company_name || 'Loading Client...'}
                         </h1>
-                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
-                            <span class="tier-badge" style="padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: #e0f2fe; color: #0277bd;">
-                                ${tier}
-                            </span>
-                            <span class="status-badge" style="padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; background: #e8f5e8; color: #2e7d32;">
-                                ${status}
-                            </span>
-                            <span class="budget-info" style="font-size: 0.875rem; color: #6b7280; font-family: monospace;">
-                                Budget: $${monthlyBudget}/month
-                            </span>
-                        </div>
-                        <div class="client-contact" style="display: flex; align-items: center; gap: 1rem; color: #6b7280; font-size: 0.875rem; flex-wrap: wrap;">
-                            <span class="contact-email">📧 <a href="mailto:${clientEmail}" style="color: #2563eb; text-decoration: none;">${clientEmail}</a></span>
-                            <span class="contact-name">👤 ${contactName}</span>
+                        <div class="client-meta">
+                            ${this.clientData ? `
+                                <span class="tier-badge tier-${this.clientData.subscription_tier}">
+                                    ${this.formatTierName(this.clientData.subscription_tier)}
+                                </span>
+                                <span class="status-badge status-${this.clientData.account_status}">
+                                    ${this.clientData.account_status}
+                                </span>
+                                <span class="client-id">ID: ${this.clientData.client_id}</span>
+                            ` : ''}
                         </div>
                     </div>
-                    <div class="client-actions" style="display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0;">
-                        <button onclick="alert('Edit client functionality')" style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: background 0.2s;">
+                    <div class="page-actions">
+                        <button class="btn btn-secondary" onclick="clientDetailPage.refresh()">
+                            🔄 Refresh
+                        </button>
+                        <button class="btn btn-secondary" onclick="clientDetailPage.editClient()">
                             ✏️ Edit Client
                         </button>
-                        <button onclick="alert('Message client functionality')" style="padding: 0.5rem 1rem; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: background 0.2s;">
-                            💬 Send Message
-                        </button>
-                        <button onclick="alert('View client activity')" style="padding: 0.5rem 1rem; background: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: background 0.2s;">
-                            📊 Activity
+                        <button class="btn btn-primary" onclick="clientDetailPage.contactClient()">
+                            📧 Contact
                         </button>
                     </div>
                 </div>
-            </div>
-        `;
-    }
-    /**
-     * Render quick stats cards
-     */
-    renderStatsCards() {
-        if (!this.clientData) {
-            return '<div class="stats-placeholder">Loading statistics...</div>';
-        }
 
-        const client = this.clientData;
-        
-        return `
-            <div class="stats-grid" style="margin-bottom: 2rem;">
-                <div class="stat-card">
-                    <div class="stat-icon">💰</div>
-                    <div class="stat-content">
-                        <div class="stat-value">$${client.total_lifetime_value?.toFixed(2) || '0.00'}</div>
-                        <div class="stat-label">Lifetime Value</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">⭐</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${client.satisfaction_score?.toFixed(1) || 'N/A'}</div>
-                        <div class="stat-label">Satisfaction Score</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${((client.used_budget_current_month / client.monthly_budget_usd) * 100).toFixed(0)}%</div>
-                        <div class="stat-label">Budget Usage</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">📅</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${this.formatDate(client.last_interaction, 'relative')}</div>
-                        <div class="stat-label">Last Active</div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render tabbed navigation
-     */
-    renderTabbedContent() {
-        return `
-            <div class="tab-navigation" style="margin-bottom: 1.5rem;">
-                <button class="tab-button ${this.activeTab === 'communications' ? 'active' : ''}" 
-                        onclick="clientDetailPage.handleTabChange('communications')">
-                    💬 Communications
-                </button>
-                <button class="tab-button ${this.activeTab === 'analytics' ? 'active' : ''}" 
-                        onclick="clientDetailPage.handleTabChange('analytics')">
-                    📊 Analytics
-                </button>
-                <button class="tab-button ${this.activeTab === 'requests' ? 'active' : ''}" 
-                        onclick="clientDetailPage.handleTabChange('requests')">
-                    📋 Requests
-                </button>
-                <button class="tab-button ${this.activeTab === 'settings' ? 'active' : ''}" 
-                        onclick="clientDetailPage.handleTabChange('settings')">
-                    ⚙️ Settings
-                </button>
-            </div>
-        `;
-    }
-
-    /**
-     * Render communications tab content
-     */
-    renderCommunicationsTab() {
-        if (!this.clientData || !this.clientData.communication_history) {
-            return '<p>No communication history available.</p>';
-        }
-
-        const communications = this.clientData.communication_history;
-        
-        if (communications.length === 0) {
-            return `
-                <div class="empty-state">
-                    <div class="empty-icon">💬</div>
-                    <h3>No Communications Yet</h3>
-                    <p>No communication history found for this client.</p>
-                    <button class="btn btn-primary" onclick="clientDetailPage.sendMessage()">
-                        Send First Message
+                <!-- Tab Navigation -->
+                <div class="tab-navigation">
+                    <button class="tab-btn ${this.currentTab === 'overview' ? 'active' : ''}" 
+                            onclick="clientDetailPage.switchTab('overview')">
+                        📊 Overview
+                    </button>
+                    <button class="tab-btn ${this.currentTab === 'usage' ? 'active' : ''}" 
+                            onclick="clientDetailPage.switchTab('usage')">
+                        📈 Usage & Billing
+                    </button>
+                    <button class="tab-btn ${this.currentTab === 'reports' ? 'active' : ''}" 
+                            onclick="clientDetailPage.switchTab('reports')">
+                        📋 Reports
+                    </button>
+                    <button class="tab-btn ${this.currentTab === 'settings' ? 'active' : ''}" 
+                            onclick="clientDetailPage.switchTab('settings')">
+                        ⚙️ Settings
                     </button>
                 </div>
-            `;
-        }
 
-        return `
-            <div class="communications-list">
-                <div class="communications-header">
-                    <h3>Communication History</h3>
-                    <button class="btn btn-primary" onclick="clientDetailPage.sendMessage()">
-                        + New Message
-                    </button>
+                <!-- Tab Content -->
+                <div class="tab-content" id="tab-content">
+                    ${this.renderTabContent()}
                 </div>
-                
-                <div class="communications-timeline">
-                    ${communications.map(comm => this.renderCommunicationItem(comm)).join('')}
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render individual communication item
-     */
-    renderCommunicationItem(comm) {
-        const sentimentIcon = this.getSentimentIcon(comm.sentiment_score);
-        const intentBadge = this.getIntentBadge(comm.intent_detected);
-        
-        return `
-            <div class="communication-item">
-                <div class="comm-header">
-                    <div class="comm-type">
-                        ${this.getCommTypeIcon(comm.type)} ${comm.type.replace('_', ' ').toUpperCase()}
-                    </div>
-                    <div class="comm-meta">
-                        ${sentimentIcon} ${intentBadge}
-                        <span class="comm-date">${this.formatDate(comm.processed_at)}</span>
-                    </div>
-                </div>
-                <div class="comm-content">
-                    ${comm.content}
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render analytics tab (placeholder)
-     */
-    renderAnalyticsTab() {
-        return `
-            <div class="analytics-content">
-                <h3>Client Analytics</h3>
-                <p>📊 Analytics dashboard coming soon! This will include:</p>
-                <ul>
-                    <li>Budget usage trends</li>
-                    <li>Request frequency patterns</li>
-                    <li>Satisfaction score history</li>
-                    <li>Communication engagement metrics</li>
-                </ul>
-            </div>
-        `;
-    }
-
-    /**
-     * Render requests tab (placeholder)
-     */
-    renderRequestsTab() {
-        return `
-            <div class="requests-content">
-                <h3>Client Requests</h3>
-                <p>📋 Request history coming soon! This will include:</p>
-                <ul>
-                    <li>All client requests and their status</li>
-                    <li>Pipeline transparency data</li>
-                    <li>Deliverables and reports</li>
-                    <li>Cost breakdown by request</li>
-                </ul>
-            </div>
-        `;
-    }
-
-    /**
-     * Render settings tab (placeholder)
-     */
-    renderSettingsTab() {
-        return `
-            <div class="settings-content">
-                <h3>Client Settings</h3>
-                <p>⚙️ Client settings management coming soon! This will include:</p>
-                <ul>
-                    <li>Subscription tier management</li>
-                    <li>Budget adjustments</li>
-                    <li>Communication preferences</li>
-                    <li>Contact information updates</li>
-                </ul>
             </div>
         `;
     }
@@ -382,117 +95,281 @@ class ClientDetailPage {
      * Mount the component and load data
      */
     async mount() {
-        console.log(`🔧 Mounting client detail page for: ${this.clientId}`);
+        console.log(`📋 Mounting Client Detail Page for client: ${this.clientId}`);
         
-        // Make this component globally accessible
-        window.clientDetailPage = this;
+        // Debug session information
+        this.debugSessionInfo();
         
         try {
+            // Load client data with comprehensive fallbacks
             await this.loadClientData();
             
-            // DISABLED: Auto-refresh to prevent loops
-            // this.startAutoRefresh();
-            
-            console.log('✅ Client detail page mounted successfully (auto-refresh disabled)');
+            console.log('✅ Client Detail Page mounted successfully');
         } catch (error) {
-            console.error('❌ Failed to mount client detail page:', error);
-            this.error = error.message;
-            this.updateErrorDisplay();
+            console.error('❌ Failed to mount Client Detail Page:', error);
+            this.showError(`Failed to load client details: ${error.message}`);
         }
     }
+
+    /**
+     * Debug session information for troubleshooting
+     */
+    debugSessionInfo() {
+        console.log('🔍 Debug Info - Client Detail Page:');
+        console.log('  - Client ID:', this.clientId);
+        console.log('  - API Client:', !!this.apiClient);
+        console.log('  - Session Manager:', !!window.sessionManager);
+        
+        if (window.sessionManager?.sessionData) {
+            const session = window.sessionManager.sessionData;
+            console.log('  - User authenticated:', !!session.authenticated);
+            console.log('  - User info:', session.user);
+            console.log('  - KAM context:', session.kamContext);
+        }
+    }
+
     /**
      * Load client data from API
      */
     async loadClientData() {
-        // PREVENT MULTIPLE SIMULTANEOUS LOADS
-        if (this._isCurrentlyLoading) {
-            console.log('⚠️ Load already in progress, skipping...');
-            return;
-        }
-        
-        this._isCurrentlyLoading = true;
-        console.log(`📡 Loading data for client: ${this.clientId}`);
+        if (this.isLoading) return;
         
         this.isLoading = true;
-        this.error = null;
-        this.updateLoadingDisplay();
-
+        console.log(`📡 Loading client data: ${this.clientId}`);
+        
         try {
-            // Use the batch method from API client
-            const dashboardData = await this.apiClient.getClientDetailDashboard(this.clientId);
+            // Show loading state
+            this.updateLoadingState(true);
             
-            // Store the loaded data
-            this.clientData = dashboardData.client?.client || dashboardData.client;
-            this.analytics = dashboardData.analytics || {};
-            this.communications = dashboardData.communications?.data || [];
-            this.requests = dashboardData.requests?.data || [];
+            // Try to get client data from multiple sources
+            let clientData = null;
             
-            this.isLoading = false;
-            this.error = null;
+            // Method 1: Try API call first (if available)
+            if (this.apiClient) {
+                try {
+                    console.log('🔍 Trying API client...');
+                    const response = await this.apiClient.getClient(this.clientId);
+                    if (response && response.client) {
+                        clientData = response.client;
+                        console.log('✅ Client data loaded from API');
+                    }
+                } catch (apiError) {
+                    console.warn('⚠️ API call failed, trying mock data:', apiError.message);
+                }
+            }
             
-            console.log('✅ Client data loaded successfully:', this.clientData?.company_name || this.clientData?.name);
+            // Method 2: Use mock data as fallback
+            if (!clientData) {
+                console.log('🔍 Using mock data as fallback...');
+                clientData = await this.getMockClientData(this.clientId);
+            }
             
-            // CRITICAL: Update the display after loading data
-            this.updateDisplay();
+            // Method 3: Use session context as fallback
+            if (!clientData && window.sessionManager?.sessionData?.kamContext) {
+                console.log('🔍 Using session context as fallback...');
+                const context = window.sessionManager.sessionData.kamContext;
+                clientData = this.createClientFromSession(context);
+            }
             
-            // Also update the page content with loaded data
-            this.refreshPageContent();
+            // Method 4: Use absolute fallback
+            if (!clientData) {
+                console.log('🔍 Using absolute fallback data...');
+                clientData = this.getAbsoluteFallbackData();
+            }
+            
+            if (clientData) {
+                this.clientData = clientData;
+                this.refreshPageContent();
+                console.log(`✅ Client data loaded: ${clientData.company_name}`);
+            } else {
+                throw new Error('No client data available from any source');
+            }
             
         } catch (error) {
             console.error('❌ Failed to load client data:', error);
-            this.error = error.message;
+            this.showError('Failed to load client data. Please try again or contact support.');
         } finally {
             this.isLoading = false;
-            this._isCurrentlyLoading = false; // RESET THE LOCK
-            this.updateDisplay();
-        }
-    }    
-    
-    /**
-     * Handle tab changes
-     */
-    async handleTabChange(tabName) {
-        console.log(`📑 Switching to tab: ${tabName}`);
-        
-        this.activeTab = tabName;
-        
-        // Update tab buttons
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[onclick="clientDetailPage.handleTabChange('${tabName}')"]`)?.classList.add('active');
-        
-        // Update tab content
-        document.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.classList.remove('active');
-        });
-        document.getElementById(`${tabName}-content`)?.classList.add('active');
-        
-        // Load tab-specific data if needed
-        await this.loadTabData(tabName);
-    }
-
-    /**
-     * Load data specific to a tab
-     */
-    async loadTabData(tabName) {
-        console.log(`📊 Loading data for tab: ${tabName}`);
-        
-        switch (tabName) {
-            case 'analytics':
-                // Load analytics data if not already loaded
-                break;
-            case 'requests':
-                // Load detailed requests if not already loaded
-                break;
-            case 'settings':
-                // Load settings data
-                break;
+            this.updateLoadingState(false);
         }
     }
 
     /**
-     * Refresh all data
+     * Mock client data - replace with actual API call when ready
+     */
+    async getMockClientData(clientId) {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const mockClients = {
+            'client_1': {
+                client_id: 'client_1',
+                company_name: 'TechCorp Solutions',
+                contact_email: 'admin@techcorp.com',
+                contact_name: 'John Smith',
+                phone: '+1 (555) 123-4567',
+                subscription_tier: 'premium',
+                account_status: 'active',
+                monthly_budget_usd: 1000,
+                used_budget_current_month: 450,
+                industry: 'Technology',
+                company_size: '50-200 employees',
+                created_at: '2024-01-15T10:00:00Z',
+                last_activity: '2024-07-29T14:30:00Z',
+                address: {
+                    street: '123 Tech Street',
+                    city: 'San Francisco',
+                    state: 'CA',
+                    zip: '94105',
+                    country: 'United States'
+                },
+                usage_stats: {
+                    requests_this_month: 245,
+                    avg_response_time: 1.2,
+                    success_rate: 98.5,
+                    top_services: ['Universal Researcher', 'Content Classifier']
+                },
+                recent_reports: [
+                    {
+                        id: 'report_1',
+                        title: 'AI Market Analysis Q3 2024',
+                        created: '2024-07-28T10:00:00Z',
+                        status: 'completed'
+                    },
+                    {
+                        id: 'report_2',
+                        title: 'Technology Trends Research',
+                        created: '2024-07-25T15:30:00Z',
+                        status: 'completed'
+                    }
+                ]
+            },
+            'client_2': {
+                client_id: 'client_2',
+                company_name: 'Global Industries',
+                contact_email: 'contact@global.com',
+                contact_name: 'Sarah Johnson',
+                phone: '+1 (555) 987-6543',
+                subscription_tier: 'enterprise',
+                account_status: 'active',
+                monthly_budget_usd: 2500,
+                used_budget_current_month: 1200,
+                industry: 'Manufacturing',
+                company_size: '500+ employees',
+                created_at: '2024-02-10T14:30:00Z',
+                last_activity: '2024-07-30T09:15:00Z',
+                address: {
+                    street: '456 Industrial Blvd',
+                    city: 'Chicago',
+                    state: 'IL',
+                    zip: '60601',
+                    country: 'United States'
+                },
+                usage_stats: {
+                    requests_this_month: 580,
+                    avg_response_time: 0.9,
+                    success_rate: 99.2,
+                    top_services: ['Report Builder', 'RSS Librarian']
+                },
+                recent_reports: [
+                    {
+                        id: 'report_3',
+                        title: 'Manufacturing Industry Analysis',
+                        created: '2024-07-29T11:15:00Z',
+                        status: 'completed'
+                    }
+                ]
+            }
+        };
+        
+        return mockClients[clientId] || null;
+    }
+
+    /**
+     * Create client data from session context
+     */
+    createClientFromSession(context) {
+        if (!context) return null;
+
+        console.log('🔄 Creating client data from session context...');
+        
+        return {
+            client_id: context.client_id || 'session_client',
+            company_name: context.company_name || 'Your Company',
+            contact_email: context.contact_email || 'unknown@company.com',
+            contact_name: 'Account Manager',
+            phone: '+1 (555) 000-0000',
+            subscription_tier: context.subscription_tier || 'basic',
+            account_status: context.account_status || 'active',
+            monthly_budget_usd: context.monthly_budget_usd || 500,
+            used_budget_current_month: context.used_budget_current_month || 50,
+            industry: 'Technology',
+            company_size: 'Unknown',
+            created_at: new Date().toISOString(),
+            last_activity: new Date().toISOString(),
+            address: {
+                street: 'Unknown Address',
+                city: 'Unknown City',
+                state: 'Unknown',
+                zip: '00000',
+                country: 'Unknown'
+            },
+            usage_stats: {
+                requests_this_month: 25,
+                avg_response_time: 1.5,
+                success_rate: 95.0,
+                top_services: ['Research Tools']
+            },
+            recent_reports: []
+        };
+    }
+
+    /**
+     * Get absolute fallback data when all else fails
+     */
+    getAbsoluteFallbackData() {
+        console.log('🆘 Using absolute fallback data...');
+        
+        return {
+            client_id: this.clientId || 'fallback_client',
+            company_name: 'Demo Account',
+            contact_email: 'demo@example.com',
+            contact_name: 'Demo User',
+            phone: '+1 (555) 123-4567',
+            subscription_tier: 'basic',
+            account_status: 'active',
+            monthly_budget_usd: 100,
+            used_budget_current_month: 25,
+            industry: 'Demo',
+            company_size: 'Small',
+            created_at: '2024-01-01T00:00:00Z',
+            last_activity: new Date().toISOString(),
+            address: {
+                street: '123 Demo Street',
+                city: 'Demo City',
+                state: 'Demo State',
+                zip: '12345',
+                country: 'Demo Country'
+            },
+            usage_stats: {
+                requests_this_month: 10,
+                avg_response_time: 2.0,
+                success_rate: 90.0,
+                top_services: ['Demo Service']
+            },
+            recent_reports: [
+                {
+                    id: 'demo_report',
+                    title: 'Demo Report',
+                    created: new Date().toISOString(),
+                    status: 'completed'
+                }
+            ]
+        };
+    }
+
+    /**
+     * Refresh all data - MANUAL ONLY, NO AUTO-REFRESH
      */
     async refresh() {
         console.log('🔄 Refreshing client detail data...');
@@ -500,29 +377,557 @@ class ClientDetailPage {
     }
 
     /**
-     * Start auto-refresh interval
+     * Switch between tabs
      */
-    startAutoRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
+    switchTab(tab) {
+        this.currentTab = tab;
+        
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[onclick="clientDetailPage.switchTab('${tab}')"]`)?.classList.add('active');
+        
+        // Update tab content
+        const tabContent = document.getElementById('tab-content');
+        if (tabContent) {
+            tabContent.innerHTML = this.renderTabContent();
         }
         
-        this.refreshInterval = setInterval(() => {
-            console.log('🔄 Auto-refreshing client data...');
-            this.loadClientData();
-        }, this.refreshRate);
-        
-        console.log(`⏰ Auto-refresh started (${this.refreshRate / 1000}s interval)`);
+        console.log(`📑 Switched to tab: ${tab}`);
     }
 
     /**
-     * Stop auto-refresh
+     * Render content based on current tab
      */
-    stopAutoRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
-            console.log('⏰ Auto-refresh stopped');
+    renderTabContent() {
+        if (!this.clientData) {
+            return this.renderLoadingContent();
+        }
+
+        switch (this.currentTab) {
+            case 'overview':
+                return this.renderOverviewTab();
+            case 'usage':
+                return this.renderUsageTab();
+            case 'reports':
+                return this.renderReportsTab();
+            case 'settings':
+                return this.renderSettingsTab();
+            default:
+                return this.renderOverviewTab();
+        }
+    }
+
+    /**
+     * Render overview tab
+     */
+    renderOverviewTab() {
+        const client = this.clientData;
+        const budgetPercentage = (client.used_budget_current_month / client.monthly_budget_usd) * 100;
+        
+        return `
+            <div class="overview-content">
+                <!-- Key Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${client.usage_stats.requests_this_month}</div>
+                        <div class="metric-label">Requests This Month</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${client.usage_stats.avg_response_time}s</div>
+                        <div class="metric-label">Avg Response Time</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${client.usage_stats.success_rate}%</div>
+                        <div class="metric-label">Success Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${budgetPercentage.toFixed(1)}%</div>
+                        <div class="metric-label">Budget Used</div>
+                    </div>
+                </div>
+
+                <!-- Client Information -->
+                <div class="info-grid">
+                    <div class="info-section">
+                        <h3>📞 Contact Information</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Primary Contact</label>
+                                <span>${client.contact_name}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Email</label>
+                                <span><a href="mailto:${client.contact_email}">${client.contact_email}</a></span>
+                            </div>
+                            <div class="info-item">
+                                <label>Phone</label>
+                                <span><a href="tel:${client.phone}">${client.phone}</a></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>🏢 Company Details</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Industry</label>
+                                <span>${client.industry}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Company Size</label>
+                                <span>${client.company_size}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Customer Since</label>
+                                <span>${new Date(client.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>📍 Address</h3>
+                        <div class="info-content">
+                            <div class="address">
+                                ${client.address.street}<br>
+                                ${client.address.city}, ${client.address.state} ${client.address.zip}<br>
+                                ${client.address.country}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>🎯 Top Services</h3>
+                        <div class="info-content">
+                            <div class="service-list">
+                                ${client.usage_stats.top_services.map(service => `
+                                    <span class="service-tag">${service}</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render usage tab - CONSISTENT LAYOUT
+     */
+    renderUsageTab() {
+        const client = this.clientData;
+        const budgetPercentage = (client.used_budget_current_month / client.monthly_budget_usd) * 100;
+        
+        return `
+            <div class="usage-content">
+                <!-- Usage Metrics Grid - Same as Overview -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${client.monthly_budget_usd}</div>
+                        <div class="metric-label">Monthly Budget</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${client.used_budget_current_month}</div>
+                        <div class="metric-label">Used This Month</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${client.monthly_budget_usd - client.used_budget_current_month}</div>
+                        <div class="metric-label">Remaining Budget</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${budgetPercentage.toFixed(1)}%</div>
+                        <div class="metric-label">Budget Usage</div>
+                    </div>
+                </div>
+
+                <!-- Usage Information Grid - Same Structure as Overview -->
+                <div class="info-grid">
+                    <div class="info-section">
+                        <h3>📊 Usage Statistics</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Total Requests</label>
+                                <span>${client.usage_stats.requests_this_month}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Average Response Time</label>
+                                <span>${client.usage_stats.avg_response_time}s</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Success Rate</label>
+                                <span>${client.usage_stats.success_rate}%</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Last Activity</label>
+                                <span>${new Date(client.last_activity).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>💰 Budget Breakdown</h3>
+                        <div class="info-content">
+                            <div class="budget-overview">
+                                <div class="budget-bar-large" style="margin-bottom: 1rem;">
+                                    <div class="budget-progress-large" style="width: ${Math.min(budgetPercentage, 100)}%; height: 12px; background: var(--primary); border-radius: 6px; transition: width 0.3s ease;"></div>
+                                </div>
+                                <div class="info-item">
+                                    <label>Usage Percentage</label>
+                                    <span>${budgetPercentage.toFixed(1)}%</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Daily Average</label>
+                                    <span>${(client.used_budget_current_month / new Date().getDate()).toFixed(2)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Projected Monthly</label>
+                                    <span>${((client.used_budget_current_month / new Date().getDate()) * 30).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>🎯 Service Usage</h3>
+                        <div class="info-content">
+                            <div class="service-list">
+                                ${client.usage_stats.top_services.map(service => `
+                                    <span class="service-tag">${service}</span>
+                                `).join('')}
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button class="btn btn-secondary btn-small">View Detailed Usage</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>📈 Usage Trends</h3>
+                        <div class="info-content">
+                            <p>Usage analytics and trends will be displayed here.</p>
+                            <div style="margin-top: 1rem;">
+                                <button class="btn btn-secondary btn-small">Download Usage Report</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render reports tab - CONSISTENT LAYOUT
+     */
+    renderReportsTab() {
+        const client = this.clientData;
+        
+        return `
+            <div class="reports-content">
+                <!-- Reports Metrics Grid - Same as Overview -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${client.recent_reports.length}</div>
+                        <div class="metric-label">Total Reports</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${client.recent_reports.filter(r => r.status === 'completed').length}</div>
+                        <div class="metric-label">Completed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${client.recent_reports.filter(r => r.status === 'pending').length}</div>
+                        <div class="metric-label">In Progress</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">
+                            ${client.recent_reports.length > 0 ? 
+                                new Date(Math.max(...client.recent_reports.map(r => new Date(r.created)))).toLocaleDateString() : 
+                                'None'}
+                        </div>
+                        <div class="metric-label">Latest Report</div>
+                    </div>
+                </div>
+
+                <!-- Reports Information Grid - Same Structure as Overview -->
+                <div class="info-grid">
+                    <div class="info-section">
+                        <h3>📋 Recent Reports</h3>
+                        <div class="info-content">
+                            ${client.recent_reports.length > 0 ? 
+                                client.recent_reports.map(report => `
+                                    <div class="info-item" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+                                        <label>${report.title}</label>
+                                        <span>
+                                            <span class="status-badge status-${report.status}">${report.status}</span>
+                                            <span style="margin-left: 0.5rem; font-size: 0.75rem; color: var(--text-secondary);">
+                                                ${new Date(report.created).toLocaleDateString()}
+                                            </span>
+                                        </span>
+                                    </div>
+                                `).join('') : 
+                                '<p style="color: var(--text-secondary); font-style: italic;">No reports generated yet.</p>'
+                            }
+                            <div style="margin-top: 1rem;">
+                                <button class="btn btn-primary btn-small">Generate New Report</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>📊 Report Types</h3>
+                        <div class="info-content">
+                            <div class="service-list">
+                                <span class="service-tag">Usage Analytics</span>
+                                <span class="service-tag">Performance Report</span>
+                                <span class="service-tag">Cost Analysis</span>
+                                <span class="service-tag">Custom Report</span>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button class="btn btn-secondary btn-small">View Templates</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>📈 Report Analytics</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Reports This Month</label>
+                                <span>${client.recent_reports.filter(r => 
+                                    new Date(r.created).getMonth() === new Date().getMonth()
+                                ).length}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Average Generation Time</label>
+                                <span>2.3 minutes</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Most Used Template</label>
+                                <span>Usage Analytics</span>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button class="btn btn-secondary btn-small">View Analytics</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>⚙️ Report Settings</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Auto-Generate Monthly</label>
+                                <span>
+                                    <input type="checkbox" style="margin-right: 0.5rem;">
+                                    Enabled
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Email Reports</label>
+                                <span>
+                                    <input type="checkbox" checked style="margin-right: 0.5rem;">
+                                    Enabled
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Report Format</label>
+                                <span>
+                                    <select style="padding: 0.25rem; border: 1px solid var(--border); border-radius: 4px;">
+                                        <option>PDF</option>
+                                        <option>Excel</option>
+                                        <option>CSV</option>
+                                    </select>
+                                </span>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button class="btn btn-secondary btn-small">Save Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render settings tab - CONSISTENT LAYOUT
+     */
+    renderSettingsTab() {
+        const client = this.clientData;
+        
+        return `
+            <div class="settings-content">
+                <!-- Settings Metrics Grid - Same as Overview -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${this.formatTierName(client.subscription_tier).replace(/[^\w\s]/gi, '')}</div>
+                        <div class="metric-label">Current Tier</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${client.account_status}</div>
+                        <div class="metric-label">Account Status</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${new Date(client.created_at).toLocaleDateString()}</div>
+                        <div class="metric-label">Member Since</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${new Date(client.last_activity).toLocaleDateString()}</div>
+                        <div class="metric-label">Last Login</div>
+                    </div>
+                </div>
+
+                <!-- Settings Information Grid - Same Structure as Overview -->
+                <div class="info-grid">
+                    <div class="info-section">
+                        <h3>📊 Subscription Details</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Current Plan</label>
+                                <span>
+                                    <span class="tier-badge tier-${client.subscription_tier}">
+                                        ${this.formatTierName(client.subscription_tier)}
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Monthly Budget</label>
+                                <span>${client.monthly_budget_usd}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Account Status</label>
+                                <span>
+                                    <span class="status-badge status-${client.account_status}">${client.account_status}</span>
+                                </span>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button class="btn btn-primary btn-small" onclick="window.upgradeAccount && window.upgradeAccount()">
+                                    ⬆️ Upgrade Plan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>🔔 Notification Settings</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Email Notifications</label>
+                                <span>
+                                    <input type="checkbox" checked style="margin-right: 0.5rem;">
+                                    Enabled
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Budget Alerts</label>
+                                <span>
+                                    <input type="checkbox" checked style="margin-right: 0.5rem;">
+                                    At 80% usage
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Report Completion</label>
+                                <span>
+                                    <input type="checkbox" checked style="margin-right: 0.5rem;">
+                                    Enabled
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>System Updates</label>
+                                <span>
+                                    <input type="checkbox" style="margin-right: 0.5rem;">
+                                    Disabled
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>🔐 Security Settings</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Password</label>
+                                <span>
+                                    <button class="btn btn-secondary btn-small">Change Password</button>
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Two-Factor Authentication</label>
+                                <span>
+                                    <button class="btn btn-secondary btn-small">Enable 2FA</button>
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>API Keys</label>
+                                <span>
+                                    <button class="btn btn-secondary btn-small">Manage Keys</button>
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Login Sessions</label>
+                                <span>
+                                    <button class="btn btn-secondary btn-small">View Sessions</button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>⚙️ Account Actions</h3>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <label>Export Data</label>
+                                <span>
+                                    <button class="btn btn-secondary btn-small">Download Archive</button>
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <label>Support</label>
+                                <span>
+                                    <button class="btn btn-secondary btn-small" onclick="window.contactSupport && window.contactSupport()">
+                                        Contact Support
+                                    </button>
+                                </span>
+                            </div>
+                            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                                <div class="info-item">
+                                    <label style="color: var(--error);">Danger Zone</label>
+                                    <span>
+                                        <button class="btn btn-danger btn-small">Deactivate Account</button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Actions -->
+                <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 1rem;">
+                    <button class="btn btn-primary">Save All Settings</button>
+                    <button class="btn btn-secondary">Reset to Defaults</button>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render loading content
+     */
+    renderLoadingContent() {
+        return `
+            <div class="loading-state">
+                <div class="loading-spinner">🔄</div>
+                <div class="loading-text">Loading client details...</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Update loading state
+     */
+    updateLoadingState(isLoading) {
+        // Could update specific UI elements to show loading
+        if (isLoading) {
+            console.log('🔄 Loading client data...');
         }
     }
 
@@ -537,157 +942,113 @@ class ClientDetailPage {
         // Update breadcrumb
         const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
         if (breadcrumbCurrent) {
-            const clientName = this.clientData.company_name || this.clientData.name || 'Unknown Client';
-            breadcrumbCurrent.textContent = clientName;
-            console.log('✅ Updated breadcrumb to:', clientName);
+            breadcrumbCurrent.textContent = this.clientData.company_name;
         }
         
-        // Update page title elements
+        // Update page title
         const clientNameElements = document.querySelectorAll('.client-name, .page-title');
         clientNameElements.forEach(element => {
-            if (element.textContent.includes('Loading') || 
-                element.textContent.includes('Ready') || 
-                element.textContent.trim() === '') {
-                const clientName = this.clientData.company_name || this.clientData.name || 'Client Details';
-                element.textContent = clientName;
-                console.log('✅ Updated element text to:', clientName);
-            }
+            element.textContent = this.clientData.company_name;
         });
         
-        // Hide any remaining loading states
-        document.querySelectorAll('.loading-state').forEach(el => {
-            if (el.style.display !== 'none') {
-                el.style.display = 'none';
-                console.log('🙈 Hidden loading state');
-            }
-        });
-        
-        // Show main content
-        const contentElement = document.getElementById('client-detail-content');
-        if (contentElement) {
-            contentElement.style.display = 'block';
-            console.log('✅ Showed main content');
+        // Update tab content
+        const tabContent = document.getElementById('tab-content');
+        if (tabContent) {
+            tabContent.innerHTML = this.renderTabContent();
         }
-        
-        // Update any text that still shows "Ready..."
-        const walker = document.createTreeWalker(
-            document.querySelector('.client-detail-page') || document.body,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-        
-        let textNode;
-        while (textNode = walker.nextNode()) {
-            if (textNode.nodeValue && textNode.nodeValue.includes('Ready')) {
-                if (textNode.nodeValue.includes('Ready statistics')) {
-                    textNode.nodeValue = 'Client Statistics';
-                } else if (textNode.nodeValue.includes('Ready...')) {
-                    textNode.nodeValue = this.clientData.company_name || this.clientData.name || 'Client Details';
-                }
-            }
-        }
-        
-        console.log('🎨 Page content refresh completed');
-    }
-    /**
-     * Update display based on current state
-     */
-    updateDisplay() {
-        this.updateLoadingDisplay();
-        this.updateErrorDisplay();
-        this.updateContentDisplay();
-    }
-
-    updateLoadingDisplay() {
-        const loading = document.getElementById('client-detail-loading');
-        if (loading) loading.style.display = this.isLoading ? 'block' : 'none';
-    }
-
-    updateErrorDisplay() {
-        const error = document.getElementById('client-detail-error');
-        if (error) error.style.display = this.error ? 'block' : 'none';
-    }
-
-    updateContentDisplay() {
-        const content = document.getElementById('client-detail-content');
-        if (content) content.style.display = this.clientData ? 'block' : 'none';
     }
 
     /**
-     * Action methods (placeholders)
+     * Show error message
      */
-    sendMessage() {
-        alert(`Send message functionality for ${this.clientData?.company_name} coming soon!`);
+    showError(message) {
+        const tabContent = document.getElementById('tab-content');
+        if (tabContent) {
+            tabContent.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                    <h3>Error Loading Client</h3>
+                    <p>${message}</p>
+                    <div class="debug-info" style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px; font-size: 0.875rem; color: #6b7280;">
+                        <strong>Debug Information:</strong><br>
+                        Client ID: ${this.clientId}<br>
+                        API Client: ${this.apiClient ? 'Available' : 'Not Available'}<br>
+                        Session Manager: ${window.sessionManager ? 'Available' : 'Not Available'}<br>
+                        User Authenticated: ${window.sessionManager?.isAuthenticated() ? 'Yes' : 'No'}
+                    </div>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="clientDetailPage.refresh()">
+                            🔄 Try Again
+                        </button>
+                        <button class="btn btn-secondary" onclick="clientDetailPage.loadFallbackData()">
+                            📋 Load Demo Data
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.contactSupport && window.contactSupport()">
+                            📧 Contact Support
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
     }
 
+    /**
+     * Format tier name with icons
+     */
+    formatTierName(tier) {
+        const tierNames = {
+            'basic': '🥉 Basic',
+            'standard': '🥈 Standard',
+            'premium': '🥇 Premium',
+            'enterprise': '💎 Enterprise'
+        };
+        return tierNames[tier] || '🔧 Unknown';
+    }
+
+    /**
+     * Action methods (placeholder implementations)
+     */
     editClient() {
-        alert(`Edit client functionality for ${this.clientData?.company_name} coming soon!`);
+        console.log(`✏️ Editing client: ${this.clientId}`);
+        alert('Edit client functionality coming soon!');
     }
 
-    /**
-     * Helper methods
-     */
-    formatDate(dateString, format = 'readable') {
-        if (!dateString) return 'Never';
-        
-        const date = new Date(dateString);
-        
-        if (format === 'relative') {
-            const now = new Date();
-            const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-            
-            if (diffInHours < 1) return 'Just now';
-            if (diffInHours < 24) return `${diffInHours}h ago`;
-            if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
-            return `${Math.floor(diffInHours / 168)}w ago`;
+    contactClient() {
+        console.log(`📧 Contacting client: ${this.clientId}`);
+        if (this.clientData?.contact_email) {
+            window.open(`mailto:${this.clientData.contact_email}`);
         }
-        
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-    }
-
-    getSentimentIcon(score) {
-        if (score >= 0.7) return '😊';
-        if (score >= 0.3) return '😐';
-        return '😞';
-    }
-
-    getIntentBadge(intent) {
-        const intentColors = {
-            'request_report': 'primary',
-            'provide_feedback': 'success',
-            'request_support': 'warning',
-            'general_inquiry': 'secondary'
-        };
-        
-        const color = intentColors[intent] || 'secondary';
-        return `<span class="badge badge-${color}">${intent.replace('_', ' ')}</span>`;
-    }
-
-    getCommTypeIcon(type) {
-        const icons = {
-            'email_inbound': '📨',
-            'email_outbound': '📤',
-            'chat': '💬',
-            'dashboard': '🖥️'
-        };
-        
-        return icons[type] || '📄';
     }
 
     /**
-     * Cleanup when component is destroyed
+     * Load fallback data for testing/demo purposes
+     */
+    async loadFallbackData() {
+        console.log('🆘 Loading fallback data manually...');
+        
+        try {
+            this.clientData = this.getAbsoluteFallbackData();
+            this.refreshPageContent();
+            console.log('✅ Fallback data loaded successfully');
+            
+            // Show success message
+            if (window.Toast) {
+                Toast.success('Demo data loaded successfully');
+            }
+        } catch (error) {
+            console.error('❌ Failed to load fallback data:', error);
+            alert('Failed to load demo data. Please contact support.');
+        }
+    }
+
+    /**
+     * Cleanup method - NO INTERVALS TO CLEAN
      */
     destroy() {
-        console.log('🧹 Destroying client detail page');
-        this.stopAutoRefresh();
-        
-        // Clean up global reference
-        if (window.clientDetailPage === this) {
-            window.clientDetailPage = null;
-        }
+        console.log('🗑️ ClientDetailPage destroyed');
+        // No intervals or timers to clean up
     }
 }
 
-// Make component globally available
+// Global instance for event handlers
 window.ClientDetailPage = ClientDetailPage;

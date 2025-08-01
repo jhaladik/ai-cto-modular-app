@@ -1,31 +1,28 @@
-// Clients Page Component - Safe Integration Version  
-// File: Pages/public/js/components/clients-page.js
-
 /**
- * ClientsPage - Converts modal client list to routed page with expandable rows
- * Safe version that integrates with existing ClientListManager functionality
+ * Clients Page Component - Clean Version
+ * Simple client list with sorting - NO SEARCH FUNCTIONALITY
  */
 class ClientsPage {
     constructor(apiClient) {
         this.apiClient = apiClient || window.apiClient;
         this.clients = [];
         this.filteredClients = [];
-        this.currentFilter = '';
         this.currentSort = 'company_name';
+        this.sortDirection = 'asc';
         this.isLoading = false;
         this.expandedRows = new Set();
         this.currentPage = 1;
-        this.itemsPerPage = 20;
+        this.itemsPerPage = 15;
         
         // Bind methods for event handlers
-        this.handleSearch = this.handleSearch.bind(this);
         this.handleSort = this.handleSort.bind(this);
         this.toggleRowExpansion = this.toggleRowExpansion.bind(this);
         this.goToPage = this.goToPage.bind(this);
+        this.refresh = this.refresh.bind(this);
     }
 
     /**
-     * Render the clients page
+     * Render the clients page - NO SEARCH COMPONENTS
      */
     render() {
         return `
@@ -34,6 +31,9 @@ class ClientsPage {
                 <div class="page-header">
                     <h1 class="page-title">👥 Client Management</h1>
                     <div class="page-actions">
+                        <button class="btn btn-secondary" onclick="clientsPage.refresh()">
+                            🔄 Refresh
+                        </button>
                         <button class="btn btn-secondary" onclick="clientsPage.exportClients()">
                             📊 Export
                         </button>
@@ -43,380 +43,43 @@ class ClientsPage {
                     </div>
                 </div>
 
-                <!-- Search and Filters -->
-                <div class="clients-controls" style="background: var(--surface); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 1.5rem;">
-                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 250px;">
-                            <input type="text" 
-                                   class="search-input" 
-                                   style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm);"
-                                   placeholder="🔍 Search clients..."
-                                   value="${this.currentFilter}"
-                                   onkeyup="clientsPage.handleSearch(event)">
-                        </div>
-                        <div style="min-width: 150px;">
-                            <select class="filter-select" 
-                                    style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm);"
-                                    onchange="clientsPage.handleSort(event)">
-                                <option value="company_name" ${this.currentSort === 'company_name' ? 'selected' : ''}>
-                                    Sort by Company
-                                </option>
-                                <option value="subscription_tier" ${this.currentSort === 'subscription_tier' ? 'selected' : ''}>
-                                    Sort by Tier
-                                </option>
-                                <option value="created_at" ${this.currentSort === 'created_at' ? 'selected' : ''}>
-                                    Sort by Date
-                                </option>
-                                <option value="monthly_budget_usd" ${this.currentSort === 'monthly_budget_usd' ? 'selected' : ''}>
-                                    Sort by Budget
-                                </option>
-                            </select>
-                        </div>
+                <!-- Summary Cards -->
+                <div class="clients-summary" id="clients-summary">
+                    <!-- Summary cards will be rendered here -->
+                </div>
+
+                <!-- Simple Controls - NO SEARCH -->
+                <div class="clients-controls">
+                    <div class="sort-controls">
+                        <label for="sort-select">Sort by:</label>
+                        <select id="sort-select" onchange="clientsPage.handleSort(event)">
+                            <option value="company_name">Company Name</option>
+                            <option value="created_at">Date Added</option>
+                            <option value="subscription_tier">Subscription Tier</option>
+                            <option value="account_status">Account Status</option>
+                            <option value="monthly_budget_usd">Monthly Budget</option>
+                        </select>
+                        <button class="btn btn-small" onclick="clientsPage.toggleSortDirection()">
+                            ${this.sortDirection === 'asc' ? '⬆️' : '⬇️'}
+                        </button>
+                    </div>
+                    
+                    <div class="view-controls">
+                        <span class="results-count" id="results-count">
+                            Showing ${this.filteredClients.length} clients
+                        </span>
                     </div>
                 </div>
 
-                <!-- Client Statistics -->
-                <div class="clients-summary">
-                    ${this.renderClientsSummary()}
-                </div>
-
-                <!-- Clients Table -->
-                <div class="clients-content" id="clients-content">
-                    ${this.renderClientsTable()}
+                <!-- Clients Content -->
+                <div id="clients-content" class="clients-content">
+                    <!-- Clients will be rendered here -->
                 </div>
 
                 <!-- Pagination -->
-                <div class="pagination-container" style="margin-top: 1.5rem;">
-                    ${this.renderPagination()}
+                <div class="pagination-container">
+                    <!-- Pagination will be rendered here -->
                 </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render client statistics summary
-     */
-    renderClientsSummary() {
-        const stats = this.calculateStats();
-        
-        return `
-            <div class="summary-grid">
-                <div class="summary-card">
-                    <div class="summary-value">${stats.total}</div>
-                    <div class="summary-label">Total Clients</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-value">${stats.active}</div>
-                    <div class="summary-label">Active</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-value">${stats.trial}</div>
-                    <div class="summary-label">Trial</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-value">$${stats.totalRevenue.toLocaleString()}</div>
-                    <div class="summary-label">Monthly Revenue</div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render clients table with expandable rows
-     */
-    renderClientsTable() {
-        if (this.isLoading) {
-            return `
-                <div class="loading-state">
-                    <div class="loading-spinner">🔄</div>
-                    <p>Loading clients...</p>
-                </div>
-            `;
-        }
-
-        if (this.filteredClients.length === 0) {
-            return `
-                <div class="empty-state">
-                    <div class="empty-icon">👥</div>
-                    <h3>No clients found</h3>
-                    <p>Try adjusting your search criteria or add your first client.</p>
-                    <button class="btn btn-primary" onclick="clientsPage.showAddClient()">
-                        ➕ Add First Client
-                    </button>
-                </div>
-            `;
-        }
-
-        const paginatedClients = this.getPaginatedClients();
-
-        return `
-            <div class="expandable-table">
-                <!-- Table Header -->
-                <div class="table-header">
-                    <div>Company</div>
-                    <div>Tier</div>
-                    <div>Status</div>
-                    <div>Budget Usage</div>
-                    <div></div>
-                </div>
-
-                <!-- Table Rows -->
-                ${paginatedClients.map(client => this.renderClientRow(client)).join('')}
-            </div>
-        `;
-    }
-    /**
-     * Render individual client row with expandable details
-     */
-    renderClientRow(client) {
-        const isExpanded = this.expandedRows.has(client.client_id);
-        const usagePercent = this.getUsagePercentage(client);
-        
-        return `
-            <div class="table-row ${isExpanded ? 'expanded' : ''}" 
-                 data-client-id="${client.client_id}"
-                 onclick="clientsPage.toggleRowExpansion('${client.client_id}')">
-                
-                <div class="client-basic-info">
-                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">
-                        ${client.company_name || 'Unknown Company'}
-                    </div>
-                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                        ${client.contact_email || 'No email provided'}
-                    </div>
-                </div>
-                
-                <div>
-                    <span class="tier-badge tier-${(client.subscription_tier || 'basic').toLowerCase()}">
-                        ${(client.subscription_tier || 'BASIC').toUpperCase()}
-                    </span>
-                </div>
-                
-                <div>
-                    <span class="status-badge ${(client.account_status || 'active').toLowerCase()}">
-                        ${this.getStatusIcon(client.account_status)} ${(client.account_status || 'Active').charAt(0).toUpperCase() + (client.account_status || 'active').slice(1)}
-                    </span>
-                </div>
-                
-                <div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <div style="flex: 1; background: #f3f4f6; border-radius: 999px; height: 6px; overflow: hidden;">
-                            <div style="width: ${Math.min(usagePercent, 100)}%; height: 100%; background: ${usagePercent > 90 ? '#ef4444' : usagePercent > 70 ? '#f59e0b' : '#10b981'}; transition: width 0.3s ease;"></div>
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); min-width: 60px;">
-                            ${usagePercent}%
-                        </div>
-                    </div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                        $${client.used_budget_current_month || 0} / $${client.monthly_budget_usd || 0}
-                    </div>
-                </div>
-                
-                <div class="row-actions">
-                    <span class="row-expand-icon" style="transition: transform 0.2s ease; ${isExpanded ? 'transform: rotate(90deg);' : ''}">
-                        ▶
-                    </span>
-                </div>
-            </div>
-            
-            ${isExpanded ? this.renderRowDetails(client) : ''}
-        `;
-    }
-    renderRowDetails(client) {
-        return `
-            <div class="row-details" style="display: block;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
-                    
-                    <div>
-                        <h4 style="margin: 0 0 1rem 0; color: var(--text-primary);">Account Information</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Company:</strong><br>
-                                <span>${client.company_name || 'Not provided'}</span>
-                            </div>
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Contact Email:</strong><br>
-                                <span>${client.contact_email || 'Not provided'}</span>
-                            </div>
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Industry:</strong><br>
-                                <span>${client.industry || 'Not specified'}</span>
-                            </div>
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Created:</strong><br>
-                                <span>${this.formatDate(client.created_at)}</span>
-                            </div>
-                        </div>
-                    </div>
-    
-                    <div>
-                        <h4 style="margin: 0 0 1rem 0; color: var(--text-primary);">Subscription & Usage</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Tier:</strong><br>
-                                <span class="tier-badge tier-${(client.subscription_tier || 'basic').toLowerCase()}">
-                                    ${(client.subscription_tier || 'BASIC').toUpperCase()}
-                                </span>
-                            </div>
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Monthly Budget:</strong><br>
-                                <span>$${client.monthly_budget_usd || 0}</span>
-                            </div>
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Used This Month:</strong><br>
-                                <span>$${client.used_budget_current_month || 0}</span>
-                            </div>
-                            <div>
-                                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Usage:</strong><br>
-                                <span>${this.getUsagePercentage(client)}% of budget</span>
-                            </div>
-                        </div>
-                    </div>
-    
-                    <div>
-                        <h4 style="margin: 0 0 1rem 0; color: var(--text-primary);">Quick Actions</h4>
-                        <div style="display: grid; gap: 0.5rem;">
-                            <button class="btn btn-primary btn-sm" onclick="clientsPage.navigateToClientDetail('${client.client_id}'); event.stopPropagation();">
-                                👁️ View Details
-                            </button>
-                            <button class="btn btn-secondary btn-sm" onclick="clientsPage.editClient('${client.client_id}'); event.stopPropagation();">
-                                ✏️ Edit Client
-                            </button>
-                            <button class="btn btn-secondary btn-sm" onclick="clientsPage.viewReports('${client.client_id}'); event.stopPropagation();">
-                                📋 View Reports
-                            </button>
-                            <button class="btn btn-secondary btn-sm" onclick="clientsPage.viewUsage('${client.client_id}'); event.stopPropagation();">
-                                📊 Usage Details
-                            </button>
-                            <button class="btn btn-secondary btn-sm" onclick="clientsPage.sendMessage('${client.client_id}'); event.stopPropagation();">
-                                💬 Send Message
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    renderClientActions(client) {
-        return `
-            <div class="client-actions-row" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <!-- Primary action: View Details -->
-                <button class="btn btn-sm btn-primary" 
-                        onclick="clientsPage.navigateToClientDetail('${client.client_id}')"
-                        title="View detailed client profile and analytics">
-                    👁️ View Details
-                </button>
-                
-                <!-- Secondary actions -->
-                <button class="btn btn-sm btn-secondary" 
-                        onclick="clientsPage.sendClientMessage('${client.client_id}')"
-                        title="Send message to client">
-                    💬 Message
-                </button>
-                
-                <button class="btn btn-sm btn-secondary" 
-                        onclick="clientsPage.viewClientRequests('${client.client_id}')"
-                        title="View client's recent requests">
-                    📋 Requests
-                </button>
-                
-                <button class="btn btn-sm btn-secondary" 
-                        onclick="clientsPage.editClientInfo('${client.client_id}')"
-                        title="Edit client information">
-                    ✏️ Edit
-                </button>
-                
-                <!-- Tier-specific actions -->
-                ${client.subscription_tier !== 'enterprise' ? `
-                    <button class="btn btn-sm btn-outline" 
-                            onclick="clientsPage.showUpgradeOptions('${client.client_id}')"
-                            title="Upgrade subscription tier">
-                        ⬆️ Upgrade
-                    </button>
-                ` : ''}
-                
-                <!-- Budget actions for clients approaching limits -->
-                ${(client.used_budget_current_month / client.monthly_budget_usd) > 0.8 ? `
-                    <button class="btn btn-sm btn-warning" 
-                            onclick="clientsPage.adjustBudget('${client.client_id}')"
-                            title="Adjust monthly budget">
-                        💰 Budget
-                    </button>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    // Add navigation method:
-    navigateToClientDetail(clientId) {
-        console.log(`🧭 Navigating to client detail: ${clientId}`);
-        
-        // Use the router to navigate
-        if (window.kamRouter && window.kamRouter.initialized) {
-            window.kamRouter.navigateToClientDetail(clientId);
-        } else {
-            // Fallback: direct hash navigation
-            window.location.hash = `#/clients/${clientId}`;
-        }
-    }
-
-    // Add placeholder methods for other actions:
-    sendClientMessage(clientId) {
-        alert(`Message functionality for client ${clientId} coming soon!`);
-        // TODO: Open message composer modal
-    }
-
-    viewClientRequests(clientId) {
-        console.log(`📋 Viewing requests for client: ${clientId}`);
-        // For now, navigate to detail page and focus on requests tab
-        this.navigateToClientDetail(clientId);
-        // TODO: Add hash parameter to open requests tab: #/clients/${clientId}#requests
-    }
-
-    editClientInfo(clientId) {
-        alert(`Edit functionality for client ${clientId} coming soon!`);
-        // TODO: Open client edit modal
-    }
-
-    showUpgradeOptions(clientId) {
-        alert(`Upgrade options for client ${clientId} coming soon!`);
-        // TODO: Open subscription upgrade modal
-    }
-
-    adjustBudget(clientId) {
-        alert(`Budget adjustment for client ${clientId} coming soon!`);
-        // TODO: Open budget adjustment modal
-    }
-
-    /**
-     * Render pagination controls
-     */
-    renderPagination() {
-        const totalPages = Math.ceil(this.filteredClients.length / this.itemsPerPage);
-        
-        if (totalPages <= 1) return '';
-
-        const startItem = (this.currentPage - 1) * this.itemsPerPage + 1;
-        const endItem = Math.min(this.currentPage * this.itemsPerPage, this.filteredClients.length);
-
-        return `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <button class="btn btn-secondary btn-sm" 
-                        ${this.currentPage === 1 ? 'disabled' : ''}
-                        onclick="clientsPage.goToPage(${this.currentPage - 1})">
-                    ← Previous
-                </button>
-                
-                <span style="color: var(--text-secondary); font-size: 0.875rem;">
-                    Showing ${startItem}-${endItem} of ${this.filteredClients.length} clients
-                </span>
-                
-                <button class="btn btn-secondary btn-sm"
-                        ${this.currentPage === totalPages ? 'disabled' : ''}
-                        onclick="clientsPage.goToPage(${this.currentPage + 1})">
-                    Next →
-                </button>
             </div>
         `;
     }
@@ -425,62 +88,69 @@ class ClientsPage {
      * Mount the component and load data
      */
     async mount() {
-        // Set global reference for event handlers
-        window.clientsPage = this;
+        console.log('📋 Mounting Clients Page...');
         
-        // Load initial data
+        // Render summary
+        this.renderClientsSummary();
+        
+        // Load clients data
         await this.loadClients();
         
-        console.log('✅ Clients page mounted');
+        console.log('✅ Clients Page mounted');
     }
 
     /**
-     * Load clients data from API
+     * Load clients from API
      */
     async loadClients() {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        console.log('📡 Loading clients...');
+        
         try {
-            this.isLoading = true;
-            this.updateContent();
-            
-            // Use existing API if available
-            let response;
-            if (this.apiClient && this.apiClient.getClients) {
-                response = await this.apiClient.getClients();
-            } else {
-                // Fallback to mock data
-                response = { clients: this.getMockClients() };
+            // Show loading state
+            const contentElement = document.getElementById('clients-content');
+            if (contentElement) {
+                contentElement.innerHTML = this.renderLoadingState();
             }
             
-            this.clients = response.clients || [];
-            this.filteredClients = [...this.clients];
+            // Use mock data for now - replace with actual API call
+            const clients = await this.getMockClients();
             
-            this.applyFilters();
+            this.clients = clients;
+            this.applySorting();
             this.updateContent();
             
+            console.log(`✅ Loaded ${clients.length} clients`);
+            
         } catch (error) {
-            console.error('Failed to load clients:', error);
-            this.showError('Failed to load clients: ' + error.message);
+            console.error('❌ Failed to load clients:', error);
+            this.showError('Failed to load clients. Please try again.');
         } finally {
             this.isLoading = false;
-            setTimeout(() => this.updateContent(), 100);
         }
     }
 
     /**
-     * Get mock client data for testing
+     * Mock client data - replace with actual API call when ready
      */
-    getMockClients() {
+    async getMockClients() {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         return [
             {
                 client_id: 'client_1',
-                company_name: 'Acme Corp',
-                contact_email: 'admin@acme.com',
+                company_name: 'TechCorp Solutions',
+                contact_email: 'admin@techcorp.com',
                 subscription_tier: 'premium',
                 account_status: 'active',
                 monthly_budget_usd: 1000,
-                used_budget_current_month: 750,
+                used_budget_current_month: 450,
                 industry: 'Technology',
-                created_at: '2024-01-15T10:00:00Z'
+                created_at: '2024-01-15T10:00:00Z',
+                last_activity: '2024-07-29T14:30:00Z'
             },
             {
                 client_id: 'client_2',
@@ -491,7 +161,8 @@ class ClientsPage {
                 monthly_budget_usd: 2500,
                 used_budget_current_month: 1200,
                 industry: 'Manufacturing',
-                created_at: '2024-02-10T14:30:00Z'
+                created_at: '2024-02-10T14:30:00Z',
+                last_activity: '2024-07-30T09:15:00Z'
             },
             {
                 client_id: 'client_3',
@@ -502,62 +173,88 @@ class ClientsPage {
                 monthly_budget_usd: 500,
                 used_budget_current_month: 120,
                 industry: 'E-commerce',
-                created_at: '2024-07-01T09:15:00Z'
+                created_at: '2024-07-01T09:15:00Z',
+                last_activity: '2024-07-31T11:45:00Z'
+            },
+            {
+                client_id: 'client_4',
+                company_name: 'Healthcare Plus',
+                contact_email: 'info@healthplus.com',
+                subscription_tier: 'premium',
+                account_status: 'active',
+                monthly_budget_usd: 1500,
+                used_budget_current_month: 890,
+                industry: 'Healthcare',
+                created_at: '2024-03-20T16:00:00Z',
+                last_activity: '2024-07-31T08:20:00Z'
+            },
+            {
+                client_id: 'client_5',
+                company_name: 'EduTech Innovation',
+                contact_email: 'team@edutech.com',
+                subscription_tier: 'basic',
+                account_status: 'active',
+                monthly_budget_usd: 250,
+                used_budget_current_month: 180,
+                industry: 'Education',
+                created_at: '2024-06-15T12:30:00Z',
+                last_activity: '2024-07-30T15:10:00Z'
             }
         ];
     }
 
     /**
-     * Handle search input
-     */
-    handleSearch(event) {
-        this.currentFilter = event.target.value.toLowerCase();
-        this.currentPage = 1;
-        this.applyFilters();
-        this.updateContent();
-    }
-
-    /**
-     * Handle sort selection
+     * Handle sort selection - NO SEARCH FILTERING
      */
     handleSort(event) {
         this.currentSort = event.target.value;
-        this.applyFilters();
+        this.applySorting();
         this.updateContent();
+        console.log(`📊 Sorted by: ${this.currentSort} (${this.sortDirection})`);
     }
 
     /**
-     * Apply filters and sorting
+     * Toggle sort direction
      */
-    applyFilters() {
-        let filtered = [...this.clients];
-
-        // Apply search filter
-        if (this.currentFilter) {
-            filtered = filtered.filter(client => 
-                (client.company_name || '').toLowerCase().includes(this.currentFilter) ||
-                (client.contact_email || '').toLowerCase().includes(this.currentFilter) ||
-                (client.industry || '').toLowerCase().includes(this.currentFilter)
-            );
+    toggleSortDirection() {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        this.applySorting();
+        this.updateContent();
+        
+        // Update button icon
+        const button = document.querySelector('.sort-controls button');
+        if (button) {
+            button.innerHTML = this.sortDirection === 'asc' ? '⬆️' : '⬇️';
         }
+    }
+
+    /**
+     * Apply sorting only - no search filtering
+     */
+    applySorting() {
+        let sorted = [...this.clients];
 
         // Apply sorting
-        filtered.sort((a, b) => {
+        sorted.sort((a, b) => {
             const aVal = a[this.currentSort] || '';
             const bVal = b[this.currentSort] || '';
             
+            let comparison;
             if (typeof aVal === 'string') {
-                return aVal.localeCompare(bVal);
+                comparison = aVal.toLowerCase().localeCompare(bVal.toLowerCase());
+            } else {
+                comparison = (aVal || 0) - (bVal || 0);
             }
             
-            return (aVal || 0) - (bVal || 0);
+            return this.sortDirection === 'asc' ? comparison : -comparison;
         });
 
-        this.filteredClients = filtered;
+        this.filteredClients = sorted;
+        this.currentPage = 1; // Reset to first page when sorting
     }
 
     /**
-     * Toggle row expansion
+     * Toggle row expansion for client details
      */
     toggleRowExpansion(clientId) {
         if (this.expandedRows.has(clientId)) {
@@ -566,6 +263,17 @@ class ClientsPage {
             this.expandedRows.add(clientId);
         }
         this.updateContent();
+    }
+
+    /**
+     * Navigate to client detail page
+     */
+    goToClientDetail(clientId) {
+        if (window.router) {
+            window.router.navigate(`/clients/${clientId}`);
+        } else {
+            console.warn('Router not available');
+        }
     }
 
     /**
@@ -590,134 +298,282 @@ class ClientsPage {
      * Update content areas
      */
     updateContent() {
+        // Update clients table
         const contentElement = document.getElementById('clients-content');
         if (contentElement) {
             contentElement.innerHTML = this.renderClientsTable();
         }
 
+        // Update pagination
         const paginationElement = document.querySelector('.pagination-container');
         if (paginationElement) {
             paginationElement.innerHTML = this.renderPagination();
         }
 
-        const summaryElement = document.querySelector('.clients-summary');
-        if (summaryElement) {
-            summaryElement.innerHTML = this.renderClientsSummary();
+        // Update results count
+        const resultsCount = document.getElementById('results-count');
+        if (resultsCount) {
+            resultsCount.textContent = `Showing ${this.filteredClients.length} clients`;
         }
+
+        // Update summary
+        this.renderClientsSummary();
     }
 
     /**
-     * Action methods
+     * Render clients table with expandable rows
      */
-    showAddClient() {
-        alert('Add Client functionality coming soon!\n\nThis will open a form to create a new client account.');
-    }
-
-    editClient(clientId) {
-        const client = this.clients.find(c => c.client_id === clientId);
-        alert(`Edit client: ${client?.company_name}\n\nThis will open an edit form with the client's current information.`);
-    }
-
-    viewReports(clientId) {
-        const client = this.clients.find(c => c.client_id === clientId);
-        alert(`View reports for: ${client?.company_name}\n\nThis will show all reports generated for this client.`);
-    }
-
-    viewUsage(clientId) {
-        const client = this.clients.find(c => c.client_id === clientId);
-        alert(`Usage details for: ${client?.company_name}\n\nThis will show detailed usage analytics and billing information.`);
-    }
-
-    sendMessage(clientId) {
-        const client = this.clients.find(c => c.client_id === clientId);
-        alert(`Send message to: ${client?.company_name}\n\nThis will open a communication interface to contact the client.`);
-    }
-
-    exportClients() {
-        // Generate CSV export
-        const csv = this.generateCSV();
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `clients-export-${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
+    renderClientsTable() {
+        const clients = this.getPaginatedClients();
         
-        alert('Client data exported to CSV file!');
+        if (clients.length === 0) {
+            return `
+                <div class="empty-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+                    <h3>No Clients Found</h3>
+                    <p>There are no clients to display.</p>
+                    <button class="btn btn-primary" onclick="clientsPage.showAddClient()">
+                        ➕ Add First Client
+                    </button>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="expandable-table">
+                ${clients.map(client => this.renderClientRow(client)).join('')}
+            </div>
+        `;
     }
 
     /**
-     * Utility methods
+     * Render individual client row
      */
-    calculateStats() {
-        const total = this.clients.length;
-        const active = this.clients.filter(c => (c.account_status || 'active') === 'active').length;
-        const trial = this.clients.filter(c => (c.account_status || 'active') === 'trial').length;
+    renderClientRow(client) {
+        const isExpanded = this.expandedRows.has(client.client_id);
+        const budgetPercentage = (client.used_budget_current_month / client.monthly_budget_usd) * 100;
+        
+        return `
+            <div class="client-row ${isExpanded ? 'expanded' : ''}">
+                <div class="client-row-header" onclick="clientsPage.toggleRowExpansion('${client.client_id}')">
+                    <div class="client-info">
+                        <div class="client-name">
+                            <h4>${client.company_name}</h4>
+                            <span class="client-email">${client.contact_email}</span>
+                        </div>
+                        <div class="client-meta">
+                            <span class="tier-badge tier-${client.subscription_tier}">
+                                ${this.formatTierName(client.subscription_tier)}
+                            </span>
+                            <span class="status-badge status-${client.account_status}">
+                                ${client.account_status}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="client-stats">
+                        <div class="budget-info">
+                            <div class="budget-text">
+                                $${client.used_budget_current_month} / $${client.monthly_budget_usd}
+                            </div>
+                            <div class="budget-bar">
+                                <div class="budget-progress" style="width: ${Math.min(budgetPercentage, 100)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="client-actions">
+                        <button class="btn btn-small" onclick="event.stopPropagation(); clientsPage.goToClientDetail('${client.client_id}')">
+                            View Details
+                        </button>
+                        <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
+                    </div>
+                </div>
+                
+                ${isExpanded ? `
+                    <div class="client-row-details">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <label>Industry</label>
+                                <span>${client.industry}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Created</label>
+                                <span>${new Date(client.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Last Activity</label>
+                                <span>${new Date(client.last_activity).toLocaleDateString()}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Budget Usage</label>
+                                <span>${budgetPercentage.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                        <div class="detail-actions">
+                            <button class="btn btn-secondary btn-small" onclick="clientsPage.editClient('${client.client_id}')">
+                                ✏️ Edit
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="clientsPage.viewReports('${client.client_id}')">
+                                📊 Reports
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="clientsPage.viewBilling('${client.client_id}')">
+                                💳 Billing
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * Render pagination controls
+     */
+    renderPagination() {
+        const totalPages = Math.ceil(this.filteredClients.length / this.itemsPerPage);
+        
+        if (totalPages <= 1) return '';
+
+        let pages = [];
+        for (let i = 1; i <= totalPages; i++) {
+            pages.push(`
+                <button class="page-btn ${i === this.currentPage ? 'active' : ''}" 
+                        onclick="clientsPage.goToPage(${i})">
+                    ${i}
+                </button>
+            `);
+        }
+
+        return `
+            <div class="pagination">
+                <button class="page-btn" 
+                        onclick="clientsPage.goToPage(${this.currentPage - 1})"
+                        ${this.currentPage === 1 ? 'disabled' : ''}>
+                    ‹ Previous
+                </button>
+                ${pages.join('')}
+                <button class="page-btn" 
+                        onclick="clientsPage.goToPage(${this.currentPage + 1})"
+                        ${this.currentPage === totalPages ? 'disabled' : ''}>
+                    Next ›
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Render clients summary cards
+     */
+    renderClientsSummary() {
+        const summaryElement = document.getElementById('clients-summary');
+        if (!summaryElement) return;
+
+        const totalClients = this.clients.length;
+        const activeClients = this.clients.filter(c => c.account_status === 'active').length;
         const totalRevenue = this.clients.reduce((sum, c) => sum + (c.monthly_budget_usd || 0), 0);
-        
-        return { total, active, trial, totalRevenue };
+        const totalUsage = this.clients.reduce((sum, c) => sum + (c.used_budget_current_month || 0), 0);
+
+        summaryElement.innerHTML = `
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-value">${totalClients}</div>
+                    <div class="summary-label">Total Clients</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">${activeClients}</div>
+                    <div class="summary-label">Active Clients</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">$${totalRevenue.toLocaleString()}</div>
+                    <div class="summary-label">Monthly Budget</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">$${totalUsage.toLocaleString()}</div>
+                    <div class="summary-label">Usage This Month</div>
+                </div>
+            </div>
+        `;
     }
 
-    getStatusIcon(status) {
-        const icons = {
-            'active': '🟢',
-            'trial': '🟡',
-            'suspended': '🔴',
-            'cancelled': '⚫'
-        };
-        return icons[status] || '🟢';
+    /**
+     * Render loading state
+     */
+    renderLoadingState() {
+        return `
+            <div class="loading-state">
+                <div class="loading-spinner">🔄</div>
+                <div class="loading-text">Loading clients...</div>
+            </div>
+        `;
     }
 
-    getUsagePercentage(client) {
-        const budget = client.monthly_budget_usd || 0;
-        const used = client.used_budget_current_month || 0;
-        return budget > 0 ? Math.round((used / budget) * 100) : 0;
-    }
-
-    formatDate(dateString) {
-        if (!dateString) return 'Unknown';
-        try {
-            return new Date(dateString).toLocaleDateString();
-        } catch (error) {
-            return 'Invalid date';
-        }
-    }
-
-    generateCSV() {
-        const headers = ['Company', 'Email', 'Tier', 'Status', 'Budget', 'Used', 'Industry', 'Created'];
-        const rows = this.clients.map(client => [
-            client.company_name || '',
-            client.contact_email || '',
-            client.subscription_tier || '',
-            client.account_status || '',
-            client.monthly_budget_usd || 0,
-            client.used_budget_current_month || 0,
-            client.industry || '',
-            client.created_at || ''
-        ]);
-        
-        return [headers, ...rows].map(row => 
-            row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
-        ).join('\n');
-    }
-
+    /**
+     * Show error message
+     */
     showError(message) {
         const contentElement = document.getElementById('clients-content');
         if (contentElement) {
             contentElement.innerHTML = `
                 <div class="error-state">
-                    <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--error);">❌</div>
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
                     <h3>Error Loading Clients</h3>
                     <p>${message}</p>
-                    <button class="btn btn-primary" onclick="clientsPage.loadClients()">
+                    <button class="btn btn-primary" onclick="clientsPage.refresh()">
                         🔄 Try Again
                     </button>
                 </div>
             `;
         }
     }
+
+    /**
+     * Format tier name with icons
+     */
+    formatTierName(tier) {
+        const tierNames = {
+            'basic': '🥉 Basic',
+            'standard': '🥈 Standard',
+            'premium': '🥇 Premium',
+            'enterprise': '💎 Enterprise'
+        };
+        return tierNames[tier] || '🔧 Unknown';
+    }
+
+    /**
+     * Action methods (placeholder implementations)
+     */
+    async refresh() {
+        console.log('🔄 Refreshing clients...');
+        await this.loadClients();
+    }
+
+    showAddClient() {
+        alert('Add Client functionality coming soon!\n\nThis will open a form to create a new client account.');
+    }
+
+    exportClients() {
+        console.log('📊 Exporting clients...');
+        alert('Export functionality coming soon!\n\nThis will download a CSV of all clients.');
+    }
+
+    editClient(clientId) {
+        console.log(`✏️ Editing client: ${clientId}`);
+        alert(`Edit client functionality coming soon!\n\nClient ID: ${clientId}`);
+    }
+
+    viewReports(clientId) {
+        console.log(`📊 Viewing reports for client: ${clientId}`);
+        if (window.router) {
+            window.router.navigate(`/clients/${clientId}/reports`);
+        }
+    }
+
+    viewBilling(clientId) {
+        console.log(`💳 Viewing billing for client: ${clientId}`);
+        if (window.router) {
+            window.router.navigate(`/clients/${clientId}/billing`);
+        }
+    }
 }
 
-// Export for global use
+// Global instance for event handlers
 window.ClientsPage = ClientsPage;

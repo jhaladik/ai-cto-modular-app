@@ -1,735 +1,497 @@
-// Fixed KAM Router - Authentication Flow Compatible
-// File: Pages/public/js/core/kam-router.js
-// This version properly waits for authentication and doesn't interfere with login flow
-
+/**
+ * KAM Router - Clean Version
+ * Simple routing system - NO COMPLEX LOGIC, NO EXCESSIVE INTERVALS
+ */
 class KAMRouter {
-  constructor() {
-    this.kamContext = null;
-    this.routes = new Map();
-    this.currentRoute = null;
-    this.fallbackRoute = '/dashboard';
-    this.initialized = false;
-    this.layout = null;
-    this.authenticationChecked = false;
-  }
-
-  async initialize(kamContext) {
-    if (this.initialized) return;
-
-    console.log('🎯 KAM Router: Starting initialization...');
-
-    // IMPORTANT: Only initialize after authentication is confirmed
-    if (!this.isAuthenticated()) {
-      console.log('❌ Authentication not confirmed, aborting router initialization');
-      return false;
+    constructor() {
+        this.currentRoute = '/';
+        this.routes = new Map();
+        this.middlewares = [];
+        this.isInitialized = false;
+        
+        // Bind methods
+        this.handlePopState = this.handlePopState.bind(this);
+        this.navigate = this.navigate.bind(this);
+        
+        // Listen for browser back/forward
+        window.addEventListener('popstate', this.handlePopState);
     }
 
-    this.kamContext = kamContext;
-    this.registerRoutes();
-    this.setupEventListeners();
-    
-    // Initialize layout ONLY after authentication
-    await this.initializeLayout();
-    
-    // Handle initial route
-    await this.handleRouteChange();
-    
-    this.initialized = true;
-    console.log('✅ KAM Router initialized successfully');
-    return true;
-  }
+    /**
+     * Initialize the router
+     */
+    async initialize() {
+        if (this.isInitialized) {
+            console.log('⚠️ Router already initialized');
+            return;
+        }
 
-  /**
-   * Check if user is properly authenticated
-   */
-  isAuthenticated() {
-    const sessionToken = localStorage.getItem('bitware-session-token');
-    const userInfo = localStorage.getItem('bitware-user-info');
-    
-    if (!sessionToken || !userInfo) {
-      console.log('🔒 No valid session found');
-      return false;
-    }
-  
-    try {
-      const user = JSON.parse(userInfo);
-      if (!user) {
-        console.log('🔒 Invalid user object');
-        return false;
-      }
-      
-      // FLEXIBLE: Accept various user identifier formats
-      const hasIdentifier = user.email || user.username || user.user_id || user.id;
-      
-      if (!hasIdentifier) {
-        console.log('🔒 No user identifier found');
-        console.log('🔍 User object keys:', Object.keys(user));
-        return false;
-      }
-      
-      console.log('✅ Authentication confirmed for:', hasIdentifier);
-      return true;
-    } catch (error) {
-      console.log('🔒 Failed to parse user info:', error);
-      return false;
-    }
-  }
-  
-  /**
-   * Initialize the AI Factory Layout - only after authentication
-   */
-  async initializeLayout() {
-    if (!window.AIFactoryLayout) {
-      console.warn('⚠️ AIFactoryLayout not found, using fallback mode');
-      return false;
-    }
-
-    try {
-      const userInfo = JSON.parse(localStorage.getItem('bitware-user-info'));
-      const userType = this.determineUserType(userInfo);
-      
-      this.layout = new window.AIFactoryLayout({
-        userType: userType,
-        user: userInfo,
-        onNavigate: (path) => this.navigate(path),
-        showSearch: true
-      });
-
-      // Render layout
-      const appContainer = document.getElementById('app-container');
-      if (appContainer) {
-        appContainer.innerHTML = this.layout.render();
-        await this.layout.mount();
-        console.log('✅ AI Factory Layout initialized');
-        return true;
-      }
-    } catch (error) {
-      console.error('❌ Failed to initialize layout:', error);
-      return false;
-    }
-    
-    return false;
-  }
-
-  /**
-   * Determine user type from user info
-   */
-  determineUserType(userInfo) {
-    if (!userInfo) return 'client';
-    
-    // Check various possible role fields
-    if (userInfo.role === 'admin' || 
-        userInfo.userType === 'admin' || 
-        userInfo.userType === 'internal' ||
-        userInfo.email?.includes('@admin') ||
-        userInfo.isAdmin === true) {
-      return 'admin';
-    }
-    
-    return 'client';
-  }
-
-  registerRoutes() {
-    // Dashboard routes
-    this.routes.set('/dashboard', {
-      component: () => this.loadDashboard(),
-      permissions: ['dashboard_access'],
-      tiers: ['basic', 'standard', 'premium', 'enterprise'],
-      title: 'Dashboard'
-    });
-
-    this.routes.set('/admin', {
-      component: () => this.loadAdminDashboard(),
-      permissions: ['admin_access'],
-      roles: ['admin'],
-      title: 'Admin Dashboard'
-    });
-
-    // NEW: Clients page route (converted from modal)
-    this.routes.set('/clients', {
-      component: () => this.loadClientsPage(),
-      permissions: ['admin_access'],
-      roles: ['admin'],
-      title: 'Client Management'
-    });
-
-    // NEW: Client detail route (add after line ~70 in registerRoutes)
-    this.routes.set('/clients/:clientId', {
-      component: (params) => this.loadClientDetail(params.clientId),
-      permissions: ['admin_access', 'view_client_details'],
-      roles: ['admin', 'account_manager'],
-      title: 'Client Details'
-    });
-
-    // Worker routes
-    this.routes.set('/workers/universal-researcher', {
-      component: () => this.loadWorkerInterface('universal-researcher'),
-      permissions: ['worker_access'],
-      tiers: ['basic', 'standard', 'premium', 'enterprise'],
-      title: 'Universal Researcher'
-    });
-
-    this.routes.set('/workers/content-classifier', {
-      component: () => this.loadWorkerInterface('content-classifier'),
-      permissions: ['worker_access'],
-      tiers: ['standard', 'premium', 'enterprise'],
-      title: 'Content Classifier'
-    });
-
-    this.routes.set('/workers/report-builder', {
-      component: () => this.loadWorkerInterface('report-builder'),
-      permissions: ['worker_access'],
-      tiers: ['premium', 'enterprise'],
-      title: 'Report Builder'
-    });
-
-    // Client-specific routes
-    this.routes.set('/reports', {
-      component: () => this.loadReportsPage(),
-      permissions: ['view_reports'],
-      tiers: ['basic', 'standard', 'premium', 'enterprise'],
-      title: 'My Reports'
-    });
-
-    this.routes.set('/account', {
-      component: () => this.loadAccountPage(),
-      permissions: ['account_access'],
-      tiers: ['basic', 'standard', 'premium', 'enterprise'],
-      title: 'Account Settings'
-    });
-
-    // Error pages
-    this.routes.set('/access-denied', {
-      component: () => this.loadAccessDeniedPage(),
-      permissions: [],
-      title: 'Access Denied'
-    });
-
-    console.log(`📋 Registered ${this.routes.size} routes`);
-  }
-
-  setupEventListeners() {
-    // Handle hash changes
-    window.addEventListener('hashchange', () => {
-      if (this.initialized) {
-        this.handleRouteChange();
-      }
-    });
-
-    // Handle browser back/forward
-    window.addEventListener('popstate', (e) => {
-      if (this.initialized) {
-        this.handleRouteChange();
-      }
-    });
-  }
-
-  async handleRouteChange() {
-    const hash = window.location.hash.slice(1) || this.fallbackRoute;
-    await this.navigateToRoute(hash);
-  }
-
-  async navigate(path) {
-    if (!this.initialized) {
-      console.warn('⚠️ Router not initialized, cannot navigate');
-      return;
-    }
-
-    // Update URL
-    if (path.startsWith('/')) {
-      window.location.hash = '#' + path;
-    } else {
-      window.location.hash = '#/' + path;
-    }
-  }
-  /**
-   * Navigate to client detail page
-   */
-  navigateToClientDetail(clientId) {
-    console.log(`🧭 Navigating to client detail: ${clientId}`);
-    this.navigate(`/clients/${clientId}`);
-  }
-  
-  async navigateToRoute(path) {
-    if (!this.initialized) {
-      console.warn('⚠️ Router not initialized, skipping navigation');
-      return;
-    }
-
-    try {
-      console.log(`🧭 Navigating to: ${path}`);
-
-      // Find matching route
-      const route = this.findRoute(path);
-      if (!route) {
-        console.warn(`Route not found: ${path}`);
-        return this.navigateToRoute('/dashboard');
-      }
-
-      // Check permissions
-      const hasAccess = await this.checkRouteAccess(route);
-      if (!hasAccess) {
-        console.warn(`Access denied for route: ${path}`);
-        return this.navigateToRoute('/access-denied');
-      }
-
-      // Show loading state
-      this.showLoading();
-
-      // Load and render component
-      await this.loadRoute(route, path);
-      
-      // Update current route
-      this.currentRoute = path;
-      
-      // Update layout navigation state
-      if (this.layout) {
-        this.layout.currentPath = path;
-        this.layout.updateActiveStates();
-      }
-      
-      // Update page title
-      document.title = route.title ? `${route.title} - AI Factory` : 'AI Factory';
-
-      console.log(`✅ Navigation complete: ${path}`);
-
-    } catch (error) {
-      console.error('❌ Navigation error:', error);
-      this.showError('Failed to load page');
-    }
-  }
-
-  findRoute(path) {
-    // Direct match
-    if (this.routes.has(path)) {
-      return { path, ...this.routes.get(path) };
-    }
-
-    // Pattern matching for dynamic routes
-    for (const [routePath, routeConfig] of this.routes.entries()) {
-      const pattern = this.createRoutePattern(routePath);
-      const match = path.match(pattern);
-      if (match) {
-        return { 
-          path: routePath, 
-          params: this.extractParams(routePath, path),
-          ...routeConfig 
-        };
-      }
-    }
-
-    return null;
-  }
-
-  createRoutePattern(routePath) {
-    const pattern = routePath
-      .replace(/:[^/]+/g, '([^/]+)')
-      .replace(/\//g, '\\/');
-    return new RegExp(`^${pattern}$`);
-  }
-
-  extractParams(routePath, actualPath) {
-    const routeParts = routePath.split('/');
-    const actualParts = actualPath.split('/');
-    const params = {};
-
-    for (let i = 0; i < routeParts.length; i++) {
-      if (routeParts[i].startsWith(':')) {
-        const paramName = routeParts[i].slice(1);
-        params[paramName] = actualParts[i];
-      }
-    }
-
-    return params;
-  }
-
-  async checkRouteAccess(route) {
-    const userInfo = JSON.parse(localStorage.getItem('bitware-user-info') || '{}');
-    const userType = this.determineUserType(userInfo);
-
-    // Check role requirements
-    if (route.roles && route.roles.length > 0) {
-      if (!route.roles.includes(userType)) {
-        return false;
-      }
-    }
-
-    // For now, allow all permissions (since we're focusing on auth flow)
-    // TODO: Implement proper permission checking with KAM context
-    
-    return true;
-  }
-
-  async loadRoute(route, path) {
-    try {
-      const component = await route.component();
-      await this.renderComponent(component, route.params);
-    } catch (error) {
-      console.error(`Failed to load route component: ${path}`, error);
-      throw error;
-    }
-  }
-
-  async renderComponent(component, params = {}) {
-    let container = document.getElementById('main-content');
-    
-    // Fallback to app-container if layout not initialized
-    if (!container) {
-      container = document.getElementById('app-container');
-    }
-    
-    if (!container) {
-      console.error('❌ No content container found');
-      return;
-    }
-
-    if (component && component.render) {
-      // Component-based rendering
-      container.innerHTML = await component.render(params);
-      
-      // Mount component if it has mount method
-      if (component.mount) {
-        await component.mount();
-      }
-    } else if (typeof component === 'string') {
-      // String-based rendering
-      container.innerHTML = component;
-    }
-  }
-
-  // Route component loaders
-  async loadDashboard() {
-    const userInfo = JSON.parse(localStorage.getItem('bitware-user-info') || '{}');
-    const userType = this.determineUserType(userInfo);
-    
-    if (userType === 'admin') {
-      return this.loadAdminDashboard();
-    } else {
-      return this.loadClientDashboard();
-    }
-  }
-
-  async loadAdminDashboard() {
-    return {
-      render: () => {
-        return `
-          <div class="dashboard-page">
-            <div class="page-header">
-              <h1 class="page-title">📊 Admin Dashboard</h1>
-              <div class="page-actions">
-                <button class="btn btn-secondary" onclick="window.location.reload()">
-                  🔄 Refresh
-                </button>
-              </div>
-            </div>
-            <div id="admin-dashboard-content">
-              <div class="dashboard-loading">
-                <div class="loading-spinner">🔄</div>
-                <p>Loading admin dashboard components...</p>
-              </div>
-            </div>
-          </div>
-        `;
-      },
-      mount: async () => {
-        // Initialize existing admin dashboard if available
-        if (window.AdminDashboard && !window.adminDashboard) {
-          try {
-            window.adminDashboard = new window.AdminDashboard();
-            await window.adminDashboard.initialize();
+        console.log('🧭 Initializing KAM Router...');
+        
+        try {
+            // Set up default routes
+            this.setupDefaultRoutes();
             
-            // Replace loading with actual content
-            const container = document.getElementById('admin-dashboard-content');
-            if (container && window.adminDashboard.render) {
-              container.innerHTML = window.adminDashboard.render();
-            }
-          } catch (error) {
-            console.error('Failed to initialize admin dashboard:', error);
-            document.getElementById('admin-dashboard-content').innerHTML = `
-              <div class="error-state">
-                <p>Failed to load admin dashboard components</p>
-                <button class="btn btn-primary" onclick="window.location.reload()">Retry</button>
-              </div>
-            `;
-          }
-        }
-      }
-    };
-  }
-
-  async loadClientDashboard() {
-    return {
-      render: () => {
-        return `
-          <div class="dashboard-page">
-            <div class="page-header">
-              <h1 class="page-title">🎛️ My AI Factory</h1>
-              <div class="page-actions">
-                <button class="btn btn-secondary" onclick="window.location.reload()">
-                  🔄 Refresh
-                </button>
-              </div>
-            </div>
-            <div id="client-dashboard-content">
-              <div class="dashboard-loading">
-                <div class="loading-spinner">🔄</div>
-                <p>Loading your dashboard...</p>
-              </div>
-            </div>
-          </div>
-        `;
-      },
-      mount: async () => {
-        // Initialize existing client dashboard if available
-        if (window.ClientDashboard && !window.clientDashboard) {
-          try {
-            window.clientDashboard = new window.ClientDashboard();
-            await window.clientDashboard.initialize();
+            // Get initial route from URL hash or use appropriate default
+            let initialRoute = this.getRouteFromHash();
             
-            // Replace loading with actual content
-            const container = document.getElementById('client-dashboard-content');
-            if (container && window.clientDashboard.render) {
-              container.innerHTML = window.clientDashboard.render();
+            if (!initialRoute) {
+                // Use different defaults for admin vs client
+                const userType = window.sessionManager?.sessionData?.user?.role || 'client';
+                initialRoute = userType === 'admin' ? '/dashboard' : '/my-account';
+                console.log(`📍 Using default route for ${userType}: ${initialRoute}`);
             }
-          } catch (error) {
-            console.error('Failed to initialize client dashboard:', error);
-            document.getElementById('client-dashboard-content').innerHTML = `
-              <div class="error-state">
-                <p>Failed to load dashboard components</p>
-                <button class="btn btn-primary" onclick="window.location.reload()">Retry</button>
-              </div>
+            
+            // Navigate to initial route
+            await this.navigate(initialRoute, { replace: true });
+            
+            this.isInitialized = true;
+            console.log(`✅ KAM Router initialized on route: ${this.currentRoute}`);
+            
+        } catch (error) {
+            console.error('❌ Router initialization failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Set up default routes - DIFFERENT FOR ADMIN VS CLIENT
+     */
+    setupDefaultRoutes() {
+        // Universal routes
+        this.addRoute('/dashboard', () => this.loadDashboard());
+        
+        // Admin routes
+        this.addRoute('/clients', () => this.loadClientsPage());
+        this.addRoute('/clients/:id', (params) => this.loadClientDetail(params.id));
+        this.addRoute('/users', () => this.loadUserManagement());
+        
+        // Client routes  
+        this.addRoute('/my-account', () => this.loadMyAccount());
+        this.addRoute('/my-reports', () => this.loadMyReports());
+        this.addRoute('/billing', () => this.loadBilling());
+        
+        // Worker routes (placeholder)
+        this.addRoute('/workers/:worker', (params) => this.loadWorker(params.worker));
+        
+        // Settings and misc
+        this.addRoute('/settings', () => this.loadSettings());
+        this.addRoute('/help', () => this.loadHelp());
+        this.addRoute('/contact', () => this.loadContact());
+    }
+
+    /**
+     * Add a route
+     */
+    addRoute(path, handler) {
+        this.routes.set(path, handler);
+    }
+
+    /**
+     * Navigate to a route
+     */
+    async navigate(path, options = {}) {
+        try {
+            console.log(`🧭 Navigating to: ${path}`);
+            
+            // Update browser history if not replacing
+            if (!options.replace) {
+                window.history.pushState({ path }, '', `#${path}`);
+            } else {
+                window.history.replaceState({ path }, '', `#${path}`);
+            }
+            
+            this.currentRoute = path;
+            
+            // Find matching route
+            const { handler, params } = this.matchRoute(path);
+            
+            if (handler) {
+                // Execute any middlewares first
+                for (const middleware of this.middlewares) {
+                    const result = await middleware(path, params);
+                    if (result === false) {
+                        console.log('🛑 Navigation blocked by middleware');
+                        return;
+                    }
+                }
+                
+                // Execute route handler
+                await handler(params);
+                
+            } else {
+                console.warn(`⚠️ No route handler found for: ${path}`);
+                await this.handleNotFound(path);
+            }
+            
+        } catch (error) {
+            console.error('❌ Navigation error:', error);
+            await this.handleNavigationError(path, error);
+        }
+    }
+
+    /**
+     * Match route and extract parameters
+     */
+    matchRoute(path) {
+        // Try exact match first
+        const exactHandler = this.routes.get(path);
+        if (exactHandler) {
+            return { handler: exactHandler, params: {} };
+        }
+
+        // Try parameter matching
+        for (const [routePath, handler] of this.routes) {
+            if (routePath.includes(':')) {
+                const match = this.matchParameterRoute(path, routePath);
+                if (match) {
+                    return { handler, params: match };
+                }
+            }
+        }
+
+        return { handler: null, params: {} };
+    }
+
+    /**
+     * Match route with parameters (e.g., /clients/:id)
+     */
+    matchParameterRoute(path, routePath) {
+        const pathParts = path.split('/').filter(p => p);
+        const routeParts = routePath.split('/').filter(p => p);
+
+        if (pathParts.length !== routeParts.length) {
+            return null;
+        }
+
+        const params = {};
+        
+        for (let i = 0; i < routeParts.length; i++) {
+            const routePart = routeParts[i];
+            const pathPart = pathParts[i];
+
+            if (routePart.startsWith(':')) {
+                // Parameter part
+                const paramName = routePart.substring(1);
+                params[paramName] = pathPart;
+            } else if (routePart !== pathPart) {
+                // Static part doesn't match
+                return null;
+            }
+        }
+
+        return params;
+    }
+
+    /**
+     * Handle browser back/forward
+     */
+    async handlePopState(event) {
+        const path = event.state?.path || this.getRouteFromHash() || '/dashboard';
+        this.currentRoute = path;
+        
+        // Find and execute route handler without updating history
+        const { handler, params } = this.matchRoute(path);
+        if (handler) {
+            await handler(params);
+        }
+    }
+
+    /**
+     * Get route from URL hash
+     */
+    getRouteFromHash() {
+        const hash = window.location.hash;
+        return hash ? hash.substring(1) : null;
+    }
+
+    /**
+     * Add middleware
+     */
+    addMiddleware(middleware) {
+        this.middlewares.push(middleware);
+    }
+
+    // =============================================================================
+    // ROUTE HANDLERS - Delegate to Layout
+    // =============================================================================
+
+    async loadDashboard() {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate('/dashboard');
+        } else {
+            this.showLayoutError('Dashboard');
+        }
+    }
+
+    async loadClientsPage() {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate('/clients');
+        } else {
+            this.showLayoutError('Clients');
+        }
+    }
+
+    async loadClientDetail(clientId) {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate(`/clients/${clientId}`);
+        } else {
+            this.showLayoutError('Client Detail');
+        }
+    }
+
+    async loadMyAccount() {
+        // For client portal - show their own account details
+        if (window.sessionManager?.sessionData?.kamContext?.client_id) {
+            const clientId = window.sessionManager.sessionData.kamContext.client_id;
+            if (window.aiFactoryLayout) {
+                await window.aiFactoryLayout.navigate(`/clients/${clientId}`);
+            } else {
+                this.showLayoutError('My Account');
+            }
+        } else {
+            this.showError('My Account', 'Unable to load account information. Please refresh the page.');
+        }
+    }
+
+    async loadMyReports() {
+        this.showComingSoon('My Reports', 'Your personal reports and analytics will be available here.');
+    }
+
+    async loadUserManagement() {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate('/users');
+        } else {
+            this.showComingSoon('User Management', 'User management interface will be available here.');
+        }
+    }
+
+    async loadBilling() {
+        this.showComingSoon('Billing', 'Billing information and payment methods will be available here.');
+    }
+
+    async loadWorker(workerName) {
+        this.showComingSoon(`${workerName}`, `The ${workerName} worker interface is currently under development.`);
+    }
+
+    async loadSettings() {
+        this.showComingSoon('Settings', 'Account settings and preferences will be available here.');
+    }
+
+    async loadHelp() {
+        this.showComingSoon('Help & Documentation', 'Documentation, tutorials, and help resources will be available here.');
+    }
+
+    async loadContact() {
+        this.showComingSoon('Contact Support', 'Support contact form and live chat will be available here.');
+    }
+
+    // =============================================================================
+    // ERROR AND PLACEHOLDER HANDLERS
+    // =============================================================================
+
+    async handleNotFound(path) {
+        console.warn(`📍 Route not found: ${path}`);
+        
+        const contentArea = document.getElementById('route-content') || document.getElementById('main-content');
+        if (contentArea) {
+            contentArea.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                    <h3>Page Not Found</h3>
+                    <p>The page <code>${path}</code> could not be found.</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="router.navigate('/dashboard')">
+                            🏠 Go to Dashboard
+                        </button>
+                    </div>
+                </div>
             `;
-          }
         }
-      }
-    };
-  }
-
-  // NEW: Load clients page (converted from modal)
-  async loadClientsPage() {
-    if (!window.ClientsPage) {
-      return {
-        render: () => `
-          <div class="error-page">
-            <div class="error-icon">❌</div>
-            <h1>Component Not Found</h1>
-            <p>ClientsPage component not loaded. Make sure clients-page.js is included.</p>
-            <button class="btn btn-primary" onclick="kamRouter.navigate('/dashboard')">
-              Return to Dashboard
-            </button>
-          </div>
-        `,
-        mount: () => Promise.resolve()
-      };
     }
 
-    const apiClient = window.apiClient || (window.adminDashboard?.apiClient);
-    const clientsPage = new window.ClientsPage(apiClient);
-    
-    return {
-      render: () => clientsPage.render(),
-      mount: () => clientsPage.mount()
-    };
-  }
-
-  /**
-   * Load client detail page
-   */
-  async loadClientDetail(clientId) {
-    console.log(`🔍 Loading client detail for ID: ${clientId}`);
-    
-    // Check if ClientDetailPage is available
-    if (!window.ClientDetailPage) {
-      console.error('❌ ClientDetailPage component not found');
-      return this.getPlaceholderPage(
-        'Client Details', 
-        'Client detail component is loading...'
-      );
-    }
-
-    try {
-      // Create client detail page instance
-      const clientDetailPage = new window.ClientDetailPage(clientId, window.apiClient);
-      
-      return {
-        render: async (params) => {
-          console.log(`🎨 Rendering client detail for: ${clientId}`, params);
-          return await clientDetailPage.render();
-        },
-        mount: async () => {
-          console.log(`🔧 Mounting client detail for: ${clientId}`);
-          return await clientDetailPage.mount();
-        },
-        destroy: () => {
-          console.log(`🧹 Destroying client detail for: ${clientId}`);
-          if (clientDetailPage.destroy) {
-            clientDetailPage.destroy();
-          }
+    async handleNavigationError(path, error) {
+        console.error(`❌ Navigation error for ${path}:`, error);
+        
+        const contentArea = document.getElementById('route-content') || document.getElementById('main-content');
+        if (contentArea) {
+            contentArea.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">💥</div>
+                    <h3>Navigation Error</h3>
+                    <p>Failed to load <code>${path}</code></p>
+                    <p style="font-size: 0.875rem; color: var(--text-secondary);">${error.message}</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="router.navigate('/dashboard')">
+                            🏠 Go to Dashboard
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.location.reload()">
+                            🔄 Reload Page
+                        </button>
+                    </div>
+                </div>
+            `;
         }
-      };
-    } catch (error) {
-      console.error('❌ Failed to create ClientDetailPage:', error);
-      return this.getPlaceholderPage(
-        'Client Details Error', 
-        `Failed to load client details: ${error.message}`
-      );
     }
-  }
 
-  async loadWorkerInterface(workerId) {
-    return {
-      render: () => `
-        <div class="worker-page">
-          <div class="page-header">
-            <h1 class="page-title">${this.getWorkerTitle(workerId)}</h1>
-          </div>
-          <div class="worker-content">
-            <div class="worker-placeholder">
-              <div class="worker-icon">🔧</div>
-              <h2>Worker Interface</h2>
-              <p>Loading ${workerId} interface...</p>
-              <button class="btn btn-secondary" onclick="window.location.reload()">
-                🔄 Refresh
-              </button>
-            </div>
-          </div>
-        </div>
-      `,
-      mount: () => Promise.resolve()
-    };
-  }
-
-  // Placeholder pages
-  async loadReportsPage() {
-    return this.getPlaceholderPage('📋 My Reports', 'Reports functionality coming soon!');
-  }
-
-  async loadAccountPage() {
-    return this.getPlaceholderPage('👤 Account Settings', 'Account management coming soon!');
-  }
-
-  async loadAccessDeniedPage() {
-    return {
-      render: () => `
-        <div class="error-page">
-          <div class="error-icon">🚫</div>
-          <h1>Access Denied</h1>
-          <p>You don't have permission to access this page.</p>
-          <div class="error-actions">
-            <button class="btn btn-primary" onclick="kamRouter.navigate('/dashboard')">
-              Return to Dashboard
-            </button>
-          </div>
-        </div>
-      `,
-      mount: () => Promise.resolve()
-    };
-  }
-
-  // Utility methods
-  showLoading() {
-    const container = document.getElementById('main-content') || 
-                    document.getElementById('app-container');
-    if (container) {
-      container.innerHTML = `
-        <div class="loading-state">
-          <div class="loading-spinner">🔄</div>
-          <div class="loading-text">Loading...</div>
-        </div>
-      `;
+    showLayoutError(pageName) {
+        const contentArea = document.getElementById('route-content') || document.getElementById('main-content');
+        if (contentArea) {
+            contentArea.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                    <h3>Component Error</h3>
+                    <p>The ${pageName} component is not available.</p>
+                    <button class="btn btn-primary" onclick="window.location.reload()">
+                        🔄 Reload Page
+                    </button>
+                </div>
+            `;
+        }
     }
-  }
 
-  showError(message) {
-    const container = document.getElementById('main-content') || 
-                    document.getElementById('app-container');
-    if (container) {
-      container.innerHTML = `
-        <div class="error-state">
-          <div class="error-icon">❌</div>
-          <div class="error-message">${message}</div>
-          <button class="btn btn-primary" onclick="window.location.reload()">
-            Refresh Page
-          </button>
-        </div>
-      `;
+    showError(title, message) {
+        const contentArea = document.getElementById('route-content') || document.getElementById('main-content');
+        if (contentArea) {
+            contentArea.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                    <h3>${title} Error</h3>
+                    <p>${message}</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="router.navigate('/dashboard')">
+                            🏠 Go to Dashboard
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
     }
-  }
 
-  getPlaceholderPage(title, message) {
-    return {
-      render: () => `
-        <div class="placeholder-page">
-          <div class="page-header">
-            <h1 class="page-title">${title}</h1>
-          </div>
-          <div class="placeholder-content">
-            <div class="placeholder-icon">🚧</div>
-            <h2>Coming Soon</h2>
-            <p>${message}</p>
-            <button class="btn btn-primary" onclick="kamRouter.navigate('/dashboard')">
-              Return to Dashboard
-            </button>
-          </div>
-        </div>
-      `,
-      mount: () => Promise.resolve()
-    };
-  }
+    showComingSoon(title, description) {
+        const contentArea = document.getElementById('route-content') || document.getElementById('main-content');
+        if (contentArea) {
+            contentArea.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🚧</div>
+                    <div class="empty-state-content">
+                        <h3>${title} Coming Soon</h3>
+                        <p>${description}</p>
+                        <button class="btn btn-primary" onclick="router.navigate('/dashboard')">
+                            ← Back to Dashboard
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
 
-  getWorkerTitle(workerId) {
-    const titles = {
-      'universal-researcher': '🔍 Universal Researcher',
-      'content-classifier': '🧠 Content Classifier',
-      'report-builder': '📊 Report Builder'
-    };
-    return titles[workerId] || workerId;
-  }
+    // =============================================================================
+    // UTILITY METHODS
+    // =============================================================================
 
-  getCurrentRoute() {
-    return this.currentRoute;
-  }
+    /**
+     * Get current route
+     */
+    getCurrentRoute() {
+        return this.currentRoute;
+    }
+
+    /**
+     * Check if router is initialized
+     */
+    isReady() {
+        return this.isInitialized;
+    }
+
+    /**
+     * Reload current route
+     */
+    async reload() {
+        await this.navigate(this.currentRoute, { replace: true });
+    }
+
+    /**
+     * Go back in history
+     */
+    goBack() {
+        window.history.back();
+    }
+
+    /**
+     * Go forward in history
+     */
+    goForward() {
+        window.history.forward();
+    }
+
+    /**
+     * Get route parameters (if current route has them)
+     */
+    getParams() {
+        const { params } = this.matchRoute(this.currentRoute);
+        return params;
+    }
+
+    /**
+     * Cleanup method
+     */
+    destroy() {
+        window.removeEventListener('popstate', this.handlePopState);
+        this.routes.clear();
+        this.middlewares = [];
+        this.isInitialized = false;
+        console.log('🗑️ KAMRouter destroyed');
+    }
 }
 
-// Global instance
+// Authentication middleware
+function authMiddleware(path, params) {
+    // Skip auth check for login/logout pages
+    if (path === '/login' || path === '/logout') {
+        return true;
+    }
+
+    // Check if user is authenticated
+    if (window.sessionManager && !window.sessionManager.isAuthenticated()) {
+        console.warn('🔐 Authentication required, redirecting to login');
+        window.location.href = '/login.html';
+        return false;
+    }
+
+    return true;
+}
+
+// Permission middleware
+function permissionMiddleware(path, params) {
+    // Check if user has permission for this route
+    if (window.sessionManager?.sessionData?.user) {
+        const userRole = window.sessionManager.sessionData.user.role;
+        
+        // Admin-only routes
+        const adminRoutes = ['/settings', '/billing', '/analytics'];
+        if (adminRoutes.some(route => path.startsWith(route)) && userRole !== 'admin') {
+            console.warn('🚫 Admin access required');
+            window.router.navigate('/dashboard');
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Initialize global router when DOM is ready
+window.addEventListener('DOMContentLoaded', () => {
+    if (!window.router) {
+        window.router = new KAMRouter();
+        
+        // Add middlewares
+        window.router.addMiddleware(authMiddleware);
+        window.router.addMiddleware(permissionMiddleware);
+        
+        console.log('✅ KAM Router created (not initialized yet)');
+    }
+});
+
+// Export for global use
 window.KAMRouter = KAMRouter;
-window.kamRouter = new KAMRouter();
-
-// CRITICAL: Only auto-initialize after manual trigger
-// This prevents interference with authentication flow
-window.initializeAIFactoryRouter = async function() {
-  console.log('🎯 Manual router initialization requested...');
-  
-  try {
-    // Check if we have proper authentication
-    if (!window.kamRouter.isAuthenticated()) {
-      console.log('❌ Authentication check failed, redirecting to login');
-      window.location.href = '/login.html';
-      return false;
-    }
-
-    // Wait for KAM context if available
-    let kamContext = null;
-    if (window.kamContext?.initialized) {
-      kamContext = window.kamContext;
-    } else {
-      console.log('⚠️ KAM context not available, proceeding with basic context');
-      kamContext = { initialized: true }; // Minimal context
-    }
-
-    const success = await window.kamRouter.initialize(kamContext);
-    
-    if (success) {
-      console.log('✅ AI Factory Router initialized successfully');
-      return true;
-    } else {
-      console.log('❌ Router initialization failed');
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Router initialization error:', error);
-    return false;
-  }
-};
-
-console.log('✅ Enhanced KAM Router (Auth-Compatible) script loaded');
