@@ -333,3 +333,1011 @@
         gap: var(--spacing-md);
     }
 }
+/* Client List Manager Styles */
+/* Add to Pages/public/css/admin-modern.css */
+
+/* =============================================================================
+   CLIENT LIST MODAL
+============================================================================= */
+
+.client-list-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.client-list-modal .modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.client-list-modal .modal-container {
+    position: relative;
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 1200px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.client-list-modal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.client-list-modal .modal-header h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.client-list-modal .btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.client-list-modal .btn-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.client-list-modal .modal-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+#client-list-content {
+    height: 100%;
+    overflow-y: auto;
+    padding: 1.5rem 2rem;
+}
+
+/* =============================================================================
+   CLIENT CONTROLS
+============================================================================= */
+
+.client-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-container {
+    flex: 1;
+    min-width: 250px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-container {
+    min-width: 150px;
+}
+
+.filter-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.action-container {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* =============================================================================
+   CLIENT SUMMARY
+============================================================================= */
+
+.client-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.summary-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.summary-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* =============================================================================
+   CLIENT GRID
+============================================================================= */
+
+.client-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.client-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.client-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
+}
+
+.client-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.client-info {
+    flex: 1;
+}
+
+.client-name {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.client-email {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.client-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+}
+
+.client-card-body {
+    padding: 1.5rem;
+}
+
+.client-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.badge-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.badge-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.client-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.budget-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.budget-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color) 0%, var(--warning-color) 70%, var(--error-color) 100%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.client-meta {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.client-meta:last-child {
+    margin-bottom: 0;
+}
+
+/* =============================================================================
+   EDIT MODAL
+============================================================================= */
+
+.edit-client-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.edit-modal-container {
+    max-width: 800px;
+    width: 100%;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* =============================================================================
+   STATES
+============================================================================= */
+
+.loading-state,
+.error-state,
+.no-clients {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.loading-spinner {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    animation: spin 1s linear infinite;
+}
+
+.error-icon,
+.no-clients-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.no-clients h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.no-clients p {
+    margin: 0 0 1rem 0;
+}
+
+/* =============================================================================
+   TOAST NOTIFICATIONS
+============================================================================= */
+
+.toast {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius);
+    color: white;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 1200;
+    animation: slideInRight 0.3s ease;
+}
+
+.toast-success {
+    background: var(--success-color);
+}
+
+.toast-error {
+    background: var(--error-color);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN
+============================================================================= */
+
+@media (max-width: 768px) {
+    .client-list-modal .modal-header {
+        padding: 1rem;
+    }
+    
+    #client-list-content {
+        padding: 1rem;
+    }
+    
+    .client-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-container,
+    .filter-container {
+        min-width: auto;
+    }
+    
+    .client-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .client-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .client-card-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .client-actions {
+        margin-left: 0;
+        justify-content: flex-end;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .toast {
+        left: 1rem;
+        right: 1rem;
+        top: auto;
+        bottom: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .client-list-modal {
+        padding: 0.5rem;
+    }
+    
+    .client-list-modal .modal-container {
+        max-height: 95vh;
+    }
+    
+    .client-stats {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .summary-card {
+        padding: 0.75rem;
+    }
+}
+/* Phase 2 Enhanced CSS Styles */
+/* Add to Pages/public/css/admin-modern.css */
+
+/* =============================================================================
+   BULK OPERATIONS
+============================================================================= */
+
+.client-controls.enhanced {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.bulk-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--primary-color);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.selected-count {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: background-color 0.2s ease;
+}
+
+.btn-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.bulk-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.bulk-actions .btn {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.bulk-actions .btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Client grid in bulk mode */
+.client-grid.bulk-mode .client-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.client-grid.bulk-mode .client-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Client card checkbox */
+.client-card-checkbox {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 10;
+}
+
+.client-card-checkbox input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+.client-card.enhanced {
+    position: relative;
+}
+
+.client-card.enhanced.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+/* =============================================================================
+   INLINE EDITING
+============================================================================= */
+
+.inline-edit-form {
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 2px solid var(--primary-color);
+}
+
+.inline-edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.inline-edit-header h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.inline-edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.inline-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.edit-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.edit-field label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.inline-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: border-color 0.2s ease;
+}
+
+.inline-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* Enhanced client actions */
+.client-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: 1rem;
+    flex-wrap: wrap;
+}
+
+/* =============================================================================
+   ADD CLIENT MODAL
+============================================================================= */
+
+.add-client-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.add-modal-container {
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.add-client-modal .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.add-client-modal .form-group:last-child {
+    grid-column: 1 / -1;
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+/* =============================================================================
+   ENHANCED BUTTON STYLES
+============================================================================= */
+
+.btn-warning {
+    background: var(--warning-color);
+    color: white;
+    border: 1px solid var(--warning-color);
+}
+
+.btn-warning:hover {
+    background: #f59e0b;
+    border-color: #f59e0b;
+}
+
+.btn-info {
+    background: #3b82f6;
+    color: white;
+    border: 1px solid #3b82f6;
+}
+
+.btn-info:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+/* =============================================================================
+   ENHANCED CARDS
+============================================================================= */
+
+.client-card.enhanced .client-actions {
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 100px;
+}
+
+.client-card.enhanced .client-actions .btn {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+/* =============================================================================
+   STATUS INDICATORS
+============================================================================= */
+
+.client-card[data-status="active"] {
+    border-left: 4px solid var(--success-color);
+}
+
+.client-card[data-status="suspended"] {
+    border-left: 4px solid var(--warning-color);
+}
+
+.client-card[data-status="cancelled"] {
+    border-left: 4px solid var(--error-color);
+}
+
+.client-card[data-status="trial"] {
+    border-left: 4px solid #3b82f6;
+}
+
+/* =============================================================================
+   RESPONSIVE ENHANCEMENTS
+============================================================================= */
+
+@media (max-width: 768px) {
+    .bulk-actions-bar {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .bulk-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .client-controls.enhanced {
+        padding: 0.75rem;
+    }
+    
+    .inline-edit-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .inline-edit-header {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    .inline-edit-actions {
+        justify-content: center;
+    }
+    
+    .client-card.enhanced .client-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        min-width: auto;
+    }
+    
+    .add-client-modal .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .client-card-checkbox {
+        top: 0.5rem;
+        left: 0.5rem;
+    }
+    
+    .client-card-checkbox input[type="checkbox"] {
+        width: 1rem;
+        height: 1rem;
+    }
+    
+    .bulk-actions-bar {
+        padding: 0.75rem;
+    }
+    
+    .bulk-actions .btn {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .inline-edit-form {
+        padding: 1rem;
+    }
+    
+    .selected-count {
+        font-size: 0.875rem;
+    }
+}
+
+/* =============================================================================
+   ANIMATIONS & INTERACTIONS
+============================================================================= */
+
+.client-card.editing {
+    animation: highlightEdit 0.5s ease;
+}
+
+@keyframes highlightEdit {
+    0% { 
+        transform: scale(1);
+        box-shadow: var(--shadow-sm);
+    }
+    50% { 
+        transform: scale(1.02);
+        box-shadow: var(--shadow-xl);
+    }
+    100% { 
+        transform: scale(1);
+        box-shadow: var(--shadow-lg);
+    }
+}
+
+.client-card.saving {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.client-card.saving::after {
+    content: '🔄 Saving...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(37, 99, 235, 0.9);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 10;
+}
+
+/* =============================================================================
+   DARK MODE SUPPORT (if needed)
+============================================================================= */
+
+@media (prefers-color-scheme: dark) {
+    .bulk-actions-bar {
+        background: #1f2937;
+        border: 1px solid #374151;
+    }
+    
+    .inline-edit-form {
+        background: #1f2937;
+        border-color: #3b82f6;
+    }
+    
+    .inline-input {
+        background: #111827;
+        border-color: #374151;
+        color: #f9fafb;
+    }
+    
+    .inline-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+============================================================================= */
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}

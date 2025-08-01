@@ -281,9 +281,31 @@ if (!window.AdminDashboard) {
     
         async showClients() {
             try {
+                // Create and show the enhanced client list manager
+                if (!window.ClientListManager) {
+                    console.error('ClientListManager not loaded');
+                    // Fallback to basic functionality if component not loaded
+                    return this.showBasicClients();
+                }
+        
+                const clientListManager = new ClientListManager(this.apiClient);
+                await clientListManager.show();
+        
+            } catch (error) {
+                console.error('Failed to load enhanced client list:', error);
+                // Fallback to basic functionality
+                return this.showBasicClients();
+            }
+        }
+        
+        /**
+         * Fallback method - keeps original functionality as backup
+         */
+        async showBasicClients() {
+            try {
                 const clients = await this.apiClient.getClients();
                 
-                // Simple client list modal (can be enhanced later)
+                // Simple client list modal (original implementation)
                 const clientList = clients.clients?.map(client => 
                     `<li>${client.company_name} (${client.subscription_tier}) - ${client.account_status}</li>`
                 ).join('') || '<li>No clients found</li>';
@@ -297,7 +319,7 @@ if (!window.AdminDashboard) {
                 
                 modal.innerHTML = `
                     <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 600px; max-height: 80vh; overflow-y: auto;">
-                        <h3>👥 Client List</h3>
+                        <h3>👥 Client List (Basic View)</h3>
                         <ul style="margin: 1rem 0; padding-left: 1.5rem;">
                             ${clientList}
                         </ul>
