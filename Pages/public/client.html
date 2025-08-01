@@ -62,29 +62,35 @@
         </div>
     </div>
 
-    <!-- Core Scripts -->
+    <!-- Core Scripts - Keep existing order -->
     <script src="/js/shared/auth.js"></script>
     <script src="/js/shared/api.js"></script>
     <script src="/js/core/api-client.js"></script>
-    <script src="/js/core/kam-context-manager.js>"></script>
-    <script src="/js/core/kam-router.js>"></script>
     <script src="/js/core/session-manager.js"></script>
+    <script src="/js/core/kam-context-manager.js"></script>
+    
+    <!-- NEW: Add layout components but don't auto-initialize -->
+    <script src="/js/components/ai-factory-layout.js"></script>
+    <script src="/js/components/clients-page.js"></script>
+    
+    <!-- NEW: Load fixed router (no auto-init) -->
+    <script src="/js/core/kam-router.js"></script>
+    
+    <!-- Existing Components -->
     <script src="/js/components/ui-components.js"></script>
     <script src="/js/components/enhanced-universal-researcher-card.js"></script>
-    
-    <!-- Dashboard Scripts -->
     <script src="/js/dashboards/client-dashboard.js"></script>
 
     <script>
-        // Client dashboard initialization
+        // FIXED: Proper authentication flow for client dashboard
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingScreen = document.getElementById('loading-screen');
             const appContainer = document.getElementById('app-container');
             
             try {
-                console.log('🚀 Starting AI Factory Client Dashboard...');
+                console.log('🚀 Starting AI Factory Client Dashboard (Enhanced)...');
                 
-                // Check authentication first
+                // STEP 1: Authentication Check (existing logic preserved)
                 const sessionToken = localStorage.getItem('bitware-session-token');
                 const userInfo = localStorage.getItem('bitware-user-info');
                 
@@ -93,119 +99,163 @@
                     window.location.href = '/login.html';
                     return;
                 }
-                
-                // Parse user info
+
                 let user;
                 try {
                     user = JSON.parse(userInfo);
                 } catch (e) {
-                    console.error('Invalid user info:', e);
+                    console.log('❌ Invalid user info, redirecting to login');
                     window.location.href = '/login.html';
                     return;
                 }
+
+                console.log('✅ Authentication confirmed for:', user.email || user.username);
                 
-                // Allow both admin and client users to access client dashboard
-                // Admins can preview client experience
-                if (!user.role && !user.userType) {
-                    console.log('❌ Invalid user type');
-                    window.location.href = '/login.html';
-                    return;
+                // STEP 2: Initialize API Client (existing logic)
+                if (!window.apiClient) {
+                    window.apiClient = new AIFactoryAPIClient();
+                    console.log('✅ API Client initialized');
                 }
-                
-                console.log('✅ User validated:', user.username, 'Type:', user.role || user.userType);
-                
-                // Fix localStorage keys for consistency
-                localStorage.setItem('bitware-session-data', userInfo);
-                
-                // Wait for all dependencies to be available
-                if (!window.AIFactoryAPIClient) {
-                    throw new Error('API Client not loaded');
+
+                // STEP 3: Initialize KAM Context (existing logic - but don't block on it)
+                let kamContextInitialized = false;
+                try {
+                    if (window.KAMContextManager && !window.kamContext) {
+                        window.kamContext = new KAMContextManager(window.apiClient);
+                        kamContextInitialized = await window.kamContext.initialize();
+                        console.log(kamContextInitialized ? '✅ KAM Context initialized' : '⚠️ KAM Context fallback mode');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ KAM Context initialization failed (continuing anyway):', error);
                 }
+
+                // STEP 4: Try Enhanced Layout First, Fall Back to Original
+                let layoutInitialized = false;
                 
-                if (!window.ComponentRegistry) {
-                    throw new Error('UI Components not loaded');
+                if (window.AIFactoryLayout && window.initializeAIFactoryRouter) {
+                    try {
+                        console.log('🎨 Attempting enhanced client layout initialization...');
+                        layoutInitialized = await window.initializeAIFactoryRouter();
+                        
+                        if (layoutInitialized) {
+                            console.log('✅ Enhanced AI Factory client layout active');
+                            
+                            // Hide loading screen
+                            if (loadingScreen) {
+                                loadingScreen.style.display = 'none';
+                            }
+                            
+                            // Initialize existing client dashboard in the new layout
+                            setTimeout(async () => {
+                                if (window.ClientDashboard && !window.clientDashboard) {
+                                    try {
+                                        window.clientDashboard = new ClientDashboard();
+                                        await window.clientDashboard.initialize();
+                                        console.log('✅ Client dashboard initialized in enhanced layout');
+                                    } catch (error) {
+                                        console.warn('⚠️ Client dashboard initialization failed:', error);
+                                    }
+                                }
+                            }, 100);
+                            
+                            return; // Exit early - enhanced layout is active
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Enhanced client layout initialization failed:', error);
+                    }
                 }
+
+                // STEP 5: Fallback to Original Dashboard (existing logic)
+                console.log('📊 Using original client dashboard layout');
                 
-                // Load client dashboard
-                await loadClientDashboard();
-                
-                // Hide loading screen safely
+                if (window.ClientDashboard && !window.clientDashboard) {
+                    window.clientDashboard = new ClientDashboard();
+                    await window.clientDashboard.initialize();
+                    console.log('✅ Original client dashboard initialized');
+                } else {
+                    console.warn('⚠️ ClientDashboard class not found');
+                    appContainer.innerHTML = `
+                        <div class="error-screen">
+                            <div class="error-icon">❌</div>
+                            <h2>Dashboard Loading Failed</h2>
+                            <p>Unable to initialize your dashboard.</p>
+                            <button class="btn-primary" onclick="window.location.reload()">
+                                🔄 Retry
+                            </button>
+                            <button class="btn-secondary" onclick="logout()">
+                                🚪 Logout
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Hide loading screen
                 if (loadingScreen) {
                     loadingScreen.style.display = 'none';
                 }
-                
-                console.log('✅ AI Factory Client Dashboard ready');
-                
+
             } catch (error) {
-                console.error('❌ Client dashboard initialization failed:', error);
+                console.error('❌ Client initialization failed:', error);
                 
-                // Show error safely
+                // Show error screen
+                appContainer.innerHTML = `
+                    <div class="error-screen">
+                        <div class="error-icon">💥</div>
+                        <h2>Initialization Error</h2>
+                        <p>Failed to initialize your dashboard: ${error.message}</p>
+                        <div class="error-actions">
+                            <button class="btn-primary" onclick="window.location.reload()">
+                                🔄 Reload Page
+                            </button>
+                            <button class="btn-secondary" onclick="logout()">
+                                🚪 Logout
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
                 if (loadingScreen) {
-                    loadingScreen.innerHTML = `
-                        <div class="error-state">
-                            <h3>⚠️ Dashboard Loading Failed</h3>
-                            <p>${error.message}</p>
-                            <button onclick="clearAndReload()">🔄 Clear & Retry</button>
-                            <button onclick="forceLogout()">🚪 Force Logout</button>
-                            <button onclick="goToAdmin()">🔧 Admin Dashboard</button>
-                        </div>
-                    `;
-                } else if (appContainer) {
-                    appContainer.innerHTML = `
-                        <div class="error-state" style="padding: 2rem; text-align: center;">
-                            <h3>⚠️ Dashboard Loading Failed</h3>
-                            <p>${error.message}</p>
-                            <button onclick="clearAndReload()">🔄 Clear & Retry</button>
-                            <button onclick="forceLogout()">🚪 Force Logout</button>
-                            <button onclick="goToAdmin()">🔧 Admin Dashboard</button>
-                        </div>
-                    `;
+                    loadingScreen.style.display = 'none';
                 }
             }
         });
 
-        // Load client dashboard without complex dependencies
-        async function loadClientDashboard() {
-            const container = document.getElementById('app-container');
-            
-            if (!container) {
-                throw new Error('App container not found');
-            }
-            
-            // Ensure ClientDashboard class is available
-            if (!window.ClientDashboard) {
-                throw new Error('ClientDashboard class not loaded - check script loading order');
-            }
-            
-            // Create and mount client dashboard
-            window.clientDashboard = new ClientDashboard();
-            const content = await window.clientDashboard.render();
-            container.innerHTML = content;
-            await window.clientDashboard.mount();
-        }
-
-        // Global functions
-        function logout() {
-            console.log('🚪 Logging out...');
+        // Global utility functions (preserve existing)
+        window.logout = function() {
             localStorage.removeItem('bitware-session-token');
-            localStorage.removeItem('bitware-session-data');
             localStorage.removeItem('bitware-user-info');
+            localStorage.removeItem('bitware-kam-context');
             window.location.href = '/login.html';
-        }
-        
-        function forceLogout() {
-            localStorage.clear();
-            window.location.href = '/login.html';
-        }
-        
-        function clearAndReload() {
-            localStorage.clear();
-            window.location.reload();
-        }
-        
-        function goToAdmin() {
-            window.location.href = '/admin.html';
-        }
+        };
+
+        // Client-specific navigation helpers
+        window.navigateToReports = function() {
+            if (window.kamRouter && window.kamRouter.initialized) {
+                window.kamRouter.navigate('/reports');
+            } else {
+                alert('Reports section not yet available');
+            }
+        };
+
+        window.navigateToAccount = function() {
+            if (window.kamRouter && window.kamRouter.initialized) {
+                window.kamRouter.navigate('/account');
+            } else {
+                alert('Account settings not yet available');
+            }
+        };
+
+        // Debug helper
+        window.debugAIFactory = function() {
+            console.log('=== AI Factory Client Debug Info ===');
+            console.log('Router Initialized:', !!window.kamRouter?.initialized);
+            console.log('Layout Available:', !!window.AIFactoryLayout);
+            console.log('KAM Context:', !!window.kamContext?.initialized);
+            console.log('Client Dashboard:', !!window.clientDashboard);
+            console.log('API Client:', !!window.apiClient);
+            console.log('Session Token:', !!localStorage.getItem('bitware-session-token'));
+            console.log('User Info:', localStorage.getItem('bitware-user-info'));
+        };
     </script>
 </body>
 </html>
