@@ -115,8 +115,9 @@ class ClientsPage {
                 contentElement.innerHTML = this.renderLoadingState();
             }
             
-            // Use mock data for now - replace with actual API call
-            const clients = await this.getMockClients();
+            // Use real API data
+            const result = await this.apiClient.kamRequest('/clients', 'GET');
+            const clients = result.success ? result.clients : [];
             
             this.clients = clients;
             this.applySorting();
@@ -130,77 +131,6 @@ class ClientsPage {
         } finally {
             this.isLoading = false;
         }
-    }
-
-    /**
-     * Mock client data - replace with actual API call when ready
-     */
-    async getMockClients() {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        return [
-            {
-                client_id: 'client_1',
-                company_name: 'TechCorp Solutions',
-                contact_email: 'admin@techcorp.com',
-                subscription_tier: 'premium',
-                account_status: 'active',
-                monthly_budget_usd: 1000,
-                used_budget_current_month: 450,
-                industry: 'Technology',
-                created_at: '2024-01-15T10:00:00Z',
-                last_activity: '2024-07-29T14:30:00Z'
-            },
-            {
-                client_id: 'client_2',
-                company_name: 'Global Industries',
-                contact_email: 'contact@global.com',
-                subscription_tier: 'enterprise',
-                account_status: 'active',
-                monthly_budget_usd: 2500,
-                used_budget_current_month: 1200,
-                industry: 'Manufacturing',
-                created_at: '2024-02-10T14:30:00Z',
-                last_activity: '2024-07-30T09:15:00Z'
-            },
-            {
-                client_id: 'client_3',
-                company_name: 'StartupXYZ',
-                contact_email: 'hello@startupxyz.com',
-                subscription_tier: 'standard',
-                account_status: 'trial',
-                monthly_budget_usd: 500,
-                used_budget_current_month: 120,
-                industry: 'E-commerce',
-                created_at: '2024-07-01T09:15:00Z',
-                last_activity: '2024-07-31T11:45:00Z'
-            },
-            {
-                client_id: 'client_4',
-                company_name: 'Healthcare Plus',
-                contact_email: 'info@healthplus.com',
-                subscription_tier: 'premium',
-                account_status: 'active',
-                monthly_budget_usd: 1500,
-                used_budget_current_month: 890,
-                industry: 'Healthcare',
-                created_at: '2024-03-20T16:00:00Z',
-                last_activity: '2024-07-31T08:20:00Z'
-            },
-            {
-                client_id: 'client_5',
-                company_name: 'EduTech Innovation',
-                contact_email: 'team@edutech.com',
-                subscription_tier: 'basic',
-                account_status: 'active',
-                monthly_budget_usd: 250,
-                used_budget_current_month: 180,
-                industry: 'Education',
-                created_at: '2024-06-15T12:30:00Z',
-                last_activity: '2024-07-30T15:10:00Z'
-            }
-        ];
     }
 
     /**
