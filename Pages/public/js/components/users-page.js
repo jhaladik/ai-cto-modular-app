@@ -14,6 +14,7 @@ class UsersPage {
         this.users = [];
         this.selectedUsers = new Set();
         this.isLoading = false;
+        this.clientsMap = new Map(); // Store client_id -> company_name mapping
     }
 
     render() {
@@ -175,6 +176,10 @@ class UsersPage {
             if (response.success) {
                 this.users = response.users || [];
                 this.updateStats(response.stats);
+                
+                // Load client information for users with client_id
+                await this.loadClientInfo();
+                
                 this.renderUsers();
             } else {
                 this.showError();
@@ -184,6 +189,28 @@ class UsersPage {
             this.showError();
         } finally {
             this.isLoading = false;
+        }
+    }
+
+    async loadClientInfo() {
+        try {
+            // Get unique client IDs
+            const clientIds = [...new Set(this.users.filter(u => u.client_id).map(u => u.client_id))];
+            
+            if (clientIds.length === 0) return;
+            
+            // Fetch all clients
+            const clientsResponse = await this.apiClient.getClients();
+            
+            if (clientsResponse.success && clientsResponse.clients) {
+                // Build map of client_id -> company_name
+                clientsResponse.clients.forEach(client => {
+                    this.clientsMap.set(client.client_id, client.company_name);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load client info:', error);
+            // Don't fail the whole page if client info fails
         }
     }
 
@@ -214,6 +241,10 @@ class UsersPage {
     }
 
     renderUsers() {
+        // Hide loading state
+        document.getElementById('users-loading').style.display = 'none';
+        document.getElementById('users-error').style.display = 'none';
+        
         const tbody = document.getElementById('users-tbody');
         if (!tbody) return;
 
@@ -261,7 +292,7 @@ class UsersPage {
                     <span class="role-badge role-${user.role}">${this.formatRole(user.role)}</span>
                 </td>
                 <td>
-                    ${user.client_id ? `<a href="#/clients/${user.client_id}" class="link">${user.client_id}</a>` : '-'}
+                    ${user.client_id ? `<a href="#/clients/${user.client_id}" class="link">${this.getClientName(user.client_id)}</a>` : '-'}
                 </td>
                 <td>
                     <span class="status-badge status-${user.account_status || 'active'}">${this.formatStatus(user.account_status)}</span>
@@ -272,6 +303,9 @@ class UsersPage {
                     <div class="action-buttons">
                         <button class="btn btn-small" onclick="window.usersPage.editUser('${user.id}')" title="Edit">
                             ✏️
+                        </button>
+                        <button class="btn btn-small" onclick="window.usersPage.resetPassword('${user.id}')" title="Reset Password">
+                            🔑
                         </button>
                         <button class="btn btn-small btn-danger" onclick="window.usersPage.deleteUser('${user.id}')" title="Delete">
                             🗑️
@@ -488,8 +522,147 @@ class UsersPage {
         const user = this.users.find(u => u.id === userId);
         if (!user) return;
 
-        // TODO: Implement edit user modal
-        alert('Edit user functionality coming soon!');
+        if (!window.SimpleModal) {
+            alert('Modal component not loaded');
+            return;
+        }
+
+        window.SimpleModal.show({
+            title: '✏️ Edit User',
+            size: 'medium',
+            content: `
+                <form id="edit-user-form" style="display: grid; gap: 1rem;">
+                    <input type="hidden" name="user_id" value="${userId}">
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" name="username" required value="${this.escapeHtml(user.username)}" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" required value="${this.escapeHtml(user.email)}" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="full_name" required value="${this.escapeHtml(user.full_name || '')}" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Role *</label>
+                        <select name="role" required class="form-select">
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Administrator</option>
+                            <option value="client" ${user.role === 'client' ? 'selected' : ''}>Client User</option>
+                            <option value="support" ${user.role === 'support' ? 'selected' : ''}>Support Staff</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="edit-client-select-group" style="${user.role === 'client' ? '' : 'display: none;'}">
+                        <label>Client</label>
+                        <select name="client_id" class="form-select">
+                            <option value="">Select Client</option>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" value="${this.escapeHtml(user.department || '')}" placeholder="Engineering, Sales, etc." class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" class="form-select">
+                            <option value="active" ${user.account_status === 'active' ? 'selected' : ''}>Active</option>
+                            <option value="suspended" ${user.account_status === 'suspended' ? 'selected' : ''}>Suspended</option>
+                            <option value="pending" ${user.account_status === 'pending' ? 'selected' : ''}>Pending</option>
+                        </select>
+                    </div>
+                    <div class="card" style="background: var(--bg-secondary); padding: 1rem; margin-top: 0.5rem;">
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Created:</span>
+                                <span>${this.formatDate(user.created_at)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Last Login:</span>
+                                <span>${this.formatDate(user.last_login) || 'Never'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Login Count:</span>
+                                <span>${user.login_count || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            `,
+            primaryButton: {
+                text: 'Save Changes',
+                onClick: () => this.handleEditUser(userId)
+            }
+        });
+
+        // Add role change handler
+        document.querySelector('#edit-user-form select[name="role"]').addEventListener('change', (e) => {
+            const clientGroup = document.getElementById('edit-client-select-group');
+            if (e.target.value === 'client') {
+                clientGroup.style.display = 'block';
+                this.loadEditClientOptions(user.client_id);
+            } else {
+                clientGroup.style.display = 'none';
+            }
+        });
+
+        // Load client options if user is a client
+        if (user.role === 'client') {
+            this.loadEditClientOptions(user.client_id);
+        }
+    }
+
+    async handleEditUser(userId) {
+        const form = document.getElementById('edit-user-form');
+        const formData = new FormData(form);
+        
+        const updates = {
+            username: formData.get('username'),
+            email: formData.get('email'),
+            full_name: formData.get('full_name'),
+            role: formData.get('role'),
+            status: formData.get('status'),
+            client_id: formData.get('client_id') || null,
+            department: formData.get('department') || null
+        };
+
+        // Validate
+        if (!updates.username || !updates.email || !updates.role) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        try {
+            const response = await this.apiClient.kamRequest(`/users/${userId}`, 'PUT', updates);
+            
+            if (response.success) {
+                window.SimpleModal.close();
+                this.showSuccess('User updated successfully');
+                await this.loadUsers();
+            } else {
+                alert('Failed to update user: ' + (response.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error updating user:', error);
+            alert('Failed to update user');
+        }
+    }
+
+    async loadEditClientOptions(selectedClientId) {
+        try {
+            const response = await this.apiClient.getClients();
+            const select = document.querySelector('#edit-user-form select[name="client_id"]');
+            
+            if (response.success && response.clients) {
+                select.innerHTML = '<option value="">Select Client</option>' + 
+                    response.clients.map(client => 
+                        `<option value="${client.client_id}" ${client.client_id === selectedClientId ? 'selected' : ''}>${this.escapeHtml(client.company_name)}</option>`
+                    ).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load clients:', error);
+        }
     }
 
     async deleteUser(userId) {
@@ -515,7 +688,173 @@ class UsersPage {
         }
     }
 
+    async resetPassword(userId) {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        if (!window.SimpleModal) {
+            alert('Modal component not loaded');
+            return;
+        }
+
+        window.SimpleModal.show({
+            title: '🔑 Reset Password',
+            size: 'small',
+            content: `
+                <form id="reset-password-form" style="display: grid; gap: 1rem;">
+                    <div class="card" style="background: var(--bg-secondary); padding: 1rem;">
+                        <p style="margin: 0; font-size: 0.875rem;">
+                            Reset password for <strong>${this.escapeHtml(user.username)}</strong>
+                            <br>
+                            <span style="color: var(--text-secondary);">${this.escapeHtml(user.email)}</span>
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        <label>New Password *</label>
+                        <input type="password" name="new_password" required placeholder="Enter new password" class="form-input">
+                        <small style="color: var(--text-secondary);">Minimum 8 characters</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password *</label>
+                        <input type="password" name="confirm_password" required placeholder="Confirm new password" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" name="notify_user" checked>
+                            Send password reset notification to user
+                        </label>
+                    </div>
+                </form>
+            `,
+            primaryButton: {
+                text: 'Reset Password',
+                onClick: () => this.handleResetPassword(userId)
+            }
+        });
+    }
+
+    async handleResetPassword(userId) {
+        const form = document.getElementById('reset-password-form');
+        const formData = new FormData(form);
+        
+        const newPassword = formData.get('new_password');
+        const confirmPassword = formData.get('confirm_password');
+        const notifyUser = formData.get('notify_user');
+
+        // Validate
+        if (!newPassword || !confirmPassword) {
+            alert('Please enter both password fields');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            alert('Password must be at least 8 characters');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+
+        try {
+            // Note: In production, this should be a specific password reset endpoint
+            // For now, we'll show a message that this needs backend implementation
+            alert('Password reset functionality needs backend implementation.\n\nIn production, this would:\n1. Hash the new password\n2. Update the user record\n3. Invalidate existing sessions\n4. Send email notification if requested');
+            
+            window.SimpleModal.close();
+            
+            // TODO: Implement backend endpoint for password reset
+            // const response = await this.apiClient.kamRequest(`/users/${userId}/reset-password`, 'POST', {
+            //     new_password: newPassword,
+            //     notify_user: notifyUser
+            // });
+            
+        } catch (error) {
+            console.error('Error resetting password:', error);
+            alert('Failed to reset password');
+        }
+    }
+
     // Bulk Actions
+    async bulkActivate() {
+        const count = this.selectedUsers.size;
+        if (count === 0) return;
+        
+        if (!confirm(`Are you sure you want to activate ${count} user${count > 1 ? 's' : ''}?`)) {
+            return;
+        }
+        
+        await this.performBulkAction('activate');
+    }
+    
+    async bulkSuspend() {
+        const count = this.selectedUsers.size;
+        if (count === 0) return;
+        
+        if (!confirm(`Are you sure you want to suspend ${count} user${count > 1 ? 's' : ''}?`)) {
+            return;
+        }
+        
+        await this.performBulkAction('suspend');
+    }
+    
+    async bulkDelete() {
+        const count = this.selectedUsers.size;
+        if (count === 0) return;
+        
+        if (!confirm(`Are you sure you want to delete ${count} user${count > 1 ? 's' : ''}? This action cannot be undone.`)) {
+            return;
+        }
+        
+        await this.performBulkAction('delete');
+    }
+    
+    async performBulkAction(action) {
+        const userIds = Array.from(this.selectedUsers);
+        let successCount = 0;
+        let failCount = 0;
+        
+        this.showLoading();
+        
+        for (const userId of userIds) {
+            try {
+                let response;
+                
+                if (action === 'delete') {
+                    response = await this.apiClient.kamRequest(`/users/${userId}`, 'DELETE');
+                } else {
+                    // For activate/suspend, update the status
+                    const status = action === 'activate' ? 'active' : 'suspended';
+                    response = await this.apiClient.kamRequest(`/users/${userId}`, 'PUT', { status });
+                }
+                
+                if (response.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error(`Failed to ${action} user ${userId}:`, response.error);
+                }
+            } catch (error) {
+                failCount++;
+                console.error(`Error during ${action} for user ${userId}:`, error);
+            }
+        }
+        
+        // Clear selection
+        this.clearSelection();
+        
+        // Show result
+        if (failCount === 0) {
+            this.showSuccess(`Successfully ${action}d ${successCount} user${successCount > 1 ? 's' : ''}`);
+        } else {
+            alert(`Operation completed with errors:\n✓ Success: ${successCount}\n✗ Failed: ${failCount}`);
+        }
+        
+        // Reload users
+        await this.loadUsers();
+    }
+    
     toggleSelectAll() {
         const selectAll = document.getElementById('select-all');
         const checkboxes = document.querySelectorAll('#users-tbody input[type="checkbox"]');
@@ -684,6 +1023,10 @@ class UsersPage {
             return parts[0][0] + parts[parts.length - 1][0];
         }
         return name.substring(0, 2).toUpperCase();
+    }
+
+    getClientName(clientId) {
+        return this.clientsMap.get(clientId) || clientId;
     }
 
     formatRole(role) {

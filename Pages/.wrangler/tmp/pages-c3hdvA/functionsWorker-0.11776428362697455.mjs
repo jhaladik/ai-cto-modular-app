@@ -1,6 +1,42 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+// _shared/http-utils.js
+var corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, x-bitware-session-token, Authorization, X-API-Key, X-Worker-ID"
+};
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders
+    }
+  });
+}
+__name(jsonResponse, "jsonResponse");
+function errorResponse(message, status = 400) {
+  return jsonResponse({
+    success: false,
+    error: message
+  }, status);
+}
+__name(errorResponse, "errorResponse");
+function unauthorizedResponse(message = "Authentication required") {
+  return errorResponse(message, 401);
+}
+__name(unauthorizedResponse, "unauthorizedResponse");
+function serverErrorResponse(message = "Internal server error") {
+  return errorResponse(message, 500);
+}
+__name(serverErrorResponse, "serverErrorResponse");
+async function handleCors() {
+  return new Response(null, { headers: corsHeaders });
+}
+__name(handleCors, "handleCors");
+
 // api/auth/login.js
 async function onRequestPost(context) {
   const { request, env } = context;
@@ -31,13 +67,7 @@ async function onRequestPost(context) {
           );
           if (!kamResponse.ok) {
             const error = await kamResponse.json();
-            return new Response(JSON.stringify({
-              success: false,
-              error: error.error || "Authentication failed"
-            }), {
-              status: 401,
-              headers: { "Content-Type": "application/json" }
-            });
+            return unauthorizedResponse(error.error || "Authentication failed");
           }
           const userData = await kamResponse.json();
           sessionData = {
@@ -54,13 +84,7 @@ async function onRequestPost(context) {
           };
         } catch (error) {
           console.error("Authentication service error:", error);
-          return new Response(JSON.stringify({
-            success: false,
-            error: "Authentication service unavailable"
-          }), {
-            status: 503,
-            headers: { "Content-Type": "application/json" }
-          });
+          return errorResponse("Authentication service unavailable", 503);
         }
         break;
       case "client":
@@ -83,13 +107,7 @@ async function onRequestPost(context) {
           );
           if (!kamResponse.ok) {
             const error = await kamResponse.json();
-            return new Response(JSON.stringify({
-              success: false,
-              error: error.error || "Authentication failed"
-            }), {
-              status: 401,
-              headers: { "Content-Type": "application/json" }
-            });
+            return unauthorizedResponse(error.error || "Authentication failed");
           }
           const userData = await kamResponse.json();
           sessionData = {
@@ -107,23 +125,11 @@ async function onRequestPost(context) {
           };
         } catch (error) {
           console.error("Authentication service error:", error);
-          return new Response(JSON.stringify({
-            success: false,
-            error: "Authentication service unavailable"
-          }), {
-            status: 503,
-            headers: { "Content-Type": "application/json" }
-          });
+          return errorResponse("Authentication service unavailable", 503);
         }
         break;
       default:
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Invalid login type"
-        }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" }
-        });
+        return errorResponse("Invalid login type");
     }
     const sessionToken = crypto.randomUUID();
     await env.BITWARE_SESSION_STORE.put(
@@ -155,7 +161,7 @@ async function onRequestPost(context) {
     } catch (error) {
       console.error("Session registration failed:", error);
     }
-    return new Response(JSON.stringify({
+    return jsonResponse({
       success: true,
       sessionToken,
       user: {
@@ -173,18 +179,10 @@ async function onRequestPost(context) {
           department: sessionData.department
         } : {}
       }
-    }), {
-      headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
     console.error("Login error:", error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Invalid request"
-    }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" }
-    });
+    return errorResponse("Invalid request");
   }
 }
 __name(onRequestPost, "onRequestPost");
@@ -197,17 +195,9 @@ async function onRequestPost2(context) {
     if (sessionToken) {
       await env.BITWARE_SESSION_STORE.delete(`session:${sessionToken}`);
     }
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" }
-    });
+    return jsonResponse({ success: true });
   } catch (error) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Logout failed"
-    }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
+    return serverErrorResponse("Logout failed");
   }
 }
 __name(onRequestPost2, "onRequestPost");
@@ -218,37 +208,19 @@ async function onRequestPost3(context) {
   try {
     const sessionToken = request.headers.get("x-bitware-session-token") || request.headers.get("X-Session-Token");
     if (!sessionToken) {
-      return new Response(JSON.stringify({
-        valid: false,
-        error: "No session token provided"
-      }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      });
+      return unauthorizedResponse("No session token provided");
     }
     const sessionKey = `session:${sessionToken}`;
     const sessionData = await env.BITWARE_SESSION_STORE.get(sessionKey);
     if (!sessionData) {
-      return new Response(JSON.stringify({
-        valid: false,
-        error: "Invalid or expired session"
-      }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      });
+      return unauthorizedResponse("Invalid or expired session");
     }
     const session = JSON.parse(sessionData);
     if (Date.now() > session.expires) {
       await env.BITWARE_SESSION_STORE.delete(sessionKey);
-      return new Response(JSON.stringify({
-        valid: false,
-        error: "Session expired"
-      }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      });
+      return unauthorizedResponse("Session expired");
     }
-    return new Response(JSON.stringify({
+    return jsonResponse({
       valid: true,
       user: {
         email: session.username,
@@ -258,18 +230,10 @@ async function onRequestPost3(context) {
         userId: session.userId,
         userType: session.userType
       }
-    }), {
-      headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
     console.error("Session validation error:", error);
-    return new Response(JSON.stringify({
-      valid: false,
-      error: "Validation failed"
-    }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
+    return serverErrorResponse("Validation failed");
   }
 }
 __name(onRequestPost3, "onRequestPost");
@@ -404,13 +368,8 @@ async function validateSession(request, env) {
 __name(validateSession, "validateSession");
 
 // api/key-account-manager.js
-var corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, x-bitware-session-token, Authorization"
-};
 async function onRequestOptions() {
-  return new Response(null, { headers: corsHeaders });
+  return handleCors();
 }
 __name(onRequestOptions, "onRequestOptions");
 async function onRequestPost4(context) {
@@ -442,13 +401,7 @@ async function onRequestPost4(context) {
     });
     if (!sessionToken) {
       console.error("\u274C No session token found in headers");
-      return new Response(JSON.stringify({
-        success: false,
-        error: "No session token provided"
-      }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders }
-      });
+      return unauthorizedResponse("No session token provided");
     }
     console.log(`\u{1F511} Validating Pages session: ${sessionToken.substring(0, 10)}...`);
     const sessionRequest = new Request(request.url, {
@@ -462,14 +415,7 @@ async function onRequestPost4(context) {
     console.log("\u{1F4CB} Session validation result:", sessionValidation);
     if (!sessionValidation.valid) {
       console.log("\u274C Pages session invalid:", sessionValidation.error);
-      return new Response(JSON.stringify({
-        success: false,
-        error: sessionValidation.error || "Session validation failed",
-        details: "Check if you are logged in"
-      }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders }
-      });
+      return unauthorizedResponse(sessionValidation.error || "Session validation failed");
     }
     const session = sessionValidation.session;
     console.log(`\u2705 Pages session valid for user: ${session.username} (${session.role})`);
@@ -487,24 +433,11 @@ async function onRequestPost4(context) {
     if (isAdminEndpoint) {
       if (session.role !== "admin" && session.userType !== "internal") {
         console.log("\u{1F6AB} Admin access denied for role:", session.role);
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Admin access required"
-        }), {
-          status: 403,
-          headers: { "Content-Type": "application/json", ...corsHeaders }
-        });
+        return errorResponse("Admin access required", 403);
       }
       if (!env.WORKER_SHARED_SECRET) {
         console.error("\u274C WORKER_SHARED_SECRET not found in environment");
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Server configuration error",
-          details: "Missing authentication credentials"
-        }), {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...corsHeaders }
-        });
+        return serverErrorResponse("Server configuration error: Missing authentication credentials");
       }
       kamHeaders["Authorization"] = `Bearer ${env.WORKER_SHARED_SECRET}`;
       kamHeaders["X-Worker-ID"] = "pages-kam-proxy";
@@ -512,14 +445,7 @@ async function onRequestPost4(context) {
     } else {
       if (!env.CLIENT_API_KEY) {
         console.error("\u274C CLIENT_API_KEY not found in environment");
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Server configuration error",
-          details: "Missing API credentials"
-        }), {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...corsHeaders }
-        });
+        return serverErrorResponse("Server configuration error: Missing API credentials");
       }
       kamHeaders["X-API-Key"] = env.CLIENT_API_KEY;
       console.log("\u{1F527} Using client API key for regular endpoint");
@@ -550,20 +476,14 @@ async function onRequestPost4(context) {
       statusText: kamResponse.statusText,
       headers: {
         "Content-Type": kamResponse.headers.get("Content-Type") || "application/json",
-        ...corsHeaders
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, x-bitware-session-token, Authorization, X-API-Key, X-Worker-ID"
       }
     });
   } catch (error) {
     console.error("\u274C KAM Proxy Error:", error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Proxy error",
-      message: error.message,
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    }), {
-      status: 500,
-      headers: { "Content-Type": "application/json", ...corsHeaders }
-    });
+    return serverErrorResponse(`Proxy error: ${error.message}`);
   }
 }
 __name(onRequestPost4, "onRequestPost");
@@ -1142,7 +1062,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-a9QoWY/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-UPfiLr/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -1174,7 +1094,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-a9QoWY/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-UPfiLr/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
