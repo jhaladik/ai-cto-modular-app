@@ -2,6 +2,7 @@
 // Complete KAM worker implementation matching frontend specification exactly
 
 import { DatabaseService } from './services/database';
+import { PermissionService } from './services/permissions';
 import { authenticateRequest, validateClientAuth, validateWorkerAuth, validateSessionToken } from './helpers/auth';
 import { corsHeaders, jsonResponse, unauthorized, notFound, badRequest, serverError, success } from './helpers/http';
 
@@ -108,7 +109,8 @@ export default {
             auth: ['/auth/login', '/auth/validate', '/auth/logout'],
             kam_clients: ['/clients', '/client/{id}', '/client?email={email}'],
             kam_users: ['/users', '/users/{id}'],
-            dashboard: ['/dashboard/stats']
+            dashboard: ['/dashboard/stats'],
+            permissions: ['/permissions/check', '/permissions/my-permissions', '/permissions/check-user-limit']
           },
           authentication: {
             client: 'X-API-Key header',
@@ -693,6 +695,16 @@ export default {
             return badRequest('User with this email already exists');
           }
 
+          // Check user limit for client users
+          if (role === 'client' && client_id) {
+            const permissionService = new PermissionService(db);
+            const userLimitCheck = await permissionService.checkUserLimit(client_id);
+            
+            if (!userLimitCheck.allowed) {
+              return badRequest(userLimitCheck.reason || 'User limit reached for this client');
+            }
+          }
+
           const userId = await db.createUser({
             username,
             email,
@@ -728,7 +740,7 @@ export default {
         try {
           const auth = await authenticateRequest(request, env, db, {
             requireAdmin: true,
-            allowWorker: false,
+            allowWorker: true,
             allowSession: true
           });
           
@@ -768,7 +780,7 @@ export default {
         try {
           const auth = await authenticateRequest(request, env, db, {
             requireAdmin: true,
-            allowWorker: false,
+            allowWorker: true,
             allowSession: true
           });
           
@@ -866,6 +878,104 @@ export default {
           return serverError('Failed to retrieve dashboard statistics');
         }
       }
+      // ==================== PERMISSION ENDPOINTS ====================
+      
+      if (pathname === '/permissions/check' && method === 'POST') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const body = await request.json();
+          const { feature } = body;
+          
+          if (!feature) {
+            return badRequest('Feature parameter required');
+          }
+          
+          const permissionService = new PermissionService(db);
+          const result = await permissionService.checkFeatureAccess({
+            userId: auth.user!.user_id,
+            userRole: auth.user!.role,
+            clientId: auth.user!.client_id,
+            requestedFeature: feature
+          });
+          
+          return jsonResponse({
+            success: true,
+            allowed: result.allowed,
+            reason: result.reason,
+            tierRequired: result.tierRequired
+          });
+          
+        } catch (error) {
+          console.error('Permission check error:', error);
+          return serverError('Failed to check permissions');
+        }
+      }
+      
+      if (pathname === '/permissions/my-permissions' && method === 'GET') {
+        try {
+          const sessionValidation = validateSessionToken(request);
+          if (!sessionValidation.valid) {
+            return unauthorized(sessionValidation.error);
+          }
+          
+          const session = await db.getSession(sessionValidation.sessionToken!);
+          if (!session || new Date(session.expires_at) < new Date()) {
+            return unauthorized('Session expired');
+          }
+          
+          const permissionService = new PermissionService(db);
+          const permissions = await permissionService.getUserPermissions(session.user_id);
+          
+          return jsonResponse({
+            success: true,
+            permissions
+          });
+          
+        } catch (error) {
+          console.error('Get permissions error:', error);
+          return serverError('Failed to retrieve permissions');
+        }
+      }
+      
+      if (pathname === '/permissions/check-user-limit' && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const clientId = url.searchParams.get('client_id');
+          if (!clientId) {
+            return badRequest('Client ID required');
+          }
+          
+          const permissionService = new PermissionService(db);
+          const result = await permissionService.checkUserLimit(clientId);
+          
+          return jsonResponse({
+            success: true,
+            ...result
+          });
+          
+        } catch (error) {
+          console.error('Check user limit error:', error);
+          return serverError('Failed to check user limit');
+        }
+      }
+
       // ==================== LEGACY ENDPOINTS (Worker Auth) ====================
       
       if (pathname === '/auth/validate-user' && method === 'POST') {

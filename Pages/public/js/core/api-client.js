@@ -7,6 +7,13 @@
  */
 class AIFactoryAPIClient {
     constructor() {
+        this.refreshSessionToken();
+    }
+
+    /**
+     * Refresh session token from localStorage
+     */
+    refreshSessionToken() {
         this.sessionToken = localStorage.getItem('bitware-session-token');
         this.baseHeaders = {
             'Content-Type': 'application/json',
@@ -27,6 +34,13 @@ class AIFactoryAPIClient {
      */
     async request(endpoint, options = {}) {
         try {
+            // Refresh session token before each request
+            this.refreshSessionToken();
+            
+            console.log(`📡 API Request: ${options.method || 'GET'} ${endpoint}`);
+            console.log('📦 Request body:', options.body);
+            console.log('🔑 Request headers:', this.baseHeaders);
+            
             const response = await fetch(endpoint, {
                 method: options.method || 'GET',
                 headers: {
@@ -36,11 +50,17 @@ class AIFactoryAPIClient {
                 body: options.body ? JSON.stringify(options.body) : undefined
             });
 
+            console.log(`📨 Response status: ${response.status} ${response.statusText}`);
+
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`❌ API Error response body:`, errorText);
                 throw new Error(`API Error: ${response.status} ${response.statusText}`);
             }
 
-            return await response.json();
+            const jsonData = await response.json();
+            console.log(`✅ Response data:`, jsonData);
+            return jsonData;
         } catch (error) {
             console.error(`API Request failed: ${endpoint}`, error);
             throw error;
@@ -51,7 +71,8 @@ class AIFactoryAPIClient {
      * KAM API wrapper - handles proxy format
      */
     async kamRequest(endpoint, method = 'GET', data = {}) {
-        return this.request('/api/key-account-manager', {
+        console.log(`🚀 kamRequest: ${method} ${endpoint}`, data);
+        const response = await this.request('/api/key-account-manager', {
             method: 'POST',
             body: {
                 endpoint,
@@ -59,6 +80,8 @@ class AIFactoryAPIClient {
                 data
             }
         });
+        console.log(`✅ kamRequest response for ${endpoint}:`, response);
+        return response;
     }
 
     /**
@@ -90,7 +113,15 @@ class AIFactoryAPIClient {
      * Get client list
      */
     async getClients() {
-        return this.kamRequest('/admin/clients');
+        console.log('📋 getClients() called');
+        try {
+            const response = await this.kamRequest('/clients');
+            console.log('✅ getClients() response:', response);
+            return response;
+        } catch (error) {
+            console.error('❌ getClients() error:', error);
+            throw error;
+        }
     }
 
     /**
@@ -350,6 +381,31 @@ class AIFactoryAPIClient {
     }
 
     // =============================================================================
+    // Permission Operations
+    // =============================================================================
+
+    /**
+     * Check if current user has permission for a feature
+     */
+    async checkPermission(feature) {
+        return this.kamRequest('/permissions/check', 'POST', { feature });
+    }
+
+    /**
+     * Get current user's permissions
+     */
+    async getMyPermissions() {
+        return this.kamRequest('/permissions/my-permissions', 'GET');
+    }
+
+    /**
+     * Check user limit for a client (admin only)
+     */
+    async checkUserLimit(clientId) {
+        return this.kamRequest(`/permissions/check-user-limit?client_id=${clientId}`, 'GET');
+    }
+
+    // =============================================================================
     // Template Operations (future)
     // =============================================================================
 
@@ -429,8 +485,11 @@ class AIFactoryAPIClient {
     getCurrentUser() {
         try {
             const userInfo = localStorage.getItem('bitware-user-info');
-            return userInfo ? JSON.parse(userInfo) : null;
+            const parsed = userInfo ? JSON.parse(userInfo) : null;
+            console.log('🔍 getCurrentUser() returned:', parsed);
+            return parsed;
         } catch (e) {
+            console.error('❌ Error parsing user info:', e);
             return null;
         }
     }

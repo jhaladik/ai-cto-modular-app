@@ -13,6 +13,7 @@ class UsersPage {
         this.sortOrder = 'desc';
         this.users = [];
         this.selectedUsers = new Set();
+        this.expandedRows = new Set();
         this.isLoading = false;
         this.clientsMap = new Map(); // Store client_id -> company_name mapping
     }
@@ -55,43 +56,46 @@ class UsersPage {
                     </div>
                 </div>
 
-                <!-- Filters and Search -->
-                <div class="card" style="margin-top: 2rem;">
-                    <div class="card-body">
-                        <div class="filters-section" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                            <div style="flex: 1; min-width: 250px;">
-                                <input 
-                                    type="text" 
-                                    placeholder="🔍 Search users by name or email..." 
-                                    class="form-input"
-                                    id="user-search"
-                                    onkeyup="window.usersPage.handleSearch(event)"
-                                    style="width: 100%;"
-                                >
-                            </div>
-                            <select class="form-select" id="role-filter" onchange="window.usersPage.handleFilterChange()">
-                                <option value="all">All Roles</option>
-                                <option value="admin">Administrators</option>
-                                <option value="client">Client Users</option>
-                                <option value="support">Support Staff</option>
-                            </select>
-                            <select class="form-select" id="status-filter" onchange="window.usersPage.handleFilterChange()">
-                                <option value="all">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="suspended">Suspended</option>
-                                <option value="pending">Pending</option>
-                            </select>
-                            <button class="btn btn-secondary" onclick="window.usersPage.resetFilters()">
-                                Reset
-                            </button>
+                <!-- Controls Section -->
+                <div class="users-controls">
+                    <div class="filter-controls">
+                        <div class="search-control">
+                            <input 
+                                type="text" 
+                                placeholder="🔍 Search users by name or email..." 
+                                class="form-input"
+                                id="user-search"
+                                onkeyup="window.usersPage.handleSearch(event)"
+                            >
                         </div>
+                        <select class="form-select" id="role-filter" onchange="window.usersPage.handleFilterChange()">
+                            <option value="all">All Roles</option>
+                            <option value="admin">Administrators</option>
+                            <option value="client">Client Users</option>
+                            <option value="support">Support Staff</option>
+                        </select>
+                        <select class="form-select" id="status-filter" onchange="window.usersPage.handleFilterChange()">
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                        <button class="btn btn-small" onclick="window.usersPage.resetFilters()">
+                            Reset
+                        </button>
+                    </div>
+                    
+                    <div class="view-controls">
+                        <span class="results-count" id="results-count">
+                            Showing ${this.users.length} users
+                        </span>
                     </div>
                 </div>
 
                 <!-- Bulk Actions -->
                 <div class="bulk-actions" id="bulk-actions" style="display: none; margin-top: 1rem;">
-                    <div class="card">
-                        <div class="card-body" style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="content-section">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
                             <span id="selected-count">0 users selected</span>
                             <button class="btn btn-small" onclick="window.usersPage.bulkActivate()">Activate</button>
                             <button class="btn btn-small" onclick="window.usersPage.bulkSuspend()">Suspend</button>
@@ -102,8 +106,8 @@ class UsersPage {
                 </div>
 
                 <!-- Users Table -->
-                <div class="card" style="margin-top: 1rem;">
-                    <div class="card-body">
+                <div class="content-section" style="margin-top: 1rem;">
+                    <div>
                         <div id="users-loading" style="text-align: center; padding: 2rem; display: none;">
                             <div class="spinner"></div>
                             <p>Loading users...</p>
@@ -116,14 +120,11 @@ class UsersPage {
                             <table class="data-table" id="users-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40px;">
+                                        <th>
                                             <input type="checkbox" id="select-all" onchange="window.usersPage.toggleSelectAll()">
                                         </th>
                                         <th onclick="window.usersPage.toggleSort('username')" style="cursor: pointer;">
                                             User <span class="sort-indicator">↕</span>
-                                        </th>
-                                        <th onclick="window.usersPage.toggleSort('email')" style="cursor: pointer;">
-                                            Email <span class="sort-indicator">↕</span>
                                         </th>
                                         <th onclick="window.usersPage.toggleSort('role')" style="cursor: pointer;">
                                             Role <span class="sort-indicator">↕</span>
@@ -132,13 +133,10 @@ class UsersPage {
                                         <th onclick="window.usersPage.toggleSort('status')" style="cursor: pointer;">
                                             Status <span class="sort-indicator">↕</span>
                                         </th>
-                                        <th onclick="window.usersPage.toggleSort('last_login')" style="cursor: pointer;">
-                                            Last Login <span class="sort-indicator">↕</span>
-                                        </th>
                                         <th onclick="window.usersPage.toggleSort('created_at')" style="cursor: pointer;">
                                             Created <span class="sort-indicator">↕</span>
                                         </th>
-                                        <th style="width: 100px;">Actions</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="users-tbody">
@@ -162,6 +160,8 @@ class UsersPage {
 
     async mount() {
         console.log('📋 Mounting users page...');
+        console.log('🔑 API Client session token:', this.apiClient.sessionToken ? 'Present' : 'Missing');
+        console.log('🔑 Session token length:', this.apiClient.sessionToken?.length || 0);
         await this.loadUsers();
     }
 
@@ -194,10 +194,25 @@ class UsersPage {
 
     async loadClientInfo() {
         try {
+            // Check if user is admin first
+            const currentUser = this.apiClient.getCurrentUser();
+            console.log('🔍 Current user:', currentUser);
+            
+            // Only load clients if we're an admin (admins can see all clients)
+            if (!currentUser || (currentUser.role !== 'admin' && currentUser.userType !== 'admin')) {
+                console.log('⚠️ Not an admin, skipping client info load');
+                return;
+            }
+            
             // Get unique client IDs
             const clientIds = [...new Set(this.users.filter(u => u.client_id).map(u => u.client_id))];
             
-            if (clientIds.length === 0) return;
+            if (clientIds.length === 0) {
+                console.log('ℹ️ No client IDs to load');
+                return;
+            }
+            
+            console.log('📋 Loading client info for IDs:', clientIds);
             
             // Fetch all clients
             const clientsResponse = await this.apiClient.getClients();
@@ -207,9 +222,15 @@ class UsersPage {
                 clientsResponse.clients.forEach(client => {
                     this.clientsMap.set(client.client_id, client.company_name);
                 });
+                console.log('✅ Loaded client info for', this.clientsMap.size, 'clients');
             }
         } catch (error) {
-            console.error('Failed to load client info:', error);
+            // Check if it's a 404 error (expected for non-admin users)
+            if (error.message && error.message.includes('404')) {
+                console.log('ℹ️ Client endpoint not accessible (expected for non-admin users)');
+            } else {
+                console.error('Failed to load client info:', error);
+            }
             // Don't fail the whole page if client info fails
         }
     }
@@ -254,6 +275,12 @@ class UsersPage {
         // Apply sorting
         filteredUsers = this.sortUsers(filteredUsers);
         
+        // Update results count
+        const resultsCount = document.getElementById('results-count');
+        if (resultsCount) {
+            resultsCount.textContent = `Showing ${filteredUsers.length} of ${this.users.length} users`;
+        }
+        
         // Apply pagination
         const startIndex = (this.currentPage - 1) * this.pageSize;
         const endIndex = startIndex + this.pageSize;
@@ -268,52 +295,55 @@ class UsersPage {
         document.getElementById('users-table-container').style.display = 'block';
         document.getElementById('no-users').style.display = 'none';
 
-        tbody.innerHTML = paginatedUsers.map(user => `
-            <tr>
-                <td>
-                    <input type="checkbox" 
-                           value="${user.id}" 
-                           onchange="window.usersPage.toggleUserSelection('${user.id}')"
-                           ${this.selectedUsers.has(user.id) ? 'checked' : ''}>
-                </td>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <div class="user-avatar" style="width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem;">
-                            ${this.getInitials(user.full_name || user.username)}
+        tbody.innerHTML = paginatedUsers.map(user => {
+            const isExpanded = this.expandedRows && this.expandedRows.has(user.id);
+            return `
+                <tr class="user-row ${isExpanded ? 'expanded' : ''}" data-user-id="${user.id}">
+                    <td>
+                        <input type="checkbox" 
+                               value="${user.id}" 
+                               onchange="window.usersPage.toggleUserSelection('${user.id}')"
+                               ${this.selectedUsers.has(user.id) ? 'checked' : ''}>
+                    </td>
+                    <td>
+                        <div class="user-info" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;" onclick="window.usersPage.toggleRow('${user.id}')">
+                            <div style="flex: 1;">
+                                <div class="username">
+                                    ${this.escapeHtml(user.full_name || user.username)}
+                                    ${this.hasNotes(user.id) ? '<span style="color: var(--warning); margin-left: 0.25rem;" title="Has notes">📌</span>' : ''}
+                                </div>
+                                <div class="email">${this.escapeHtml(user.email)}</div>
+                            </div>
+                            <div class="expand-icon" style="transition: transform 0.2s; margin-left: 1rem; flex-shrink: 0; align-self: center;">
+                                ${isExpanded ? '▼' : '▶'}
+                            </div>
                         </div>
-                        <div>
-                            <div style="font-weight: 500;">${this.escapeHtml(user.full_name || user.username)}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary);">@${this.escapeHtml(user.username)}</div>
+                    </td>
+                    <td>
+                        <span class="role-badge role-${user.role}">${this.formatRole(user.role)}</span>
+                    </td>
+                    <td>
+                        ${user.client_id ? `<a href="#/clients/${user.client_id}" class="link">${this.getClientName(user.client_id)}</a>` : '-'}
+                    </td>
+                    <td>
+                        <span class="status-badge status-${user.account_status || 'active'}">${this.formatStatus(user.account_status)}</span>
+                    </td>
+                    <td>
+                        <div style="font-size: 0.75rem;">
+                            ${this.formatDate(user.created_at)}
                         </div>
-                    </div>
-                </td>
-                <td>${this.escapeHtml(user.email)}</td>
-                <td>
-                    <span class="role-badge role-${user.role}">${this.formatRole(user.role)}</span>
-                </td>
-                <td>
-                    ${user.client_id ? `<a href="#/clients/${user.client_id}" class="link">${this.getClientName(user.client_id)}</a>` : '-'}
-                </td>
-                <td>
-                    <span class="status-badge status-${user.account_status || 'active'}">${this.formatStatus(user.account_status)}</span>
-                </td>
-                <td>${this.formatDate(user.last_login) || 'Never'}</td>
-                <td>${this.formatDate(user.created_at)}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="btn btn-small" onclick="window.usersPage.editUser('${user.id}')" title="Edit">
-                            ✏️
-                        </button>
-                        <button class="btn btn-small" onclick="window.usersPage.resetPassword('${user.id}')" title="Reset Password">
-                            🔑
-                        </button>
-                        <button class="btn btn-small btn-danger" onclick="window.usersPage.deleteUser('${user.id}')" title="Delete">
-                            🗑️
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
+                    </td>
+                    <td>
+                        <div class="action-buttons" style="display: flex; gap: 0.25rem;">
+                            <button class="btn btn-icon" onclick="window.usersPage.deleteUser('${user.id}')" title="Delete">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                ${isExpanded ? this.renderExpandedRow(user) : ''}
+            `;
+        }).join('');
 
         // Update pagination
         this.renderPagination(filteredUsers.length);
@@ -413,6 +443,20 @@ class UsersPage {
         if (!window.SimpleModal) {
             alert('Modal component not loaded');
             return;
+        }
+
+        // Check permissions first for non-admin users
+        const currentUser = this.apiClient.getCurrentUser();
+        if (currentUser && currentUser.role !== 'admin') {
+            try {
+                const permissionCheck = await this.apiClient.checkPermission('add_users');
+                if (!permissionCheck.allowed) {
+                    alert(permissionCheck.reason || 'You do not have permission to add users');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to check permissions:', error);
+            }
         }
 
         window.SimpleModal.show({
@@ -518,151 +562,9 @@ class UsersPage {
         }
     }
 
-    async editUser(userId) {
-        const user = this.users.find(u => u.id === userId);
-        if (!user) return;
-
-        if (!window.SimpleModal) {
-            alert('Modal component not loaded');
-            return;
-        }
-
-        window.SimpleModal.show({
-            title: '✏️ Edit User',
-            size: 'medium',
-            content: `
-                <form id="edit-user-form" style="display: grid; gap: 1rem;">
-                    <input type="hidden" name="user_id" value="${userId}">
-                    <div class="form-group">
-                        <label>Username *</label>
-                        <input type="text" name="username" required value="${this.escapeHtml(user.username)}" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Email *</label>
-                        <input type="email" name="email" required value="${this.escapeHtml(user.email)}" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Full Name *</label>
-                        <input type="text" name="full_name" required value="${this.escapeHtml(user.full_name || '')}" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Role *</label>
-                        <select name="role" required class="form-select">
-                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Administrator</option>
-                            <option value="client" ${user.role === 'client' ? 'selected' : ''}>Client User</option>
-                            <option value="support" ${user.role === 'support' ? 'selected' : ''}>Support Staff</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="edit-client-select-group" style="${user.role === 'client' ? '' : 'display: none;'}">
-                        <label>Client</label>
-                        <select name="client_id" class="form-select">
-                            <option value="">Select Client</option>
-                            <!-- Will be populated dynamically -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Department</label>
-                        <input type="text" name="department" value="${this.escapeHtml(user.department || '')}" placeholder="Engineering, Sales, etc." class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select name="status" class="form-select">
-                            <option value="active" ${user.account_status === 'active' ? 'selected' : ''}>Active</option>
-                            <option value="suspended" ${user.account_status === 'suspended' ? 'selected' : ''}>Suspended</option>
-                            <option value="pending" ${user.account_status === 'pending' ? 'selected' : ''}>Pending</option>
-                        </select>
-                    </div>
-                    <div class="card" style="background: var(--bg-secondary); padding: 1rem; margin-top: 0.5rem;">
-                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span>Created:</span>
-                                <span>${this.formatDate(user.created_at)}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span>Last Login:</span>
-                                <span>${this.formatDate(user.last_login) || 'Never'}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Login Count:</span>
-                                <span>${user.login_count || 0}</span>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            `,
-            primaryButton: {
-                text: 'Save Changes',
-                onClick: () => this.handleEditUser(userId)
-            }
-        });
-
-        // Add role change handler
-        document.querySelector('#edit-user-form select[name="role"]').addEventListener('change', (e) => {
-            const clientGroup = document.getElementById('edit-client-select-group');
-            if (e.target.value === 'client') {
-                clientGroup.style.display = 'block';
-                this.loadEditClientOptions(user.client_id);
-            } else {
-                clientGroup.style.display = 'none';
-            }
-        });
-
-        // Load client options if user is a client
-        if (user.role === 'client') {
-            this.loadEditClientOptions(user.client_id);
-        }
-    }
-
-    async handleEditUser(userId) {
-        const form = document.getElementById('edit-user-form');
-        const formData = new FormData(form);
-        
-        const updates = {
-            username: formData.get('username'),
-            email: formData.get('email'),
-            full_name: formData.get('full_name'),
-            role: formData.get('role'),
-            status: formData.get('status'),
-            client_id: formData.get('client_id') || null,
-            department: formData.get('department') || null
-        };
-
-        // Validate
-        if (!updates.username || !updates.email || !updates.role) {
-            alert('Please fill in all required fields');
-            return;
-        }
-
-        try {
-            const response = await this.apiClient.kamRequest(`/users/${userId}`, 'PUT', updates);
-            
-            if (response.success) {
-                window.SimpleModal.close();
-                this.showSuccess('User updated successfully');
-                await this.loadUsers();
-            } else {
-                alert('Failed to update user: ' + (response.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Error updating user:', error);
-            alert('Failed to update user');
-        }
-    }
-
-    async loadEditClientOptions(selectedClientId) {
-        try {
-            const response = await this.apiClient.getClients();
-            const select = document.querySelector('#edit-user-form select[name="client_id"]');
-            
-            if (response.success && response.clients) {
-                select.innerHTML = '<option value="">Select Client</option>' + 
-                    response.clients.map(client => 
-                        `<option value="${client.client_id}" ${client.client_id === selectedClientId ? 'selected' : ''}>${this.escapeHtml(client.company_name)}</option>`
-                    ).join('');
-            }
-        } catch (error) {
-            console.error('Failed to load clients:', error);
-        }
+    editUser(userId) {
+        // Just toggle the row expansion for inline editing
+        this.toggleRow(userId);
     }
 
     async deleteUser(userId) {
@@ -774,6 +676,317 @@ class UsersPage {
             console.error('Error resetting password:', error);
             alert('Failed to reset password');
         }
+    }
+
+
+    renderNotesHistory(userId) {
+        const historyKey = `user-notes-history-${userId}`;
+        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        
+        if (history.length === 0) {
+            return '<p style="color: var(--text-secondary);">No notes history</p>';
+        }
+        
+        return history.map(entry => `
+            <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <strong>${this.escapeHtml(entry.author)}</strong>
+                    <span style="color: var(--text-secondary); font-size: 0.75rem;">
+                        ${this.formatDate(entry.date)}
+                    </span>
+                </div>
+                <div style="color: var(--text-secondary);">
+                    ${this.escapeHtml(entry.notes)}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    hasNotes(userId) {
+        const notesKey = `user-notes-${userId}`;
+        return localStorage.getItem(notesKey) !== null;
+    }
+
+    toggleRow(userId) {
+        if (this.expandedRows.has(userId)) {
+            this.expandedRows.delete(userId);
+        } else {
+            this.expandedRows.add(userId);
+        }
+        this.renderUsers();
+    }
+
+    renderExpandedRow(user) {
+        const notes = localStorage.getItem(`user-notes-${user.id}`) || '';
+        
+        return `
+            <tr class="expanded-content">
+                <td colspan="7">
+                    <div class="expanded-details" style="
+                        padding: 1.5rem;
+                        background: var(--bg-secondary);
+                        border-radius: var(--radius);
+                        margin: 0.5rem 0;
+                    ">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <!-- Left Column - User Details & Edit -->
+                            <div>
+                                <h4 style="margin-bottom: 1rem;">User Details</h4>
+                                <form id="edit-user-form-${user.id}" style="display: grid; gap: 0.75rem;">
+                                    <div class="form-group">
+                                        <label>Username</label>
+                                        <input type="text" name="username" value="${this.escapeHtml(user.username)}" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email</label>
+                                        <input type="email" name="email" value="${this.escapeHtml(user.email)}" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Full Name</label>
+                                        <input type="text" name="full_name" value="${this.escapeHtml(user.full_name || '')}" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Role</label>
+                                        <select name="role" class="form-select" ${user.role === 'admin' ? 'disabled' : ''}>
+                                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Administrator</option>
+                                            <option value="client" ${user.role === 'client' ? 'selected' : ''}>Client User</option>
+                                            <option value="support" ${user.role === 'support' ? 'selected' : ''}>Support Staff</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Status</label>
+                                        <select name="status" class="form-select">
+                                            <option value="active" ${user.account_status === 'active' ? 'selected' : ''}>Active</option>
+                                            <option value="suspended" ${user.account_status === 'suspended' ? 'selected' : ''}>Suspended</option>
+                                            <option value="pending" ${user.account_status === 'pending' ? 'selected' : ''}>Pending</option>
+                                        </select>
+                                    </div>
+                                    ${user.role === 'client' ? `
+                                        <div class="form-group">
+                                            <label>Client</label>
+                                            <select name="client_id" class="form-select">
+                                                <option value="">-- No Client --</option>
+                                                ${this.renderClientOptions(user.client_id)}
+                                            </select>
+                                        </div>
+                                    ` : ''}
+                                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                                        <button type="button" class="btn btn-primary" onclick="window.usersPage.saveUserChanges('${user.id}')">
+                                            💾 Save Changes
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" onclick="window.usersPage.resetUserPassword('${user.id}')">
+                                            🔑 Reset Password
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Right Column - Notes & Activity -->
+                            <div>
+                                <h4 style="margin-bottom: 1rem;">Notes & Activity</h4>
+                                <div class="form-group">
+                                    <label>Notes</label>
+                                    <textarea 
+                                        id="user-notes-${user.id}" 
+                                        class="form-input" 
+                                        rows="5" 
+                                        placeholder="Add notes about this user..."
+                                        style="resize: vertical;"
+                                    >${this.escapeHtml(notes)}</textarea>
+                                    <button type="button" class="btn btn-small" style="margin-top: 0.5rem;" onclick="window.usersPage.saveNotes('${user.id}')">
+                                        📝 Save Notes
+                                    </button>
+                                </div>
+                                
+                                <div style="margin-top: 1.5rem;">
+                                    <h5>Account Information</h5>
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                        <div>Created: ${this.formatDate(user.created_at)}</div>
+                                        <div>Last Login: ${user.last_login ? this.formatDate(user.last_login) : 'Never'}</div>
+                                        <div>Login Count: ${user.login_count || 0}</div>
+                                        ${user.department ? `<div>Department: ${this.escapeHtml(user.department)}</div>` : ''}
+                                    </div>
+                                </div>
+
+                                <div style="margin-top: 1.5rem;">
+                                    <h5>Notes History</h5>
+                                    <div style="
+                                        margin-top: 0.5rem;
+                                        padding: 0.75rem;
+                                        background: var(--background);
+                                        border-radius: var(--radius);
+                                        max-height: 150px;
+                                        overflow-y: auto;
+                                        font-size: 0.813rem;
+                                    ">
+                                        ${this.renderNotesHistory(user.id)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    renderClientOptions(selectedClientId) {
+        const clients = Array.from(this.clientsMap.entries());
+        return clients.map(([clientId, clientName]) => `
+            <option value="${clientId}" ${clientId === selectedClientId ? 'selected' : ''}>
+                ${this.escapeHtml(clientName)}
+            </option>
+        `).join('');
+    }
+
+    async saveUserChanges(userId) {
+        const form = document.getElementById(`edit-user-form-${userId}`);
+        if (!form) return;
+
+        const formData = new FormData(form);
+        const updates = {};
+        
+        // Get the changes
+        ['username', 'email', 'full_name', 'role', 'status', 'client_id'].forEach(field => {
+            const value = formData.get(field);
+            if (value !== null) {
+                updates[field] = value;
+            }
+        });
+
+        // Map status to account_status
+        if (updates.status) {
+            updates.account_status = updates.status;
+            delete updates.status;
+        }
+
+        try {
+            const response = await this.apiClient.kamRequest(`/users/${userId}`, 'PUT', updates);
+            if (response.success) {
+                // Update local data
+                const userIndex = this.users.findIndex(u => u.id === userId);
+                if (userIndex !== -1) {
+                    Object.assign(this.users[userIndex], updates);
+                }
+                
+                // Re-render
+                this.renderUsers();
+                
+                // Show success
+                this.showSuccessMessage('User updated successfully');
+            } else {
+                alert('Failed to update user: ' + (response.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error updating user:', error);
+            
+            // Check for session expiration
+            if (error.message && error.message.includes('401')) {
+                alert('Your session has expired. Please log in again.');
+                // Redirect to login
+                window.location.href = '/login.html';
+            } else {
+                alert('Failed to update user: ' + error.message);
+            }
+        }
+    }
+
+    async saveNotes(userId) {
+        const textarea = document.getElementById(`user-notes-${userId}`);
+        if (!textarea) return;
+
+        const notes = textarea.value.trim();
+        const notesKey = `user-notes-${userId}`;
+        
+        if (notes) {
+            localStorage.setItem(notesKey, notes);
+            
+            // Add to history
+            const historyKey = `user-notes-history-${userId}`;
+            const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            history.unshift({
+                date: new Date().toISOString(),
+                notes: notes,
+                author: this.apiClient.getCurrentUser()?.username || 'Unknown'
+            });
+            
+            if (history.length > 10) {
+                history.length = 10;
+            }
+            
+            localStorage.setItem(historyKey, JSON.stringify(history));
+        } else {
+            localStorage.removeItem(notesKey);
+        }
+
+        // Re-render to update history
+        this.renderUsers();
+        this.showSuccessMessage('Notes saved successfully');
+    }
+
+    async resetUserPassword(userId) {
+        if (!confirm('Are you sure you want to reset this user\'s password?')) {
+            return;
+        }
+
+        // For now, just show a message
+        alert('Password reset functionality will be implemented when the backend endpoint is ready.');
+        
+        // TODO: When backend is ready:
+        // const response = await this.apiClient.kamRequest(`/users/${userId}/reset-password`, 'POST');
+    }
+
+    showLoadingMessage(message) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'import-loading';
+        loadingDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            text-align: center;
+        `;
+        loadingDiv.innerHTML = `
+            <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+            <div>${message}</div>
+        `;
+        document.body.appendChild(loadingDiv);
+        
+        // Remove after import completes
+        setTimeout(() => {
+            const element = document.getElementById('import-loading');
+            if (element) element.remove();
+        }, 30000); // Safety timeout
+    }
+    
+    showSuccessMessage(message) {
+        // Remove any existing loading message
+        const loadingElement = document.getElementById('import-loading');
+        if (loadingElement) loadingElement.remove();
+        
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        `;
+        successDiv.textContent = message;
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => successDiv.remove(), 3000);
     }
 
     // Bulk Actions
@@ -976,8 +1189,212 @@ class UsersPage {
     }
 
     importUsers() {
-        // TODO: Implement import functionality
-        alert('Import functionality coming soon!');
+        const modal = new SimpleModal({
+            title: '📥 Import Users from CSV',
+            content: `
+                <div style="padding: 1rem;">
+                    <p style="margin-bottom: 1rem;">Upload a CSV file with the following columns:</p>
+                    <ul style="margin-bottom: 1rem; padding-left: 1.5rem;">
+                        <li>username (required)</li>
+                        <li>email (required)</li>
+                        <li>full_name</li>
+                        <li>role (admin/client/support)</li>
+                        <li>client_id (for client users)</li>
+                        <li>password (required)</li>
+                    </ul>
+                    <div style="margin-bottom: 1rem;">
+                        <a href="#" onclick="window.usersPage.downloadCSVTemplate(event)" style="color: var(--primary); text-decoration: underline;">
+                            📄 Download CSV Template
+                        </a>
+                    </div>
+                    <input type="file" id="csv-file" accept=".csv" style="margin-bottom: 1rem;">
+                    <div id="import-preview" style="margin-top: 1rem;"></div>
+                </div>
+            `,
+            actions: [
+                {
+                    text: 'Cancel',
+                    class: 'btn-secondary',
+                    onclick: "document.getElementById('modal-import').close()"
+                },
+                {
+                    text: 'Import',
+                    class: 'btn-primary',
+                    onclick: "window.usersPage.processCSVImport()"
+                }
+            ],
+            id: 'modal-import'
+        });
+        modal.show();
+        
+        // Add file change listener
+        document.getElementById('csv-file').addEventListener('change', (e) => {
+            this.previewCSV(e.target.files[0]);
+        });
+    }
+    
+    async previewCSV(file) {
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            const headers = lines[0].split(',').map(h => h.trim());
+            
+            const preview = document.getElementById('import-preview');
+            if (lines.length > 1) {
+                preview.innerHTML = `
+                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: var(--radius);">
+                        <p><strong>Preview:</strong> ${lines.length - 1} users found</p>
+                        <p style="font-size: 0.875rem; color: var(--text-secondary);">First user: ${lines[1]}</p>
+                    </div>
+                `;
+            } else {
+                preview.innerHTML = '<p style="color: var(--error);">No data found in CSV</p>';
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    async processCSVImport() {
+        const fileInput = document.getElementById('csv-file');
+        if (!fileInput.files[0]) {
+            alert('Please select a CSV file');
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = async (e) => {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim());
+                
+                if (lines.length < 2) {
+                    alert('CSV file is empty or has no data rows');
+                    return;
+                }
+                
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                const requiredFields = ['username', 'email', 'password'];
+                
+                // Validate headers
+                for (const field of requiredFields) {
+                    if (!headers.includes(field)) {
+                        alert(`Missing required column: ${field}`);
+                        return;
+                    }
+                }
+                
+                // Parse users
+                const users = [];
+                const errors = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim());
+                    if (values.length !== headers.length) continue;
+                    
+                    const user = {};
+                    headers.forEach((header, index) => {
+                        user[header] = values[index];
+                    });
+                    
+                    // Validate user data
+                    if (!user.username || !user.email || !user.password) {
+                        errors.push(`Row ${i + 1}: Missing required fields`);
+                        continue;
+                    }
+                    
+                    // Set defaults
+                    user.role = user.role || 'client';
+                    if (!['admin', 'client', 'support'].includes(user.role)) {
+                        errors.push(`Row ${i + 1}: Invalid role '${user.role}'`);
+                        continue;
+                    }
+                    
+                    users.push(user);
+                }
+                
+                if (errors.length > 0) {
+                    alert('Validation errors:\n' + errors.slice(0, 5).join('\n') + 
+                          (errors.length > 5 ? `\n... and ${errors.length - 5} more` : ''));
+                    return;
+                }
+                
+                if (users.length === 0) {
+                    alert('No valid users found in CSV');
+                    return;
+                }
+                
+                // Close modal and show progress
+                document.getElementById('modal-import').close();
+                this.showLoadingMessage(`Importing ${users.length} users...`);
+                
+                // Import users one by one
+                let successCount = 0;
+                const importErrors = [];
+                
+                for (const user of users) {
+                    try {
+                        const response = await this.apiClient.kamRequest('/users', 'POST', {
+                            username: user.username,
+                            email: user.email,
+                            password: user.password,
+                            full_name: user.full_name || user.username,
+                            role: user.role,
+                            user_type: user.role,
+                            client_id: user.client_id || null
+                        });
+                        
+                        if (response.success) {
+                            successCount++;
+                        } else {
+                            importErrors.push(`${user.email}: ${response.error || 'Failed'}`);
+                        }
+                    } catch (error) {
+                        importErrors.push(`${user.email}: ${error.message}`);
+                    }
+                }
+                
+                // Show results
+                if (successCount === users.length) {
+                    this.showSuccessMessage(`Successfully imported ${successCount} users`);
+                } else {
+                    alert(`Import completed:\n✅ Success: ${successCount}\n❌ Failed: ${importErrors.length}\n\n` +
+                          'Errors:\n' + importErrors.slice(0, 5).join('\n') +
+                          (importErrors.length > 5 ? `\n... and ${importErrors.length - 5} more` : ''));
+                }
+                
+                // Reload users
+                await this.loadUsers();
+                
+            } catch (error) {
+                console.error('CSV import error:', error);
+                alert('Failed to import CSV: ' + error.message);
+            }
+        };
+        
+        reader.readAsText(file);
+    }
+    
+    downloadCSVTemplate(event) {
+        event.preventDefault();
+        
+        const template = `username,email,full_name,role,client_id,password
+johndoe,john.doe@example.com,John Doe,client,client_001,SecurePass123!
+janesmith,jane.smith@example.com,Jane Smith,admin,,AdminPass456!
+bobwilson,bob.wilson@example.com,Bob Wilson,support,,SupportPass789!
+alicejones,alice.jones@example.com,Alice Jones,client,client_002,ClientPass321!`;
+        
+        const blob = new Blob([template], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'users_import_template.csv';
+        a.click();
+        window.URL.revokeObjectURL(url);
     }
 
     // Helper Methods

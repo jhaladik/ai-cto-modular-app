@@ -168,12 +168,21 @@ class SimpleModal {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
         const modalElement = document.getElementById(this.id);
-        modalElement.style.display = 'flex';
         
         // Add close functionality
         modalElement.close = () => {
             modalElement.remove();
             if (this.onClose) this.onClose();
+        };
+        
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+        
+        // Restore body scroll when modal closes
+        const originalClose = modalElement.close;
+        modalElement.close = () => {
+            document.body.style.overflow = '';
+            originalClose();
         };
         
         return modalElement;
