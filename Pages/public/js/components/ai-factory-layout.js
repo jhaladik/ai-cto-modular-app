@@ -672,6 +672,7 @@ class AIFactoryLayout {
      * Load dashboard content
      */
     async loadDashboard(contentArea) {
+        // First, render the dashboard structure with loading placeholders
         contentArea.innerHTML = `
             <div class="page-header">
                 <h1 class="page-title">📊 Dashboard</h1>
@@ -681,27 +682,27 @@ class AIFactoryLayout {
                     </button>
                 </div>
             </div>
-
+    
             <!-- Dashboard Stats -->
             <div class="metrics-grid">
                 <div class="metric-card">
-                    <div class="metric-value">5</div>
+                    <div class="metric-value" id="total-clients">⏳</div>
                     <div class="metric-label">Total Clients</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">$4,250</div>
+                    <div class="metric-value" id="monthly-revenue">⏳</div>
                     <div class="metric-label">Monthly Revenue</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">247</div>
+                    <div class="metric-value" id="requests-today">⏳</div>
                     <div class="metric-label">Requests Today</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">98.5%</div>
+                    <div class="metric-value" id="system-uptime">⏳</div>
                     <div class="metric-label">System Uptime</div>
                 </div>
             </div>
-
+    
             <!-- Quick Actions -->
             <div class="info-grid" style="margin-top: 2rem;">
                 <div class="info-section">
@@ -742,8 +743,47 @@ class AIFactoryLayout {
                 </div>
             </div>
         `;
+    
+        // Now load real data from API
+        try {
+            console.log('📊 Loading dashboard stats...');
+            
+            const result = await window.apiClient.kamRequest('/dashboard/stats', 'GET');
+            
+            if (result.success && result.stats) {
+                // Update with real data
+                document.getElementById('total-clients').textContent = result.stats.clients.total;
+                document.getElementById('monthly-revenue').textContent = '$' + result.stats.revenue.monthly_total.toLocaleString();
+                document.getElementById('requests-today').textContent = result.stats.usage.requests_today;
+                document.getElementById('system-uptime').textContent = result.stats.system.uptime_percentage + '%';
+                
+                console.log('✅ Dashboard loaded with real data');
+            } else {
+                throw new Error('Invalid API response');
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to load dashboard stats:', error);
+            
+            // Show error state
+            document.getElementById('total-clients').textContent = '❌';
+            document.getElementById('monthly-revenue').textContent = '❌';
+            document.getElementById('requests-today').textContent = '❌';
+            document.getElementById('system-uptime').textContent = '❌';
+            
+            // Optionally show error message
+            const metricsGrid = document.querySelector('.metrics-grid');
+            if (metricsGrid) {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.gridColumn = '1 / -1';
+                errorDiv.style.textAlign = 'center';
+                errorDiv.style.color = '#e74c3c';
+                errorDiv.style.marginTop = '1rem';
+                errorDiv.innerHTML = '⚠️ Failed to load dashboard data. <button onclick="aiFactoryLayout.refreshDashboard()" style="margin-left: 1rem;">Retry</button>';
+                metricsGrid.appendChild(errorDiv);
+            }
+        }
     }
-
     /**
      * Load clients page - ADMIN ONLY
      */
