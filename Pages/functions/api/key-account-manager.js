@@ -101,7 +101,11 @@ export async function onRequestPost(context) {
             console.log('🔧 Using client API key for regular endpoint');
         }
         
-        // Step 3: Call KAM worker
+        // Step 3: Add session token to KAM headers
+        // KAM expects the session token for session-based endpoints
+        kamHeaders['x-bitware-session-token'] = sessionToken;
+        
+        // Step 4: Call KAM worker
         console.log('📞 Calling KAM worker...');
         
         let kamRequestBody = null;

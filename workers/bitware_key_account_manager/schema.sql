@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS clients (
     company_size TEXT,
     use_case_description TEXT,
     primary_interests TEXT, -- JSON array of topics
+    address TEXT, -- JSON object with street, city, state, zip, country
     
     -- AI learning data
     communication_style TEXT DEFAULT 'professional', -- formal, casual, technical, executive

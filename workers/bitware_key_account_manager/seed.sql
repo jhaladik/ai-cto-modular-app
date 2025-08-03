@@ -8,6 +8,7 @@ INSERT OR IGNORE INTO clients (
     company_name, 
     primary_contact_name,
     primary_contact_email, 
+    phone,
     subscription_tier, 
     account_status,
     monthly_budget_usd,
@@ -21,13 +22,15 @@ INSERT OR IGNORE INTO clients (
     created_at,
     last_interaction,
     total_lifetime_value,
-    satisfaction_score
+    satisfaction_score,
+    address
 ) VALUES 
     (
         'client_demo_001',
         'TechCorp Solutions',
         'Sarah Johnson',
         'sarah.johnson@techcorp.com',
+        '+1 (555) 123-4567',
         'premium',
         'active',
         500.0,
@@ -41,13 +44,15 @@ INSERT OR IGNORE INTO clients (
         '2024-07-01 10:00:00',
         '2024-07-22 14:30:00',
         2500.00,
-        4.5
+        4.5,
+        '{"street": "123 Tech Street", "city": "San Francisco", "state": "CA", "zip": "94105", "country": "United States"}'
     ),
     (
         'client_demo_002',
         'GreenEnergy Innovations',
         'Michael Chen',
         'michael.chen@greenenergy.com',
+        '+1 (555) 234-5678',
         'enterprise',
         'active',
         2000.0,
@@ -61,13 +66,15 @@ INSERT OR IGNORE INTO clients (
         '2024-06-15 09:15:00',
         '2024-07-21 16:45:00',
         15000.00,
-        4.8
+        4.8,
+        '{"street": "456 Green Plaza", "city": "Seattle", "state": "WA", "zip": "98101", "country": "United States"}'
     ),
     (
         'client_demo_003',
         'FinanceFirst Consulting',
         'Emily Rodriguez',
         'emily.rodriguez@financefirst.com',
+        '+1 (555) 345-6789',
         'standard',
         'active',
         200.0,
@@ -81,13 +88,15 @@ INSERT OR IGNORE INTO clients (
         '2024-07-10 11:30:00',
         '2024-07-22 08:15:00',
         750.00,
-        4.2
+        4.2,
+        '{"street": "789 Finance Tower", "city": "New York", "state": "NY", "zip": "10004", "country": "United States"}'
     ),
     (
         'client_trial_001',
         'StartupBoost',
         'Alex Kim',
         'alex.kim@startupboost.com',
+        '+1 (555) 456-7890',
         'basic',
         'trial',
         50.0,
@@ -101,7 +110,8 @@ INSERT OR IGNORE INTO clients (
         '2024-07-20 14:00:00',
         '2024-07-22 10:00:00',
         12.00,
-        3.8
+        3.8,
+        '{"street": "321 Startup Lane", "city": "Austin", "state": "TX", "zip": "78701", "country": "United States"}'
     );
 
 -- ==================== SAMPLE PIPELINE TEMPLATES ====================

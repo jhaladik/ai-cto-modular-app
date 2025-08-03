@@ -58,13 +58,7 @@
                     await window.sessionManager.validateSession();
                 }
                 
-                // Step 4: Initialize router
-                if (window.KAMRouter) {
-                    window.router = new KAMRouter();
-                    await window.router.initialize();
-                }
-                
-                // Step 5: Initialize layout with proper user type
+                // Step 4: Initialize layout first (before router)
                 if (window.AIFactoryLayout) {
                     const userType = window.sessionManager?.getUserType() || 'admin';
                     console.log(`🎭 Initializing layout for user type: ${userType}`);
@@ -76,6 +70,12 @@
                     
                     appContainer.innerHTML = window.aiFactoryLayout.render();
                     await window.aiFactoryLayout.mount();
+                }
+                
+                // Step 5: Initialize router after layout is ready
+                if (window.KAMRouter) {
+                    window.router = new KAMRouter();
+                    await window.router.initialize();
                 }
                 
                 // Hide loading screen

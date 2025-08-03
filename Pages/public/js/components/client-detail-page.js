@@ -150,15 +150,21 @@ class ClientDetailPage {
             // Method 1: Try API call first (if available)
             if (this.apiClient) {
                 try {
-                    console.log('🔍 Trying API client...');
+                    console.log('🔍 Trying API client for clientId:', this.clientId);
                     const response = await this.apiClient.getClient(this.clientId);
+                    console.log('📡 API Response:', response);
                     if (response && response.client) {
                         clientData = response.client;
-                        console.log('✅ Client data loaded from API');
+                        console.log('✅ Client data loaded from API:', clientData);
+                    } else if (response && response.success === false) {
+                        console.warn('⚠️ API returned error:', response.error);
                     }
                 } catch (apiError) {
-                    console.warn('⚠️ API call failed, trying mock data:', apiError.message);
+                    console.error('❌ API call failed:', apiError);
+                    console.warn('⚠️ Will try fallback methods');
                 }
+            } else {
+                console.warn('⚠️ No API client available');
             }
             
             // Method 2: Use mock data as fallback

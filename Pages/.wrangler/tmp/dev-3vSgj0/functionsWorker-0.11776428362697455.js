@@ -464,6 +464,7 @@ async function onRequestPost4(context) {
       kamHeaders["X-API-Key"] = env.CLIENT_API_KEY;
       console.log("\u{1F527} Using client API key for regular endpoint");
     }
+    kamHeaders["x-bitware-session-token"] = sessionToken;
     console.log("\u{1F4DE} Calling KAM worker...");
     let kamRequestBody = null;
     if (method !== "GET" && method !== "HEAD") {

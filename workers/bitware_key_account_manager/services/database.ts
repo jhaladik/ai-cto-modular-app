@@ -226,7 +226,7 @@ export class DatabaseService {
              company_size, use_case_description, primary_interests, communication_style,
              preferred_report_formats, typical_request_patterns, success_metrics,
              created_at, updated_at, last_interaction as last_activity, 
-             total_lifetime_value, satisfaction_score
+             total_lifetime_value, satisfaction_score, address
       FROM clients 
       WHERE client_id = ?
     `).bind(clientId).first();
@@ -242,7 +242,7 @@ export class DatabaseService {
              company_size, use_case_description, primary_interests, communication_style,
              preferred_report_formats, typical_request_patterns, success_metrics,
              created_at, updated_at, last_interaction as last_activity, 
-             total_lifetime_value, satisfaction_score
+             total_lifetime_value, satisfaction_score, address
       FROM clients 
       ORDER BY created_at DESC
     `).all();
