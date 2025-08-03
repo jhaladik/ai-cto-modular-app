@@ -211,6 +211,15 @@ class AIFactoryLayout {
     async loadUserManagement(contentArea) {
         console.log('👥 Loading User Management...');
         
+        if (window.UsersPage) {
+            // Use the new users management component
+            window.usersPage = new UsersPage(window.apiClient);
+            contentArea.innerHTML = window.usersPage.render();
+            await window.usersPage.mount();
+            return;
+        }
+        
+        // Fallback to simple placeholder
         contentArea.innerHTML = `
             <div class="page-header">
                 <h1 class="page-title">👥 User Management</h1>
@@ -1213,7 +1222,11 @@ class AIFactoryLayout {
     // User Management Actions
     refreshUserManagement() {
         console.log('🔄 Refreshing user management...');
-        this.navigate('/users');
+        if (window.usersPage && window.usersPage.loadUsers) {
+            window.usersPage.loadUsers();
+        } else {
+            this.navigate('/users');
+        }
     }
 
     showAddUser() {

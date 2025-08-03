@@ -723,6 +723,92 @@ export default {
         }
       }
 
+      // Update user endpoint
+      if (pathname.match(/^\/users\/[^\/]+$/) && method === 'PUT') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: false,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const userId = pathname.split('/')[2];
+          const body = await request.json();
+          
+          // Remove fields that shouldn't be updated directly
+          delete body.user_id;
+          delete body.password_hash;
+          delete body.created_at;
+          delete body.last_login;
+          delete body.login_count;
+          
+          const success = await db.updateUser(userId, body);
+          
+          if (success) {
+            return jsonResponse({
+              success: true,
+              message: 'User updated successfully'
+            });
+          } else {
+            return notFound('User not found or no changes made');
+          }
+          
+        } catch (error) {
+          console.error('Update user error:', error);
+          return serverError('Failed to update user');
+        }
+      }
+      
+      // Delete user endpoint
+      if (pathname.match(/^\/users\/[^\/]+$/) && method === 'DELETE') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: false,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const userId = pathname.split('/')[2];
+          
+          // Don't allow deleting the last admin user
+          const user = await db.getUserById(userId);
+          if (!user) {
+            return notFound('User not found');
+          }
+          
+          if (user.role === 'admin') {
+            const allUsers = await db.getAllUsers();
+            const adminCount = allUsers.filter(u => u.role === 'admin').length;
+            if (adminCount <= 1) {
+              return badRequest('Cannot delete the last administrator');
+            }
+          }
+          
+          const success = await db.deleteUser(userId);
+          
+          if (success) {
+            return jsonResponse({
+              success: true,
+              message: 'User deleted successfully'
+            });
+          } else {
+            return serverError('Failed to delete user');
+          }
+          
+        } catch (error) {
+          console.error('Delete user error:', error);
+          return serverError('Failed to delete user');
+        }
+      }
+
       // ==================== DASHBOARD STATS ENDPOINT ====================
       if (pathname === '/dashboard/stats' && method === 'GET') {
         try {

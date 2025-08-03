@@ -140,6 +140,57 @@ export class DatabaseService {
     `).bind(new Date().toISOString(), userId).run();
   }
 
+  async updateUser(userId: string, updates: {
+    username?: string;
+    email?: string;
+    full_name?: string;
+    role?: string;
+    status?: string;
+    client_id?: string;
+    department?: string;
+  }): Promise<boolean> {
+    const allowedFields = ['username', 'email', 'full_name', 'role', 'status', 'client_id', 'department'];
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (allowedFields.includes(key) && value !== undefined) {
+        updateFields.push(`${key} = ?`);
+        values.push(value);
+      }
+    }
+    
+    if (updateFields.length === 0) {
+      return false;
+    }
+    
+    values.push(userId); // Add userId for WHERE clause
+    
+    const result = await this.db.prepare(`
+      UPDATE users 
+      SET ${updateFields.join(', ')}
+      WHERE user_id = ?
+    `).bind(...values).run();
+    
+    return result.success === true;
+  }
+
+  async deleteUser(userId: string): Promise<boolean> {
+    // First delete related sessions
+    await this.db.prepare(`
+      DELETE FROM user_sessions 
+      WHERE user_id = ?
+    `).bind(userId).run();
+    
+    // Then delete the user
+    const result = await this.db.prepare(`
+      DELETE FROM users 
+      WHERE user_id = ?
+    `).bind(userId).run();
+    
+    return result.success === true;
+  }
+
   // ==================== SESSION MANAGEMENT ====================
 
   async createSession(sessionData: {
