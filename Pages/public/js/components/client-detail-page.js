@@ -100,6 +100,9 @@ class ClientDetailPage {
         // Debug session information
         this.debugSessionInfo();
         
+        // Add a small delay to ensure DOM is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         try {
             // Load client data with comprehensive fallbacks
             await this.loadClientData();
@@ -198,6 +201,7 @@ class ClientDetailPage {
      * Mock client data - replace with actual API call when ready
      */
     async getMockClientData(clientId) {
+        console.log(`🎭 Getting mock data for client: ${clientId}`);
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 800));
         
@@ -935,18 +939,24 @@ class ClientDetailPage {
      * Refresh page content with loaded data
      */
     refreshPageContent() {
-        if (!this.clientData) return;
+        if (!this.clientData) {
+            console.warn('⚠️ No client data to refresh');
+            return;
+        }
         
-        console.log('🎨 Refreshing page content with client data...');
+        console.log('🎨 Refreshing page content with client data:', this.clientData);
         
         // Update breadcrumb
         const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
         if (breadcrumbCurrent) {
             breadcrumbCurrent.textContent = this.clientData.company_name;
+        } else {
+            console.warn('⚠️ Breadcrumb element not found');
         }
         
         // Update page title
         const clientNameElements = document.querySelectorAll('.client-name, .page-title');
+        console.log(`📝 Found ${clientNameElements.length} elements to update`);
         clientNameElements.forEach(element => {
             element.textContent = this.clientData.company_name;
         });
@@ -954,6 +964,7 @@ class ClientDetailPage {
         // Update tab content
         const tabContent = document.getElementById('tab-content');
         if (tabContent) {
+            console.log('📋 Updating tab content');
             tabContent.innerHTML = this.renderTabContent();
         }
     }

@@ -646,21 +646,20 @@ class AIFactoryLayout {
                     }
                     await this.loadUserManagement(contentArea);
                     break;
-                case '/clients/:id':
-                case '/clients/client_1':
-                case '/clients/client_2':
-                case '/clients/client_3':
-                case '/clients/client_4':
-                case '/clients/client_5':
-                    // ADMIN can view any client, CLIENT redirected to own account
-                    if (this.config.userType !== 'admin') {
-                        await this.navigate('/my-account');
-                        return;
-                    }
-                    await this.loadClientDetail(contentArea, this.extractClientId(path));
-                    break;
                 default:
-                    this.loadPlaceholderContent(contentArea, path);
+                    // Check if it's a client detail route with dynamic ID
+                    if (path.startsWith('/clients/') && path.split('/').length === 3) {
+                        // ADMIN can view any client, CLIENT redirected to own account
+                        if (this.config.userType !== 'admin') {
+                            await this.navigate('/my-account');
+                            return;
+                        }
+                        const clientId = this.extractClientId(path);
+                        console.log(`📋 Loading client detail for: ${clientId}`);
+                        await this.loadClientDetail(contentArea, clientId);
+                    } else {
+                        this.loadPlaceholderContent(contentArea, path);
+                    }
             }
         } catch (error) {
             console.error('Navigation error:', error);

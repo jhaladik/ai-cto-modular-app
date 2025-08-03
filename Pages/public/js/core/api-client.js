@@ -10,7 +10,8 @@ class AIFactoryAPIClient {
         this.sessionToken = localStorage.getItem('bitware-session-token');
         this.baseHeaders = {
             'Content-Type': 'application/json',
-            'X-Session-Token': this.sessionToken
+            'X-Session-Token': this.sessionToken,
+            'x-bitware-session-token': this.sessionToken  // Add both header variants
         };
     }
 
@@ -20,6 +21,7 @@ class AIFactoryAPIClient {
     updateSessionToken(newToken) {
         this.sessionToken = newToken;
         this.baseHeaders['X-Session-Token'] = newToken;
+        this.baseHeaders['x-bitware-session-token'] = newToken;  // Update both variants
     }
 
     /**
@@ -92,18 +94,20 @@ class AIFactoryAPIClient {
     async getClients() {
         return this.kamRequest('/admin/clients');
     }
-    // Enhanced API Client - Client Detail Methods
-    // File: Pages/public/js/core/api-client.js
-    // Add these methods to the AIFactoryAPIClient class
 
-    // Add these methods in the KAM Operations section (after getClients() method):
+    /**
+     * Get client by ID - primary method used by client-detail-page.js
+     */
+    async getClient(clientId) {
+        // Use the RESTful endpoint we'll add to backend
+        return this.kamRequest(`/client/${clientId}`, 'GET');
+    }
 
     /**
      * Get detailed client information by ID or email
      */
-    // Instead of calling non-existent endpoints, use the existing /client endpoint
     async getClientDetail(clientId, email = null) {
-        // This endpoint exists
+        // This endpoint exists for query-based access
         return this.kamRequest('/client', 'GET', { 
             client_id: clientId, 
             email: email 
@@ -189,74 +193,8 @@ class AIFactoryAPIClient {
     async getClientDetailDashboard(clientId) {
         console.log(`📊 Loading dashboard for client: ${clientId}`);
         
-        try {
-            // Use working /admin/clients endpoint
-            const clientsResult = await this.kamRequest('/admin/clients', 'GET');
-            
-            if (clientsResult.success && clientsResult.clients) {
-                const client = clientsResult.clients.find(c => c.client_id === clientId);
-                
-                if (client) {
-                    console.log('✅ Found client data:', client);
-                    
-                    return {
-                        client: { 
-                            success: true,
-                            client: client
-                        },
-                        analytics: {
-                            success: true,
-                            data: {
-                                total_requests: client.total_requests || 0,
-                                total_spent: client.total_spent_usd || 0,
-                                monthly_budget: client.monthly_budget_usd || 'Unlimited',
-                                message: "Analytics coming soon"
-                            }
-                        },
-                        communications: {
-                            success: true,
-                            data: {
-                                communications: [],
-                                total: 0,
-                                message: "Communications coming soon"
-                            }
-                        },
-                        requests: {
-                            success: true,
-                            data: {
-                                requests: [],
-                                total: 0,
-                                message: "Request history coming soon"
-                            }
-                        },
-                        budget: {
-                            success: true,
-                            data: {
-                                current_usage: 0,
-                                monthly_limit: client.monthly_budget_usd || 0,
-                                remaining_budget: client.monthly_budget_usd || 0
-                            }
-                        },
-                        errors: {}
-                    };
-                } else {
-                    throw new Error(`Client ${clientId} not found`);
-                }
-            } else {
-                throw new Error('Failed to load client data');
-            }
-            
-        } catch (error) {
-            console.error('❌ Dashboard load failed:', error);
-            return {
-                client: null,
-                analytics: {},
-                communications: [],
-                requests: [],
-                budget: {},
-                errors: { general: error.message }
-            };
-        }
+        // Use the new dashboard endpoint
+        return this.kamRequest(`/client/${clientId}/dashboard`, 'GET');
     }
     
     async getRecentActivity() {
