@@ -154,7 +154,8 @@ class AIFactoryLayout {
                     items: [
                         { path: '/dashboard', icon: '📊', label: 'Dashboard' },
                         { path: '/clients', icon: '👥', label: 'Client Management' },
-                        { path: '/reports', icon: '📋', label: 'Reports', disabled: true }
+                        { path: '/requests', icon: '📋', label: 'Request Management' },
+                        { path: '/reports', icon: '📄', label: 'Reports', disabled: true }
                     ]
                 },
                 {
@@ -655,6 +656,14 @@ class AIFactoryLayout {
                     }
                     await this.loadUserManagement(contentArea);
                     break;
+                case '/requests':
+                    // ADMIN ONLY - request management
+                    if (this.config.userType !== 'admin') {
+                        await this.navigate('/my-account');
+                        return;
+                    }
+                    await this.loadRequestsPage(contentArea);
+                    break;
                 default:
                     // Check if it's a client detail route with dynamic ID
                     if (path.startsWith('/clients/') && path.split('/').length === 3) {
@@ -901,6 +910,45 @@ class AIFactoryLayout {
                         </button>
                         <button class="btn btn-secondary" onclick="window.location.reload()">
                             🔄 Reload Page
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Load requests page - ADMIN ONLY
+     */
+    async loadRequestsPage(contentArea) {
+        console.log('📋 Loading Requests Management...');
+        
+        if (window.RequestsPage) {
+            try {
+                // Create and mount requests page
+                if (!window.requestsPage) {
+                    window.requestsPage = new RequestsPage(window.apiClient);
+                }
+                contentArea.innerHTML = window.requestsPage.render();
+                await window.requestsPage.mount();
+                console.log('✅ Requests page loaded successfully');
+            } catch (error) {
+                console.error('❌ Failed to load requests page:', error);
+                this.showRequestsError(contentArea, error);
+            }
+        } else {
+            console.error('❌ RequestsPage component not loaded');
+            contentArea.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                    <h3>Component Not Loaded</h3>
+                    <p>RequestsPage component is not available.</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="window.location.reload()">
+                            🔄 Reload Page
+                        </button>
+                        <button class="btn btn-secondary" onclick="aiFactoryLayout.navigate('/dashboard')">
+                            ← Back to Dashboard
                         </button>
                     </div>
                 </div>
@@ -1337,6 +1385,33 @@ class AIFactoryLayout {
                     </button>
                     <button class="btn btn-secondary" onclick="aiFactoryLayout.navigate('/clients')">
                         ← Back to Clients
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.location.reload()">
+                        🔄 Reload Page
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Show requests page specific error
+     */
+    showRequestsError(contentArea, error) {
+        contentArea.innerHTML = `
+            <div class="error-state">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                <h3>Requests Loading Error</h3>
+                <p>Failed to load requests management page.</p>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    Error: ${error.message}
+                </p>
+                <div class="error-actions" style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary" onclick="aiFactoryLayout.navigate('/requests')">
+                        🔄 Try Again
+                    </button>
+                    <button class="btn btn-secondary" onclick="aiFactoryLayout.navigate('/dashboard')">
+                        ← Back to Dashboard
                     </button>
                     <button class="btn btn-secondary" onclick="window.location.reload()">
                         🔄 Reload Page

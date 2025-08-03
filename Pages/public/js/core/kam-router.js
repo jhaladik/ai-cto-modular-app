@@ -65,6 +65,7 @@ class KAMRouter {
         this.addRoute('/clients', () => this.loadClientsPage());
         this.addRoute('/clients/:id', (params) => this.loadClientDetail(params.id));
         this.addRoute('/users', () => this.loadUserManagement());
+        this.addRoute('/requests', () => this.loadRequestsPage());
         
         // Client routes  
         this.addRoute('/my-account', () => this.loadMyAccount());
@@ -263,6 +264,14 @@ class KAMRouter {
             await window.aiFactoryLayout.navigate('/users');
         } else {
             this.showComingSoon('User Management', 'User management interface will be available here.');
+        }
+    }
+
+    async loadRequestsPage() {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate('/requests');
+        } else {
+            this.showLayoutError('Requests');
         }
     }
 

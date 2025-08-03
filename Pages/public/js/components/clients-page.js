@@ -482,7 +482,7 @@ class ClientsPage {
             return;
         }
 
-        const modal = window.SimpleModal.show({
+        window.SimpleModal.show({
             title: '➕ Add New Client',
             size: 'large',
             content: `
@@ -610,15 +610,14 @@ class ClientsPage {
                 {
                     text: 'Cancel',
                     class: 'btn-secondary',
-                    onclick: "document.getElementById('" + modal.id + "').close()"
+                    onclick: "document.querySelector('.modal-overlay').close()"
                 },
                 {
                     text: 'Create Client',
                     class: 'btn-primary',
                     onclick: "clientsPage.handleAddClient()"
                 }
-            ],
-            id: modal.id
+            ]
         });
     }
 

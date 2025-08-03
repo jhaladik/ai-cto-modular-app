@@ -106,17 +106,16 @@ class UsersPage {
                 </div>
 
                 <!-- Users Table -->
-                <div class="content-section" style="margin-top: 1rem;">
-                    <div>
-                        <div id="users-loading" style="text-align: center; padding: 2rem; display: none;">
-                            <div class="spinner"></div>
-                            <p>Loading users...</p>
-                        </div>
-                        <div id="users-error" style="text-align: center; padding: 2rem; display: none;">
-                            <p style="color: var(--danger);">Failed to load users</p>
-                            <button class="btn btn-small" onclick="window.usersPage.loadUsers()">Retry</button>
-                        </div>
-                        <div id="users-table-container">
+                <div id="users-loading" style="text-align: center; padding: 2rem; display: none;">
+                    <div class="spinner"></div>
+                    <p>Loading users...</p>
+                </div>
+                <div id="users-error" style="text-align: center; padding: 2rem; display: none;">
+                    <p style="color: var(--danger);">Failed to load users</p>
+                    <button class="btn btn-small" onclick="window.usersPage.loadUsers()">Retry</button>
+                </div>
+                <div class="users-content">
+                    <div id="users-table-container">
                             <table class="data-table" id="users-table">
                                 <thead>
                                     <tr>
@@ -137,6 +136,7 @@ class UsersPage {
                                             Created <span class="sort-indicator">↕</span>
                                         </th>
                                         <th>Actions</th>
+                                        <th style="width: 40px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="users-tbody">
@@ -146,13 +146,12 @@ class UsersPage {
                             <div id="no-users" style="text-align: center; padding: 2rem; display: none;">
                                 <p>No users found</p>
                             </div>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        <div class="pagination" id="pagination-container" style="margin-top: 1rem;">
-                            <!-- Pagination will be rendered here -->
-                        </div>
                     </div>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pagination" id="pagination-container" style="margin-top: 1rem;">
+                    <!-- Pagination will be rendered here -->
                 </div>
             </div>
         `;
@@ -298,24 +297,19 @@ class UsersPage {
         tbody.innerHTML = paginatedUsers.map(user => {
             const isExpanded = this.expandedRows && this.expandedRows.has(user.id);
             return `
-                <tr class="user-row ${isExpanded ? 'expanded' : ''}" data-user-id="${user.id}">
-                    <td>
+                <tr class="user-row ${isExpanded ? 'expanded' : ''}" data-user-id="${user.id}" style="cursor: pointer;" onclick="window.usersPage.toggleRow('${user.id}')">
+                    <td onclick="event.stopPropagation();">
                         <input type="checkbox" 
                                value="${user.id}" 
                                onchange="window.usersPage.toggleUserSelection('${user.id}')"
                                ${this.selectedUsers.has(user.id) ? 'checked' : ''}>
                     </td>
                     <td>
-                        <div class="user-info" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;" onclick="window.usersPage.toggleRow('${user.id}')">
-                            <div style="flex: 1;">
-                                <div class="username">
-                                    ${this.escapeHtml(user.full_name || user.username)}
-                                    ${this.hasNotes(user.id) ? '<span style="color: var(--warning); margin-left: 0.25rem;" title="Has notes">📌</span>' : ''}
-                                </div>
-                                <div class="email">${this.escapeHtml(user.email)}</div>
-                            </div>
-                            <div class="expand-icon" style="transition: transform 0.2s; margin-left: 1rem; flex-shrink: 0; align-self: center;">
-                                ${isExpanded ? '▼' : '▶'}
+                        <div class="user-info">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <strong>${this.escapeHtml(user.full_name || user.username)}</strong>
+                                ${this.hasNotes(user.id) ? '<span style="color: var(--warning);" title="Has notes">📌</span>' : ''}
+                                <span style="color: var(--text-secondary); font-size: 0.875rem;">• ${this.escapeHtml(user.email)}</span>
                             </div>
                         </div>
                     </td>
@@ -323,7 +317,7 @@ class UsersPage {
                         <span class="role-badge role-${user.role}">${this.formatRole(user.role)}</span>
                     </td>
                     <td>
-                        ${user.client_id ? `<a href="#/clients/${user.client_id}" class="link">${this.getClientName(user.client_id)}</a>` : '-'}
+                        ${user.client_id ? `<a href="#/clients/${user.client_id}" class="link" onclick="event.stopPropagation();">${this.getClientName(user.client_id)}</a>` : '-'}
                     </td>
                     <td>
                         <span class="status-badge status-${user.account_status || 'active'}">${this.formatStatus(user.account_status)}</span>
@@ -334,10 +328,15 @@ class UsersPage {
                         </div>
                     </td>
                     <td>
-                        <div class="action-buttons" style="display: flex; gap: 0.25rem;">
+                        <div class="action-buttons" style="display: flex; gap: 0.25rem;" onclick="event.stopPropagation();">
                             <button class="btn btn-icon" onclick="window.usersPage.deleteUser('${user.id}')" title="Delete">
                                 🗑️
                             </button>
+                        </div>
+                    </td>
+                    <td style="text-align: center; width: 40px;">
+                        <div class="expand-icon" style="transition: transform 0.2s;">
+                            ${isExpanded ? '▼' : '▶'}
                         </div>
                     </td>
                 </tr>
@@ -459,7 +458,7 @@ class UsersPage {
             }
         }
 
-        const modal = window.SimpleModal.show({
+        window.SimpleModal.show({
             title: '➕ Add New User',
             size: 'medium',
             content: `
@@ -534,7 +533,7 @@ class UsersPage {
                 {
                     text: 'Cancel',
                     class: 'btn-secondary',
-                    onclick: "document.getElementById('" + modal.id + "').close()"
+                    onclick: "document.querySelector('.modal-overlay').close()"
                 },
                 {
                     text: 'Save User',
@@ -542,7 +541,6 @@ class UsersPage {
                     onclick: "window.usersPage.handleAddUser()"
                 }
             ],
-            id: modal.id
         });
 
         // Add role change handler
@@ -790,7 +788,7 @@ class UsersPage {
         
         return `
             <tr class="expanded-content">
-                <td colspan="7">
+                <td colspan="8">
                     <div class="expanded-details" style="
                         padding: 1.5rem;
                         background: var(--bg-secondary);

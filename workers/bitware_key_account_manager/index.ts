@@ -352,9 +352,9 @@ export default {
           // Create the client
           const stmt = env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
             INSERT INTO clients (
-              client_id, company_name, contact_email, contact_name, phone,
+              client_id, company_name, primary_contact_email, primary_contact_name, phone,
               subscription_tier, account_status, monthly_budget_usd, used_budget_current_month,
-              industry, company_size, address, created_at, last_activity
+              industry, company_size, address, created_at, last_interaction
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
           
@@ -753,7 +753,7 @@ export default {
         try {
           const auth = await authenticateRequest(request, env, db, {
             requireAdmin: true,
-            allowWorker: false,
+            allowWorker: true,
             allowSession: true
           });
           
