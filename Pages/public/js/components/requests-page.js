@@ -548,6 +548,7 @@ class RequestsPage {
                                 <div class="template-header">
                                     <h6>${template.display_name}</h6>
                                     <span class="template-category">${template.category}</span>
+                                    ${template.allowed_tiers ? this.renderTierBadges(template.allowed_tiers) : ''}
                                 </div>
                                 <p class="template-description">${template.description}</p>
                                 <div class="template-meta">
@@ -885,6 +886,33 @@ class RequestsPage {
         }
         
         return `${size.toFixed(1)} ${units[unitIndex]}`;
+    }
+
+    renderTierBadges(allowedTiers) {
+        const tierColors = {
+            basic: '#6b7280',      // gray
+            standard: '#3b82f6',   // blue
+            premium: '#8b5cf6',    // purple
+            enterprise: '#f59e0b'  // amber
+        };
+        
+        const tierLabels = {
+            basic: 'Basic',
+            standard: 'Standard',
+            premium: 'Premium',
+            enterprise: 'Enterprise'
+        };
+        
+        // If all tiers are allowed, don't show badges
+        if (allowedTiers.length === 4) {
+            return '';
+        }
+        
+        // Show minimum required tier
+        const minTier = ['basic', 'standard', 'premium', 'enterprise'].find(tier => allowedTiers.includes(tier));
+        if (!minTier) return '';
+        
+        return `<span class="tier-badge" style="background-color: ${tierColors[minTier]}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">${tierLabels[minTier]}+</span>`;
     }
 
     // Mock data methods

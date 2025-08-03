@@ -1358,7 +1358,19 @@ export default {
             is_active: url.searchParams.get('is_active') === 'false' ? false : true
           };
           
-          const templates = await db.getAllTemplates(filters);
+          // Get client tier if authenticated via session
+          let clientTier: string | undefined;
+          if (auth.authType === 'session' && auth.session) {
+            const user = await db.getUserById(auth.session.user_id);
+            if (user && user.client_id) {
+              const client = await db.getClientById(user.client_id);
+              if (client) {
+                clientTier = client.subscription_tier;
+              }
+            }
+          }
+          
+          const templates = await db.getAllTemplates({ ...filters, clientTier });
           
           return jsonResponse({
             success: true,

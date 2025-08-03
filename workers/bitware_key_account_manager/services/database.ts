@@ -722,6 +722,7 @@ export class DatabaseService {
     category?: string;
     is_active?: boolean;
     requires_premium?: boolean;
+    clientTier?: string;
   }): Promise<PipelineTemplate[]> {
     let query = `
       SELECT * FROM pipeline_template_cache
@@ -749,12 +750,29 @@ export class DatabaseService {
     
     const result = await this.db.prepare(query).bind(...params).all();
     
+    // Filter by client tier if provided
+    let templates = result.results;
+    if (filters?.clientTier) {
+      templates = templates.filter((template: any) => {
+        if (!template.allowed_tiers) return true; // No restrictions
+        
+        try {
+          const allowedTiers = JSON.parse(template.allowed_tiers);
+          return allowedTiers.includes(filters.clientTier);
+        } catch (e) {
+          console.error('Error parsing allowed_tiers:', e);
+          return true; // Allow if parsing fails
+        }
+      });
+    }
+    
     // Parse JSON fields
-    return result.results.map((template: any) => ({
+    return templates.map((template: any) => ({
       ...template,
       worker_flow: JSON.parse(template.worker_flow || '[]'),
       typical_use_cases: JSON.parse(template.typical_use_cases || '[]'),
-      keyword_triggers: JSON.parse(template.keyword_triggers || '[]')
+      keyword_triggers: JSON.parse(template.keyword_triggers || '[]'),
+      allowed_tiers: template.allowed_tiers ? JSON.parse(template.allowed_tiers) : null
     }));
   }
 
