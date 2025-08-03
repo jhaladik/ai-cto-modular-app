@@ -377,4 +377,84 @@ export class DatabaseService {
       WHERE client_id = ?
     `).bind(new Date().toISOString(), clientId).run();
   }
+  
+  async updateClient(clientId: string, updates: Partial<Client>): Promise<boolean> {
+    try {
+      // Build dynamic update query
+      const updateFields: string[] = [];
+      const values: any[] = [];
+      
+      // Map of field names to database columns
+      const fieldMap: { [key: string]: string } = {
+        contact_name: 'primary_contact_name',
+        contact_email: 'primary_contact_email',
+        phone: 'phone',
+        industry: 'industry',
+        company_size: 'company_size',
+        monthly_budget_usd: 'monthly_budget_usd',
+        subscription_tier: 'subscription_tier',
+        account_status: 'account_status',
+        address: 'address',
+        use_case_description: 'use_case_description',
+        primary_interests: 'primary_interests',
+        communication_style: 'communication_style',
+        preferred_report_formats: 'preferred_report_formats'
+      };
+      
+      // Build update fields and values
+      for (const [field, dbColumn] of Object.entries(fieldMap)) {
+        if (updates[field as keyof Client] !== undefined) {
+          updateFields.push(`${dbColumn} = ?`);
+          // Handle JSON fields
+          if (['address', 'primary_interests', 'preferred_report_formats'].includes(field)) {
+            values.push(JSON.stringify(updates[field as keyof Client]));
+          } else {
+            values.push(updates[field as keyof Client]);
+          }
+        }
+      }
+      
+      if (updateFields.length === 0) {
+        return false; // Nothing to update
+      }
+      
+      // Add updated_at
+      updateFields.push('updated_at = ?');
+      values.push(new Date().toISOString());
+      
+      // Add client_id for WHERE clause
+      values.push(clientId);
+      
+      const query = `
+        UPDATE clients 
+        SET ${updateFields.join(', ')}
+        WHERE client_id = ?
+      `;
+      
+      console.log('📝 Executing update query:', {
+        query,
+        valuesCount: values.length,
+        clientId
+      });
+      
+      const result = await this.db.prepare(query).bind(...values).run();
+      
+      console.log('✅ Update result:', {
+        success: result.success,
+        changes: result.changes,
+        meta: result.meta
+      });
+      
+      // D1 might not return changes count, so check success flag
+      return result.success === true;
+    } catch (error) {
+      console.error('❌ Update client database error:', {
+        message: error.message,
+        stack: error.stack,
+        clientId,
+        updateFields: Object.keys(updates)
+      });
+      throw error; // Re-throw to get better error message in worker
+    }
+  }
 }

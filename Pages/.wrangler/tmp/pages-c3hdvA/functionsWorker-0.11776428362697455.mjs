@@ -476,7 +476,7 @@ async function onRequestPost4(context) {
     let kamHeaders = {
       "Content-Type": "application/json"
     };
-    const isAdminEndpoint = endpoint.startsWith("/clients") || endpoint.startsWith("/client/") || // Add client detail endpoint
+    const isAdminEndpoint = endpoint.startsWith("/clients") || endpoint.startsWith("/client") || // Matches both /client and /client/
     endpoint.startsWith("/users") || endpoint.startsWith("/dashboard") || endpoint.includes("admin");
     console.log("\u{1F510} Admin endpoint check:", {
       isAdminEndpoint,
@@ -583,6 +583,10 @@ async function onRequestGet2(context) {
   return onRequestPost4({ request: fakeRequest, env });
 }
 __name(onRequestGet2, "onRequestGet");
+async function onRequestPut(context) {
+  return onRequestPost4(context);
+}
+__name(onRequestPut, "onRequestPut");
 
 // ../.wrangler/tmp/pages-c3hdvA/functionsRoutes-0.46100317410434766.mjs
 var routes = [
@@ -641,6 +645,13 @@ var routes = [
     method: "POST",
     middlewares: [],
     modules: [onRequestPost4]
+  },
+  {
+    routePath: "/api/key-account-manager",
+    mountPath: "/api",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut]
   }
 ];
 
@@ -1131,7 +1142,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-kGGjAD/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-a9QoWY/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -1163,7 +1174,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-kGGjAD/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-a9QoWY/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

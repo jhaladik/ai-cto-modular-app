@@ -558,6 +558,98 @@ export default {
           return serverError('Failed to retrieve client');
         }
       }
+      
+      // Update client endpoint
+      if (pathname === '/client' && method === 'PUT') {
+        try {
+          const sessionValidation = validateSessionToken(request);
+          const workerAuth = validateWorkerAuth(request, env);
+          
+          if (!sessionValidation.valid && !workerAuth.valid) {
+            return unauthorized('Authentication required');
+          }
+          
+          // Trust the Pages proxy's validation when using worker auth
+          if (workerAuth.valid) {
+            console.log('✅ Using worker auth - trusting Pages proxy validation');
+          } else if (sessionValidation.valid) {
+            // If using session auth directly, verify admin role
+            const session = await db.getSession(sessionValidation.sessionToken!);
+            if (!session || new Date(session.expires_at) < new Date()) {
+              return unauthorized('Session expired');
+            }
+            const user = await db.getUserById(session.user_id);
+            if (!user || user.role !== 'admin') {
+              return unauthorized('Admin access required');
+            }
+          }
+          
+          const body: any = await request.json();
+          const { client_id, ...updateData } = body;
+          
+          console.log('🔍 PUT /client request:', {
+            client_id,
+            updateDataKeys: Object.keys(updateData),
+            hasAddress: 'address' in updateData,
+            addressType: typeof updateData.address
+          });
+          
+          if (!client_id) {
+            return badRequest('Client ID required');
+          }
+          
+          // Validate update data
+          const allowedFields = [
+            'contact_name', 'contact_email', 'phone', 'industry', 
+            'company_size', 'monthly_budget_usd', 'subscription_tier', 
+            'account_status', 'address', 'use_case_description',
+            'primary_interests', 'communication_style', 'preferred_report_formats'
+          ];
+          
+          const filteredUpdate: any = {};
+          for (const field of allowedFields) {
+            if (updateData[field] !== undefined) {
+              filteredUpdate[field] = updateData[field];
+            }
+          }
+          
+          console.log('📤 Filtered update data:', {
+            fields: Object.keys(filteredUpdate),
+            hasData: Object.keys(filteredUpdate).length > 0
+          });
+          
+          if (Object.keys(filteredUpdate).length === 0) {
+            return badRequest('No valid fields to update');
+          }
+          
+          // Update the client
+          try {
+            const success = await db.updateClient(client_id, filteredUpdate);
+            
+            if (success) {
+              console.log('✅ Client updated successfully:', client_id);
+              return jsonResponse({
+                success: true,
+                message: 'Client updated successfully'
+              }, { headers: corsHeaders });
+            } else {
+              console.error('❌ Update returned false for client:', client_id);
+              return serverError('Failed to update client - no changes made');
+            }
+          } catch (dbError) {
+            console.error('❌ Database update error:', {
+              message: dbError.message,
+              clientId: client_id,
+              error: dbError
+            });
+            return serverError(`Database error: ${dbError.message}`);
+          }
+          
+        } catch (error) {
+          console.error('❌ Update client endpoint error:', error);
+          return serverError('Failed to process update request: ' + error.message);
+        }
+      }
 
       // RESTful endpoint for getting client by ID
       if (pathname.startsWith('/client/') && method === 'GET') {

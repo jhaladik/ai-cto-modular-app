@@ -208,12 +208,7 @@ class AIFactoryAPIClient {
         return this.kamRequest(`/clients/${clientId}`);
     }
 
-    /**
-     * Update client settings
-     */
-    async updateClient(clientId, updates) {
-        return this.kamRequest(`/clients/${clientId}`, 'PUT', updates);
-    }
+    // REMOVED: Duplicate updateClient method that was using wrong endpoint
 
     // =============================================================================
     // Universal Researcher Operations

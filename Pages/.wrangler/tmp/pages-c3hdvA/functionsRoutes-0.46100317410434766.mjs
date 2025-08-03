@@ -6,6 +6,7 @@ import { onRequest as __api_kam__path__js_onRequest } from "C:\\Users\\jhala\\On
 import { onRequestGet as __api_key_account_manager_js_onRequestGet } from "C:\\Users\\jhala\\OneDrive\\APPS\\ai-cto-modular-app\\Pages\\functions\\api\\key-account-manager.js"
 import { onRequestOptions as __api_key_account_manager_js_onRequestOptions } from "C:\\Users\\jhala\\OneDrive\\APPS\\ai-cto-modular-app\\Pages\\functions\\api\\key-account-manager.js"
 import { onRequestPost as __api_key_account_manager_js_onRequestPost } from "C:\\Users\\jhala\\OneDrive\\APPS\\ai-cto-modular-app\\Pages\\functions\\api\\key-account-manager.js"
+import { onRequestPut as __api_key_account_manager_js_onRequestPut } from "C:\\Users\\jhala\\OneDrive\\APPS\\ai-cto-modular-app\\Pages\\functions\\api\\key-account-manager.js"
 
 export const routes = [
     {
@@ -63,5 +64,12 @@ export const routes = [
       method: "POST",
       middlewares: [],
       modules: [__api_key_account_manager_js_onRequestPost],
+    },
+  {
+      routePath: "/api/key-account-manager",
+      mountPath: "/api",
+      method: "PUT",
+      middlewares: [],
+      modules: [__api_key_account_manager_js_onRequestPut],
     },
   ]

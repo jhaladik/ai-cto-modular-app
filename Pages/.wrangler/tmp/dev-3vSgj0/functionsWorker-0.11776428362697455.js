@@ -475,7 +475,7 @@ async function onRequestPost4(context) {
     let kamHeaders = {
       "Content-Type": "application/json"
     };
-    const isAdminEndpoint = endpoint.startsWith("/clients") || endpoint.startsWith("/client/") || // Add client detail endpoint
+    const isAdminEndpoint = endpoint.startsWith("/clients") || endpoint.startsWith("/client") || // Matches both /client and /client/
     endpoint.startsWith("/users") || endpoint.startsWith("/dashboard") || endpoint.includes("admin");
     console.log("\u{1F510} Admin endpoint check:", {
       isAdminEndpoint,
@@ -584,6 +584,11 @@ async function onRequestGet2(context) {
 }
 __name(onRequestGet2, "onRequestGet2");
 __name2(onRequestGet2, "onRequestGet");
+async function onRequestPut(context) {
+  return onRequestPost4(context);
+}
+__name(onRequestPut, "onRequestPut");
+__name2(onRequestPut, "onRequestPut");
 var routes = [
   {
     routePath: "/api/auth/login",
@@ -640,6 +645,13 @@ var routes = [
     method: "POST",
     middlewares: [],
     modules: [onRequestPost4]
+  },
+  {
+    routePath: "/api/key-account-manager",
+    mountPath: "/api",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut]
   }
 ];
 function lexer(str) {

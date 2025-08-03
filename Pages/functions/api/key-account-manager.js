@@ -99,7 +99,7 @@ export async function onRequestPost(context) {
         
         // Check if this is an admin operation
         const isAdminEndpoint = endpoint.startsWith('/clients') || 
-                              endpoint.startsWith('/client/') ||  // Add client detail endpoint
+                              endpoint.startsWith('/client') ||   // Matches both /client and /client/
                               endpoint.startsWith('/users') || 
                               endpoint.startsWith('/dashboard') ||
                               endpoint.includes('admin');
@@ -232,4 +232,9 @@ export async function onRequestGet(context) {
     });
     
     return onRequestPost({ request: fakeRequest, env });
+}
+
+// Handle PUT requests
+export async function onRequestPut(context) {
+    return onRequestPost(context);
 }

@@ -9,12 +9,17 @@ class ClientDetailPage {
         this.clientData = null;
         this.isLoading = false;
         this.currentTab = 'overview';
+        this.isEditMode = false;
+        this.editData = null; // Temporary storage for edits
         
         // NO auto-refresh interval - manual refresh only
         
         // Bind methods for event handlers
         this.refresh = this.refresh.bind(this);
         this.switchTab = this.switchTab.bind(this);
+        this.toggleEditMode = this.toggleEditMode.bind(this);
+        this.saveChanges = this.saveChanges.bind(this);
+        this.cancelEdit = this.cancelEdit.bind(this);
     }
 
     /**
@@ -51,15 +56,24 @@ class ClientDetailPage {
                         </div>
                     </div>
                     <div class="page-actions">
-                        <button class="btn btn-secondary" onclick="clientDetailPage.refresh()">
-                            🔄 Refresh
-                        </button>
-                        <button class="btn btn-secondary" onclick="clientDetailPage.editClient()">
-                            ✏️ Edit Client
-                        </button>
-                        <button class="btn btn-primary" onclick="clientDetailPage.contactClient()">
-                            📧 Contact
-                        </button>
+                        ${this.isEditMode ? `
+                            <button class="btn btn-primary" onclick="clientDetailPage.saveChanges()">
+                                💾 Save Changes
+                            </button>
+                            <button class="btn btn-secondary" onclick="clientDetailPage.cancelEdit()">
+                                ❌ Cancel
+                            </button>
+                        ` : `
+                            <button class="btn btn-secondary" onclick="clientDetailPage.refresh()">
+                                🔄 Refresh
+                            </button>
+                            <button class="btn btn-secondary" onclick="clientDetailPage.toggleEditMode()">
+                                ✏️ Edit Client
+                            </button>
+                            <button class="btn btn-primary" onclick="clientDetailPage.contactClient()">
+                                📧 Contact
+                            </button>
+                        `}
                     </div>
                 </div>
 
@@ -433,11 +447,11 @@ class ClientDetailPage {
      * Render overview tab
      */
     renderOverviewTab() {
-        const client = this.clientData;
+        const client = this.isEditMode ? this.editData : this.clientData;
         const budgetPercentage = (client.used_budget_current_month / client.monthly_budget_usd) * 100;
         
         return `
-            <div class="overview-content">
+            <div class="overview-content ${this.isEditMode ? 'edit-mode' : ''}">
                 <!-- Key Metrics -->
                 <div class="metrics-grid">
                     <div class="metric-card">
@@ -465,15 +479,27 @@ class ClientDetailPage {
                         <div class="info-content">
                             <div class="info-item">
                                 <label>Primary Contact</label>
-                                <span>${client.contact_name}</span>
+                                ${this.isEditMode ? 
+                                    `<input type="text" class="form-control" value="${client.contact_name || ''}" 
+                                            onchange="clientDetailPage.updateEditField('contact_name', this.value)">` :
+                                    `<span>${client.contact_name}</span>`
+                                }
                             </div>
                             <div class="info-item">
                                 <label>Email</label>
-                                <span><a href="mailto:${client.contact_email}">${client.contact_email}</a></span>
+                                ${this.isEditMode ? 
+                                    `<input type="email" class="form-control" value="${client.contact_email}" 
+                                            onchange="clientDetailPage.updateEditField('contact_email', this.value)">` :
+                                    `<span><a href="mailto:${client.contact_email}">${client.contact_email}</a></span>`
+                                }
                             </div>
                             <div class="info-item">
                                 <label>Phone</label>
-                                <span><a href="tel:${client.phone}">${client.phone}</a></span>
+                                ${this.isEditMode ? 
+                                    `<input type="tel" class="form-control" value="${client.phone || ''}" 
+                                            onchange="clientDetailPage.updateEditField('phone', this.value)">` :
+                                    `<span><a href="tel:${client.phone}">${client.phone}</a></span>`
+                                }
                             </div>
                         </div>
                     </div>
@@ -483,11 +509,23 @@ class ClientDetailPage {
                         <div class="info-content">
                             <div class="info-item">
                                 <label>Industry</label>
-                                <span>${client.industry}</span>
+                                ${this.isEditMode ? 
+                                    `<input type="text" class="form-control" value="${client.industry || ''}" 
+                                            onchange="clientDetailPage.updateEditField('industry', this.value)">` :
+                                    `<span>${client.industry}</span>`
+                                }
                             </div>
                             <div class="info-item">
                                 <label>Company Size</label>
-                                <span>${client.company_size}</span>
+                                ${this.isEditMode ? 
+                                    `<select class="form-control" onchange="clientDetailPage.updateEditField('company_size', this.value)">
+                                        <option value="Small (1-50 employees)" ${client.company_size === 'Small (1-50 employees)' ? 'selected' : ''}>Small (1-50 employees)</option>
+                                        <option value="Medium (50-200 employees)" ${client.company_size === 'Medium (50-200 employees)' ? 'selected' : ''}>Medium (50-200 employees)</option>
+                                        <option value="Large (200+ employees)" ${client.company_size === 'Large (200+ employees)' ? 'selected' : ''}>Large (200+ employees)</option>
+                                        <option value="Enterprise (1000+ employees)" ${client.company_size === 'Enterprise (1000+ employees)' ? 'selected' : ''}>Enterprise (1000+ employees)</option>
+                                    </select>` :
+                                    `<span>${client.company_size}</span>`
+                                }
                             </div>
                             <div class="info-item">
                                 <label>Customer Since</label>
@@ -953,6 +991,13 @@ class ClientDetailPage {
         }
         
         console.log('🎨 Refreshing page content with client data:', this.clientData);
+        console.log('📝 Edit mode is:', this.isEditMode);
+        
+        // Re-render the entire component to update buttons
+        const container = document.querySelector('.client-detail-page');
+        if (container) {
+            container.innerHTML = this.render();
+        }
         
         // Update breadcrumb
         const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
@@ -960,20 +1005,6 @@ class ClientDetailPage {
             breadcrumbCurrent.textContent = this.clientData.company_name;
         } else {
             console.warn('⚠️ Breadcrumb element not found');
-        }
-        
-        // Update page title
-        const clientNameElements = document.querySelectorAll('.client-name, .page-title');
-        console.log(`📝 Found ${clientNameElements.length} elements to update`);
-        clientNameElements.forEach(element => {
-            element.textContent = this.clientData.company_name;
-        });
-        
-        // Update tab content
-        const tabContent = document.getElementById('tab-content');
-        if (tabContent) {
-            console.log('📋 Updating tab content');
-            tabContent.innerHTML = this.renderTabContent();
         }
     }
 
@@ -1027,9 +1058,116 @@ class ClientDetailPage {
     /**
      * Action methods (placeholder implementations)
      */
-    editClient() {
-        console.log(`✏️ Editing client: ${this.clientId}`);
-        alert('Edit client functionality coming soon!');
+    /**
+     * Toggle edit mode
+     */
+    toggleEditMode() {
+        console.log(`✏️ Toggling edit mode for client: ${this.clientId}`);
+        this.isEditMode = !this.isEditMode;
+        
+        if (this.isEditMode) {
+            // Create a deep copy of client data for editing
+            this.editData = JSON.parse(JSON.stringify(this.clientData));
+        } else {
+            this.editData = null;
+        }
+        
+        this.refreshPageContent();
+    }
+    
+    /**
+     * Update a field in edit data
+     */
+    updateEditField(fieldName, value) {
+        if (!this.editData) return;
+        
+        console.log(`📝 Updating field ${fieldName} to:`, value);
+        
+        // Handle nested fields like address
+        if (fieldName.includes('.')) {
+            const parts = fieldName.split('.');
+            let current = this.editData;
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (!current[parts[i]]) {
+                    current[parts[i]] = {};
+                }
+                current = current[parts[i]];
+            }
+            current[parts[parts.length - 1]] = value;
+        } else {
+            this.editData[fieldName] = value;
+        }
+    }
+    
+    /**
+     * Save changes to the client
+     */
+    async saveChanges() {
+        console.log('💾 Saving client changes...');
+        
+        if (!this.editData || !this.apiClient) {
+            alert('Unable to save changes');
+            return;
+        }
+        
+        try {
+            this.updateLoadingState(true);
+            
+            // Prepare update data - only send editable fields
+            const updateData = {
+                contact_name: this.editData.contact_name,
+                contact_email: this.editData.contact_email,
+                phone: this.editData.phone,
+                industry: this.editData.industry,
+                company_size: this.editData.company_size,
+                monthly_budget_usd: this.editData.monthly_budget_usd,
+                subscription_tier: this.editData.subscription_tier,
+                account_status: this.editData.account_status,
+                address: this.editData.address
+            };
+            
+            console.log('📤 Sending update for client:', this.clientId);
+            console.log('📋 Update data:', JSON.stringify(updateData, null, 2));
+            
+            const response = await this.apiClient.updateClient(this.clientId, updateData);
+            
+            if (response.success) {
+                // Update local data with saved changes
+                this.clientData = { ...this.clientData, ...updateData };
+                this.isEditMode = false;
+                this.editData = null;
+                this.refreshPageContent();
+                
+                // Show success message
+                if (window.showToast) {
+                    window.showToast('Client updated successfully', 'success');
+                } else {
+                    alert('Client updated successfully');
+                }
+            } else {
+                throw new Error(response.error || 'Failed to update client');
+            }
+            
+        } catch (error) {
+            console.error('❌ Save failed:', error);
+            if (window.showToast) {
+                window.showToast(`Failed to save: ${error.message}`, 'error');
+            } else {
+                alert(`Failed to save changes: ${error.message}`);
+            }
+        } finally {
+            this.updateLoadingState(false);
+        }
+    }
+    
+    /**
+     * Cancel edit mode
+     */
+    cancelEdit() {
+        console.log('❌ Cancelling edit mode');
+        this.isEditMode = false;
+        this.editData = null;
+        this.refreshPageContent();
     }
 
     contactClient() {
