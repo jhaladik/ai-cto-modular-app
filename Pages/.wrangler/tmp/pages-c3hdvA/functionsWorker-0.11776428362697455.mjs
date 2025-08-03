@@ -375,22 +375,30 @@ __name(onRequest, "onRequest");
 // _shared/auth-helper.js
 async function validateSession(request, env) {
   const sessionToken = request.headers.get("x-bitware-session-token");
+  console.log("\u{1F510} validateSession called with token:", sessionToken ? sessionToken.substring(0, 10) + "..." : "none");
   if (!sessionToken) {
     return { valid: false, error: "No session token" };
   }
   try {
-    const sessionData = await env.BITWARE_SESSION_STORE.get(`session:${sessionToken}`);
+    const sessionKey = `session:${sessionToken}`;
+    console.log("\u{1F50D} Looking for session with key:", sessionKey);
+    const sessionData = await env.BITWARE_SESSION_STORE.get(sessionKey);
     if (!sessionData) {
+      console.log("\u274C No session data found in KV store");
       return { valid: false, error: "Invalid session" };
     }
+    console.log("\u{1F4CB} Found session data:", sessionData.substring(0, 100) + "...");
     const session = JSON.parse(sessionData);
     if (Date.now() > session.expires) {
-      await env.BITWARE_SESSION_STORE.delete(`session:${sessionToken}`);
+      console.log("\u23F0 Session expired at:", new Date(session.expires).toISOString());
+      await env.BITWARE_SESSION_STORE.delete(sessionKey);
       return { valid: false, error: "Session expired" };
     }
+    console.log("\u2705 Session valid for user:", session.username);
     return { valid: true, session };
   } catch (error) {
-    return { valid: false, error: "Session validation failed" };
+    console.error("\u{1F4A5} Session validation error:", error);
+    return { valid: false, error: "Session validation failed: " + error.message };
   }
 }
 __name(validateSession, "validateSession");
@@ -409,11 +417,31 @@ async function onRequestPost4(context) {
   const { request, env } = context;
   try {
     console.log("\u{1F50D} KAM Proxy: Processing request");
+    console.log("\u{1F511} Environment check:", {
+      hasClientApiKey: !!env.CLIENT_API_KEY,
+      hasWorkerSecret: !!env.WORKER_SHARED_SECRET,
+      hasKAMBinding: !!env.KEY_ACCOUNT_MANAGER,
+      hasSessionStore: !!env.BITWARE_SESSION_STORE
+    });
     const incomingBody = await request.json();
     const { endpoint, method = "GET", data = {} } = incomingBody;
     console.log(`\u{1F4E1} KAM Proxy: ${method} ${endpoint}`);
+    console.log("\u{1F50D} Endpoint analysis:", {
+      endpoint,
+      startsWithClients: endpoint.startsWith("/clients"),
+      startsWithClient: endpoint.startsWith("/client/"),
+      startsWithUsers: endpoint.startsWith("/users"),
+      startsWithDashboard: endpoint.startsWith("/dashboard"),
+      includesAdmin: endpoint.includes("admin")
+    });
     const sessionToken = request.headers.get("X-Session-Token") || request.headers.get("x-bitware-session-token");
+    console.log("\u{1F50D} Session token check:", {
+      hasXSessionToken: !!request.headers.get("X-Session-Token"),
+      hasLowercaseToken: !!request.headers.get("x-bitware-session-token"),
+      tokenPrefix: sessionToken ? sessionToken.substring(0, 10) + "..." : "none"
+    });
     if (!sessionToken) {
+      console.error("\u274C No session token found in headers");
       return new Response(JSON.stringify({
         success: false,
         error: "No session token provided"
@@ -431,11 +459,13 @@ async function onRequestPost4(context) {
       }
     });
     const sessionValidation = await validateSession(sessionRequest, env);
+    console.log("\u{1F4CB} Session validation result:", sessionValidation);
     if (!sessionValidation.valid) {
       console.log("\u274C Pages session invalid:", sessionValidation.error);
       return new Response(JSON.stringify({
         success: false,
-        error: sessionValidation.error
+        error: sessionValidation.error || "Session validation failed",
+        details: "Check if you are logged in"
       }), {
         status: 401,
         headers: { "Content-Type": "application/json", ...corsHeaders }
@@ -446,7 +476,14 @@ async function onRequestPost4(context) {
     let kamHeaders = {
       "Content-Type": "application/json"
     };
-    const isAdminEndpoint = endpoint.startsWith("/clients") || endpoint.startsWith("/users") || endpoint.startsWith("/dashboard") || endpoint.includes("admin");
+    const isAdminEndpoint = endpoint.startsWith("/clients") || endpoint.startsWith("/client/") || // Add client detail endpoint
+    endpoint.startsWith("/users") || endpoint.startsWith("/dashboard") || endpoint.includes("admin");
+    console.log("\u{1F510} Admin endpoint check:", {
+      isAdminEndpoint,
+      endpoint,
+      role: session.role,
+      userType: session.userType
+    });
     if (isAdminEndpoint) {
       if (session.role !== "admin" && session.userType !== "internal") {
         console.log("\u{1F6AB} Admin access denied for role:", session.role);
@@ -458,15 +495,43 @@ async function onRequestPost4(context) {
           headers: { "Content-Type": "application/json", ...corsHeaders }
         });
       }
+      if (!env.WORKER_SHARED_SECRET) {
+        console.error("\u274C WORKER_SHARED_SECRET not found in environment");
+        return new Response(JSON.stringify({
+          success: false,
+          error: "Server configuration error",
+          details: "Missing authentication credentials"
+        }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders }
+        });
+      }
       kamHeaders["Authorization"] = `Bearer ${env.WORKER_SHARED_SECRET}`;
       kamHeaders["X-Worker-ID"] = "pages-kam-proxy";
       console.log("\u{1F527} Using worker authentication for admin endpoint");
     } else {
+      if (!env.CLIENT_API_KEY) {
+        console.error("\u274C CLIENT_API_KEY not found in environment");
+        return new Response(JSON.stringify({
+          success: false,
+          error: "Server configuration error",
+          details: "Missing API credentials"
+        }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders }
+        });
+      }
       kamHeaders["X-API-Key"] = env.CLIENT_API_KEY;
       console.log("\u{1F527} Using client API key for regular endpoint");
     }
     kamHeaders["x-bitware-session-token"] = sessionToken;
     console.log("\u{1F4DE} Calling KAM worker...");
+    console.log("\u{1F511} KAM headers:", {
+      hasAuth: !!kamHeaders["Authorization"],
+      hasWorkerID: !!kamHeaders["X-Worker-ID"],
+      hasApiKey: !!kamHeaders["X-API-Key"],
+      hasSessionToken: !!kamHeaders["x-bitware-session-token"]
+    });
     let kamRequestBody = null;
     if (method !== "GET" && method !== "HEAD") {
       kamRequestBody = JSON.stringify(data);
@@ -1066,7 +1131,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-rgddpA/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-kGGjAD/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -1098,7 +1163,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-rgddpA/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-kGGjAD/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

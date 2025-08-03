@@ -104,19 +104,32 @@ function validateWorkerAuth(request: Request, env: Env): { valid: boolean; error
   const authHeader = request.headers.get('Authorization');
   const workerID = request.headers.get('X-Worker-ID');
   
+  console.log('🔐 KAM validateWorkerAuth called');
+  console.log('📋 Headers:', {
+    hasAuth: !!authHeader,
+    authPrefix: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
+    workerID: workerID || 'none'
+  });
+  
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('❌ Missing or invalid Bearer token');
     return { valid: false, error: 'Bearer token required' };
   }
   
   const token = authHeader.substring(7);
   if (token !== env.WORKER_SHARED_SECRET) {
+    console.log('❌ Token mismatch');
+    console.log('Expected:', env.WORKER_SHARED_SECRET ? env.WORKER_SHARED_SECRET.substring(0, 10) + '...' : 'NOT SET');
+    console.log('Received:', token.substring(0, 10) + '...');
     return { valid: false, error: 'Invalid worker token' };
   }
   
   if (!workerID) {
+    console.log('❌ Missing X-Worker-ID');
     return { valid: false, error: 'X-Worker-ID header required' };
   }
   
+  console.log('✅ Worker auth valid for:', workerID);
   return { valid: true };
 }
 
@@ -384,12 +397,20 @@ export default {
           const sessionValidation = validateSessionToken(request);
           const workerAuth = validateWorkerAuth(request, env);
           
+          console.log('🔐 /clients auth:', {
+            sessionValid: sessionValidation.valid,
+            workerValid: workerAuth.valid
+          });
+          
           if (!sessionValidation.valid && !workerAuth.valid) {
             return unauthorized('Authentication required');
           }
       
-          // If using session auth, verify admin role
-          if (sessionValidation.valid) {
+          // Trust the Pages proxy's validation when using worker auth
+          if (workerAuth.valid) {
+            console.log('✅ Using worker auth - trusting Pages proxy validation');
+          } else if (sessionValidation.valid) {
+            // If using session auth directly, verify admin role
             const session = await db.getSession(sessionValidation.sessionToken!);
             if (!session || new Date(session.expires_at) < new Date()) {
               return unauthorized('Session expired');
@@ -399,7 +420,6 @@ export default {
               return unauthorized('Admin access required');
             }
           }
-          // If using worker auth, it's already validated (pages proxy is admin)
           
           const clients = await db.getAllClientsWithStats();
           const totalCount = clients.length;
@@ -437,6 +457,9 @@ export default {
         }
       }
 
+      // DEPRECATED: Old client detail handler - removed in favor of unified handler below
+      // This handler was causing 401 errors because it didn't accept worker auth
+      /*
       if (pathname.startsWith('/client/') && method === 'GET') {
         try {
           const sessionValidation = validateSessionToken(request);
@@ -495,6 +518,7 @@ export default {
           return serverError('Failed to retrieve client details');
         }
       }
+      */
 
       if (pathname === '/client' && method === 'GET') {
         try {
@@ -539,8 +563,15 @@ export default {
       if (pathname.startsWith('/client/') && method === 'GET') {
         try {
           const sessionValidation = validateSessionToken(request);
-          if (!sessionValidation.valid) {
-            return unauthorized(sessionValidation.error);
+          const workerAuth = validateWorkerAuth(request, env);
+          
+          console.log('🔐 /client/:id auth:', {
+            sessionValid: sessionValidation.valid,
+            workerValid: workerAuth.valid
+          });
+          
+          if (!sessionValidation.valid && !workerAuth.valid) {
+            return unauthorized('Authentication required');
           }
 
           // Extract client ID from path
@@ -792,15 +823,28 @@ export default {
       // ==================== DASHBOARD STATS ENDPOINT ====================
       if (pathname === '/dashboard/stats' && method === 'GET') {
         try {
+          console.log('📊 Dashboard stats requested');
           const sessionValidation = validateSessionToken(request);
           const workerAuth = validateWorkerAuth(request, env);
           
+          console.log('🔐 Auth results:', {
+            sessionValid: sessionValidation.valid,
+            workerValid: workerAuth.valid,
+            sessionError: sessionValidation.error,
+            workerError: workerAuth.error
+          });
+          
           if (!sessionValidation.valid && !workerAuth.valid) {
+            console.log('❌ Both auth methods failed');
             return unauthorized('Authentication required');
           }
       
-          // If using session auth, verify admin role  
-          if (sessionValidation.valid) {
+          // Trust the Pages proxy's validation when using worker auth
+          // The proxy already validated the session and verified admin role
+          if (workerAuth.valid) {
+            console.log('✅ Using worker auth - trusting Pages proxy validation');
+          } else if (sessionValidation.valid) {
+            // If using session auth directly, verify admin role  
             const session = await db.getSession(sessionValidation.sessionToken!);
             if (!session || new Date(session.expires_at) < new Date()) {
               return unauthorized('Session expired');

@@ -15,6 +15,12 @@ The KAM worker serves as the authentication and client management hub for the en
 2. **Worker-to-Worker Auth**: Bearer token + `X-Worker-ID` for internal communication
 3. **Session Token Auth**: `x-bitware-session-token` for dashboard users
 
+**Pages-to-KAM Authentication Flow:**
+- Pages functions validate sessions using KV store (BITWARE_SESSION_STORE)
+- Admin endpoints (/dashboard, /clients, /client/*, /users) use worker-to-worker auth
+- Non-admin endpoints use client API key auth
+- KAM trusts Pages proxy validation when using worker auth (doesn't re-validate sessions)
+
 **Core Capabilities:**
 - User management (admin, client, support roles)
 - Session management with 24-hour expiration

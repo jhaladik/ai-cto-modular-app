@@ -441,15 +441,15 @@ class ClientDetailPage {
                 <!-- Key Metrics -->
                 <div class="metrics-grid">
                     <div class="metric-card">
-                        <div class="metric-value">${client.usage_stats.requests_this_month}</div>
+                        <div class="metric-value">${client.usage_stats?.requests_this_month || 0}</div>
                         <div class="metric-label">Requests This Month</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${client.usage_stats.avg_response_time}s</div>
+                        <div class="metric-value">${client.usage_stats?.avg_response_time || 0}s</div>
                         <div class="metric-label">Avg Response Time</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${client.usage_stats.success_rate}%</div>
+                        <div class="metric-value">${client.usage_stats?.success_rate || 0}%</div>
                         <div class="metric-label">Success Rate</div>
                     </div>
                     <div class="metric-card">
@@ -500,9 +500,11 @@ class ClientDetailPage {
                         <h3>📍 Address</h3>
                         <div class="info-content">
                             <div class="address">
-                                ${client.address.street}<br>
-                                ${client.address.city}, ${client.address.state} ${client.address.zip}<br>
-                                ${client.address.country}
+                                ${client.address ? `
+                                    ${client.address.street || 'N/A'}<br>
+                                    ${client.address.city || 'N/A'}, ${client.address.state || 'N/A'} ${client.address.zip || 'N/A'}<br>
+                                    ${client.address.country || 'N/A'}
+                                ` : 'No address information available'}
                             </div>
                         </div>
                     </div>
@@ -511,9 +513,9 @@ class ClientDetailPage {
                         <h3>🎯 Top Services</h3>
                         <div class="info-content">
                             <div class="service-list">
-                                ${client.usage_stats.top_services.map(service => `
+                                ${client.usage_stats?.top_services ? client.usage_stats.top_services.map(service => `
                                     <span class="service-tag">${service}</span>
-                                `).join('')}
+                                `).join('') : '<span class="text-muted">No services data available</span>'}
                             </div>
                         </div>
                     </div>
@@ -558,15 +560,15 @@ class ClientDetailPage {
                         <div class="info-content">
                             <div class="info-item">
                                 <label>Total Requests</label>
-                                <span>${client.usage_stats.requests_this_month}</span>
+                                <span>${client.usage_stats?.requests_this_month || 0}</span>
                             </div>
                             <div class="info-item">
                                 <label>Average Response Time</label>
-                                <span>${client.usage_stats.avg_response_time}s</span>
+                                <span>${client.usage_stats?.avg_response_time || 0}s</span>
                             </div>
                             <div class="info-item">
                                 <label>Success Rate</label>
-                                <span>${client.usage_stats.success_rate}%</span>
+                                <span>${client.usage_stats?.success_rate || 0}%</span>
                             </div>
                             <div class="info-item">
                                 <label>Last Activity</label>
@@ -602,9 +604,9 @@ class ClientDetailPage {
                         <h3>🎯 Service Usage</h3>
                         <div class="info-content">
                             <div class="service-list">
-                                ${client.usage_stats.top_services.map(service => `
+                                ${client.usage_stats?.top_services ? client.usage_stats.top_services.map(service => `
                                     <span class="service-tag">${service}</span>
-                                `).join('')}
+                                `).join('') : '<span class="text-muted">No services data available</span>'}
                             </div>
                             <div style="margin-top: 1rem;">
                                 <button class="btn btn-secondary btn-small">View Detailed Usage</button>
@@ -637,20 +639,20 @@ class ClientDetailPage {
                 <!-- Reports Metrics Grid - Same as Overview -->
                 <div class="metrics-grid">
                     <div class="metric-card">
-                        <div class="metric-value">${client.recent_reports.length}</div>
+                        <div class="metric-value">${client.recent_reports?.length || 0}</div>
                         <div class="metric-label">Total Reports</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${client.recent_reports.filter(r => r.status === 'completed').length}</div>
+                        <div class="metric-value">${client.recent_reports?.filter(r => r.status === 'completed').length || 0}</div>
                         <div class="metric-label">Completed</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${client.recent_reports.filter(r => r.status === 'pending').length}</div>
+                        <div class="metric-value">${client.recent_reports?.filter(r => r.status === 'pending').length || 0}</div>
                         <div class="metric-label">In Progress</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-value">
-                            ${client.recent_reports.length > 0 ? 
+                            ${client.recent_reports && client.recent_reports.length > 0 ? 
                                 new Date(Math.max(...client.recent_reports.map(r => new Date(r.created)))).toLocaleDateString() : 
                                 'None'}
                         </div>
@@ -663,7 +665,7 @@ class ClientDetailPage {
                     <div class="info-section">
                         <h3>📋 Recent Reports</h3>
                         <div class="info-content">
-                            ${client.recent_reports.length > 0 ? 
+                            ${client.recent_reports && client.recent_reports.length > 0 ? 
                                 client.recent_reports.map(report => `
                                     <div class="info-item" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
                                         <label>${report.title}</label>
@@ -703,7 +705,7 @@ class ClientDetailPage {
                         <div class="info-content">
                             <div class="info-item">
                                 <label>Reports This Month</label>
-                                <span>${client.recent_reports.filter(r => 
+                                <span>${client.recent_reports?.filter(r => 
                                     new Date(r.created).getMonth() === new Date().getMonth()
                                 ).length}</span>
                             </div>
