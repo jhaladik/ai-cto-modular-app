@@ -671,7 +671,15 @@ class AIFactoryLayout {
      * Load dashboard content
      */
     async loadDashboard(contentArea) {
-        // First, render the dashboard structure with loading placeholders
+        if (window.DashboardPage) {
+            // Use the new dashboard component
+            window.dashboardPage = new DashboardPage(window.apiClient);
+            contentArea.innerHTML = window.dashboardPage.render();
+            await window.dashboardPage.mount();
+            return;
+        }
+        
+        // Fallback: render the old dashboard structure with loading placeholders
         contentArea.innerHTML = `
             <div class="page-header">
                 <h1 class="page-title">📊 Dashboard</h1>
