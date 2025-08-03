@@ -155,6 +155,7 @@ class AIFactoryLayout {
                         { path: '/dashboard', icon: '📊', label: 'Dashboard' },
                         { path: '/clients', icon: '👥', label: 'Client Management' },
                         { path: '/requests', icon: '📋', label: 'Request Management' },
+                        { path: '/templates', icon: '🎯', label: 'Template Manager' },
                         { path: '/reports', icon: '📄', label: 'Reports', disabled: true }
                     ]
                 },
@@ -664,6 +665,14 @@ class AIFactoryLayout {
                     }
                     await this.loadRequestsPage(contentArea);
                     break;
+                case '/templates':
+                    // ADMIN ONLY - template management
+                    if (this.config.userType !== 'admin') {
+                        await this.navigate('/my-account');
+                        return;
+                    }
+                    await this.loadTemplateManager(contentArea);
+                    break;
                 default:
                     // Check if it's a client detail route with dynamic ID
                     if (path.startsWith('/clients/') && path.split('/').length === 3) {
@@ -909,6 +918,47 @@ class AIFactoryLayout {
                             ← Back to Clients
                         </button>
                         <button class="btn btn-secondary" onclick="window.location.reload()">
+                            🔄 Reload Page
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Load template manager - ADMIN ONLY
+     */
+    async loadTemplateManager(contentArea) {
+        console.log('🎯 Loading Template Manager...');
+        
+        if (window.TemplateManager) {
+            try {
+                // Create and mount template manager
+                if (!window.templateManager) {
+                    window.templateManager = new TemplateManager(window.apiClient);
+                }
+                contentArea.innerHTML = window.templateManager.render();
+                await window.templateManager.mount();
+                console.log('✅ Template Manager loaded successfully');
+            } catch (error) {
+                console.error('❌ Failed to load Template Manager:', error);
+                contentArea.innerHTML = `
+                    <div class="error-state">
+                        <h3>Failed to load Template Manager</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        } else {
+            console.error('❌ TemplateManager component not loaded');
+            contentArea.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                    <h3>Component Not Loaded</h3>
+                    <p>TemplateManager component is not available.</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="window.location.reload()">
                             🔄 Reload Page
                         </button>
                     </div>
