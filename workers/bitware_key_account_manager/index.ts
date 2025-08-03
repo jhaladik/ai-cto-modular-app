@@ -110,7 +110,10 @@ export default {
             kam_clients: ['/clients', '/client/{id}', '/client?email={email}'],
             kam_users: ['/users', '/users/{id}'],
             dashboard: ['/dashboard/stats'],
-            permissions: ['/permissions/check', '/permissions/my-permissions', '/permissions/check-user-limit']
+            permissions: ['/permissions/check', '/permissions/my-permissions', '/permissions/check-user-limit'],
+            requests: ['/requests', '/requests/{id}', '/requests/{id}/execute'],
+            templates: ['/templates', '/templates/sync'],
+            communications: ['/communications?client_id={id}']
           },
           authentication: {
             client: 'X-API-Key header',
@@ -1091,6 +1094,340 @@ export default {
         } catch (error) {
           console.error('Legacy validate user error:', error);
           return serverError('User validation failed');
+        }
+      }
+
+      // ==================== REQUEST MANAGEMENT ENDPOINTS ====================
+      
+      if (pathname === '/requests' && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          // Parse query parameters
+          const url = new URL(request.url);
+          const filters = {
+            client_id: url.searchParams.get('client_id') || undefined,
+            status: url.searchParams.get('status') || undefined,
+            urgency: url.searchParams.get('urgency') || undefined,
+            limit: url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : 100
+          };
+          
+          const requests = await db.getAllRequests(filters);
+          
+          // Get worker sessions for each request
+          const requestsWithDetails = await Promise.all(
+            requests.map(async (req: any) => {
+              const workerSessions = await db.getWorkerSessionsByRequest(req.request_id);
+              return {
+                ...req,
+                worker_sessions: workerSessions,
+                // Mock deliverables for now
+                deliverables: req.request_status === 'completed' ? [
+                  {
+                    id: 'del_' + req.request_id + '_1',
+                    type: 'report',
+                    name: 'Analysis Report.pdf',
+                    size: 245760
+                  }
+                ] : []
+              };
+            })
+          );
+          
+          return jsonResponse({
+            success: true,
+            requests: requestsWithDetails,
+            total_count: requestsWithDetails.length
+          });
+          
+        } catch (error) {
+          console.error('Get requests error:', error);
+          return serverError('Failed to retrieve requests');
+        }
+      }
+      
+      if (pathname === '/requests' && method === 'POST') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const body = await request.json();
+          const {
+            client_id,
+            request_type,
+            message,
+            urgency_level,
+            communication_id
+          } = body;
+          
+          if (!client_id || !request_type || !message) {
+            return badRequest('Missing required fields: client_id, request_type, message');
+          }
+          
+          // Create the request
+          const requestId = await db.createRequest({
+            client_id,
+            communication_id,
+            request_type,
+            original_message: message,
+            processed_request: message, // In real implementation, this would be AI-processed
+            urgency_level: urgency_level || 'medium'
+          });
+          
+          return jsonResponse({
+            success: true,
+            request_id: requestId,
+            message: 'Request created successfully'
+          });
+          
+        } catch (error) {
+          console.error('Create request error:', error);
+          return serverError('Failed to create request');
+        }
+      }
+      
+      if (pathname.match(/^\/requests\/[^\/]+$/) && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const requestId = pathname.split('/')[2];
+          const request_detail = await db.getRequestById(requestId);
+          
+          if (!request_detail) {
+            return notFound('Request not found');
+          }
+          
+          // Get additional details
+          const workerSessions = await db.getWorkerSessionsByRequest(requestId);
+          
+          return jsonResponse({
+            success: true,
+            request: {
+              ...request_detail,
+              worker_sessions: workerSessions
+            }
+          });
+          
+        } catch (error) {
+          console.error('Get request detail error:', error);
+          return serverError('Failed to retrieve request details');
+        }
+      }
+      
+      if (pathname.match(/^\/requests\/[^\/]+$/) && method === 'PUT') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const requestId = pathname.split('/')[2];
+          const body = await request.json();
+          
+          const success = await db.updateRequest(requestId, body);
+          
+          if (success) {
+            return jsonResponse({
+              success: true,
+              message: 'Request updated successfully'
+            });
+          } else {
+            return notFound('Request not found or no changes made');
+          }
+          
+        } catch (error) {
+          console.error('Update request error:', error);
+          return serverError('Failed to update request');
+        }
+      }
+      
+      if (pathname.match(/^\/requests\/[^\/]+\/execute$/) && method === 'POST') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const requestId = pathname.split('/')[2];
+          const request_detail = await db.getRequestById(requestId);
+          
+          if (!request_detail) {
+            return notFound('Request not found');
+          }
+          
+          if (!request_detail.selected_template) {
+            return badRequest('No template selected for this request');
+          }
+          
+          // Update request status to processing
+          await db.updateRequest(requestId, {
+            request_status: 'processing',
+            started_processing_at: new Date().toISOString(),
+            orchestrator_pipeline_id: 'pipeline_' + Date.now() // Mock pipeline ID
+          });
+          
+          // In real implementation, this would call the orchestrator
+          // For now, simulate with mock worker sessions
+          const template = await db.getTemplateByName(request_detail.selected_template);
+          
+          if (template && template.worker_flow) {
+            for (const worker of template.worker_flow) {
+              const sessionId = await db.createWorkerSession({
+                request_id: requestId,
+                client_id: request_detail.client_id,
+                worker_name: worker.worker,
+                step_order: worker.step
+              });
+              
+              // Simulate completion
+              await db.updateWorkerSession(sessionId, {
+                execution_time_ms: Math.floor(Math.random() * 5000) + 1000,
+                worker_cost_usd: Math.random() * 0.05 + 0.01,
+                worker_success: true,
+                completed_at: new Date().toISOString()
+              });
+            }
+          }
+          
+          // Mark request as completed
+          await db.updateRequest(requestId, {
+            request_status: 'completed',
+            completed_at: new Date().toISOString()
+          });
+          
+          return jsonResponse({
+            success: true,
+            message: 'Template execution started',
+            pipeline_id: 'pipeline_' + Date.now()
+          });
+          
+        } catch (error) {
+          console.error('Execute template error:', error);
+          return serverError('Failed to execute template');
+        }
+      }
+      
+      // ==================== TEMPLATE ENDPOINTS ====================
+      
+      if (pathname === '/templates' && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const url = new URL(request.url);
+          const filters = {
+            category: url.searchParams.get('category') || undefined,
+            is_active: url.searchParams.get('is_active') === 'false' ? false : true
+          };
+          
+          const templates = await db.getAllTemplates(filters);
+          
+          return jsonResponse({
+            success: true,
+            templates,
+            total_count: templates.length
+          });
+          
+        } catch (error) {
+          console.error('Get templates error:', error);
+          return serverError('Failed to retrieve templates');
+        }
+      }
+      
+      if (pathname === '/templates/sync' && method === 'POST') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          // In real implementation, this would sync with orchestrator
+          // For now, return success
+          return jsonResponse({
+            success: true,
+            message: 'Templates synchronized',
+            synced_count: 0
+          });
+          
+        } catch (error) {
+          console.error('Sync templates error:', error);
+          return serverError('Failed to sync templates');
+        }
+      }
+      
+      // ==================== COMMUNICATION ENDPOINTS ====================
+      
+      if (pathname === '/communications' && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const url = new URL(request.url);
+          const clientId = url.searchParams.get('client_id');
+          
+          if (!clientId) {
+            return badRequest('client_id parameter required');
+          }
+          
+          const communications = await db.getCommunicationsByClient(clientId);
+          
+          return jsonResponse({
+            success: true,
+            communications,
+            total_count: communications.length
+          });
+          
+        } catch (error) {
+          console.error('Get communications error:', error);
+          return serverError('Failed to retrieve communications');
         }
       }
 

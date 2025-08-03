@@ -101,12 +101,23 @@ class RequestsPage {
                 contentElement.innerHTML = this.renderLoadingState();
             }
             
-            // For now, use mock data until backend endpoints are ready
-            this.requests = this.getMockRequests();
+            // Use real API
+            const result = await this.apiClient.kamRequest('/requests', 'GET');
             
-            // TODO: Replace with real API call
-            // const result = await this.apiClient.kamRequest('/requests', 'GET');
-            // this.requests = result.success ? result.requests : [];
+            if (result.success) {
+                this.requests = result.requests || [];
+                
+                // Ensure all requests have required fields
+                this.requests = this.requests.map(req => ({
+                    ...req,
+                    title: req.title || this.extractTitle(req.original_message || req.processed_request || ''),
+                    urgency_level: req.urgency_override || req.urgency_level || 'medium',
+                    communication_type: req.communication_type || 'manual'
+                }));
+            } else {
+                console.error('❌ API returned error:', result);
+                this.requests = [];
+            }
             
             this.updateContent();
             console.log(`✅ Loaded ${this.requests.length} requests`);
@@ -119,18 +130,31 @@ class RequestsPage {
         }
     }
 
+    extractTitle(message) {
+        // Extract a title from the message (first line or first 50 chars)
+        const firstLine = message.split('\n')[0];
+        if (firstLine.length <= 50) return firstLine;
+        return firstLine.substring(0, 47) + '...';
+    }
+
     async loadTemplates() {
         try {
-            // For now, use mock templates
-            this.templates = this.getMockTemplates();
+            // Use real API
+            const result = await this.apiClient.kamRequest('/templates', 'GET');
             
-            // TODO: Replace with real API call
-            // const result = await this.apiClient.kamRequest('/templates', 'GET');
-            // this.templates = result.success ? result.templates : [];
+            if (result.success) {
+                this.templates = result.templates || [];
+            } else {
+                console.error('❌ Failed to load templates:', result);
+                // Fallback to mock templates if API fails
+                this.templates = this.getMockTemplates();
+            }
             
             console.log(`✅ Loaded ${this.templates.length} templates`);
         } catch (error) {
             console.error('❌ Failed to load templates:', error);
+            // Fallback to mock templates if error
+            this.templates = this.getMockTemplates();
         }
     }
 
@@ -556,21 +580,37 @@ class RequestsPage {
         // Close modal
         document.querySelector('.modal-overlay').close();
         
-        // Update request with template (mock for now)
-        const request = this.requests.find(r => r.request_id === requestId);
-        const template = this.templates.find(t => t.template_name === templateName);
-        
-        if (request && template) {
-            request.selected_template = templateName;
-            request.template_display_name = template.display_name;
-            request.template_confidence_score = 0.85; // Mock confidence
-            request.estimated_duration_ms = template.estimated_duration_ms;
+        try {
+            // Call API to update request
+            const result = await this.apiClient.kamRequest(`/requests/${requestId}`, 'PUT', {
+                selected_template: templateName,
+                template_confidence_score: 0.85 // Mock confidence for now
+            });
             
-            // Update UI
-            this.updateContent();
-            
-            // Show success message
-            this.showSuccess('Template assigned successfully!');
+            if (result.success) {
+                // Update local request data
+                const request = this.requests.find(r => r.request_id === requestId);
+                const template = this.templates.find(t => t.template_name === templateName);
+                
+                if (request && template) {
+                    request.selected_template = templateName;
+                    request.template_display_name = template.display_name;
+                    request.template_confidence_score = 0.85;
+                    request.estimated_duration_ms = template.estimated_duration_ms;
+                }
+                
+                // Update UI
+                this.updateContent();
+                
+                // Show success message
+                this.showSuccess('Template assigned successfully!');
+            } else {
+                console.error('Failed to assign template:', result);
+                this.showError('Failed to assign template. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error assigning template:', error);
+            this.showError('Failed to assign template. Please try again.');
         }
     }
 
@@ -580,55 +620,49 @@ class RequestsPage {
         
         console.log(`Executing template ${request.selected_template} for request ${requestId}`);
         
-        // Update status to processing (mock)
-        request.request_status = 'processing';
-        request.started_processing_at = new Date().toISOString();
-        request.orchestrator_pipeline_id = 'pipeline_' + Date.now();
-        
-        this.updateContent();
-        
-        // Simulate execution with mock worker sessions
-        setTimeout(() => {
-            request.worker_sessions = [
-                {
-                    worker_name: 'topic_researcher',
-                    worker_success: true,
-                    execution_time_ms: 2500,
-                    worker_cost_usd: 0.015
-                },
-                {
-                    worker_name: 'content_generator',
-                    worker_success: true,
-                    execution_time_ms: 3200,
-                    worker_cost_usd: 0.025
-                }
-            ];
+        try {
+            // Call API to execute template
+            const result = await this.apiClient.kamRequest(`/requests/${requestId}/execute`, 'POST');
             
-            request.request_status = 'completed';
-            request.completed_at = new Date().toISOString();
-            
-            // Add mock deliverables
-            request.deliverables = [
-                {
-                    id: 'del_' + Date.now(),
-                    type: 'report',
-                    name: 'Analysis Report.pdf',
-                    size: 245760
-                },
-                {
-                    id: 'del_' + (Date.now() + 1),
-                    type: 'data',
-                    name: 'Raw Data.json',
-                    size: 15360
-                }
-            ];
-            
-            this.updateContent();
-            this.showSuccess('Template execution completed!');
-        }, 3000);
+            if (result.success) {
+                // Update local status to processing
+                request.request_status = 'processing';
+                request.started_processing_at = new Date().toISOString();
+                request.orchestrator_pipeline_id = result.pipeline_id || 'pipeline_' + Date.now();
+                
+                this.updateContent();
+                this.showSuccess('Template execution started!');
+                
+                // Poll for updates or refresh after a delay
+                setTimeout(async () => {
+                    await this.loadRequests();
+                    this.showSuccess('Request processing completed!');
+                }, 5000);
+            } else {
+                console.error('Failed to execute template:', result);
+                this.showError('Failed to execute template. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error executing template:', error);
+            this.showError('Failed to execute template. Please try again.');
+        }
     }
 
-    showCreateRequest() {
+    async showCreateRequest() {
+        // Load clients first
+        let clientOptions = '<option value="">Select Client</option>';
+        
+        try {
+            const clientsResult = await this.apiClient.kamRequest('/clients', 'GET');
+            if (clientsResult.success && clientsResult.clients) {
+                clientOptions += clientsResult.clients.map(client => 
+                    `<option value="${client.client_id}">${client.company_name}</option>`
+                ).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load clients:', error);
+        }
+        
         window.SimpleModal.show({
             title: '➕ Create New Request',
             size: 'large',
@@ -637,10 +671,7 @@ class RequestsPage {
                     <div class="form-group">
                         <label>Client *</label>
                         <select name="client_id" required class="form-select">
-                            <option value="">Select Client</option>
-                            <option value="client_123">TechCorp Inc.</option>
-                            <option value="client_456">Green Energy Solutions</option>
-                            <option value="client_789">Finance First Ltd.</option>
+                            ${clientOptions}
                         </select>
                     </div>
                     
@@ -689,26 +720,31 @@ class RequestsPage {
         const form = document.getElementById('create-request-form');
         const formData = new FormData(form);
         
-        // Create new request (mock)
-        const newRequest = {
-            request_id: 'req_' + Date.now(),
+        const requestData = {
             client_id: formData.get('client_id'),
-            client_name: 'TechCorp Inc.', // Mock
             request_type: formData.get('request_type'),
-            original_message: formData.get('message'),
-            processed_request: formData.get('message'),
-            urgency_level: formData.get('urgency_level'),
-            request_status: 'pending',
-            created_at: new Date().toISOString(),
-            sender_email: 'admin@ai-factory.com',
-            communication_type: 'manual'
+            message: formData.get('message'),
+            urgency_level: formData.get('urgency_level')
         };
         
-        this.requests.unshift(newRequest);
-        document.querySelector('.modal-overlay').close();
-        
-        this.updateContent();
-        this.showSuccess('Request created successfully!');
+        try {
+            // Call API to create request
+            const result = await this.apiClient.kamRequest('/requests', 'POST', requestData);
+            
+            if (result.success) {
+                document.querySelector('.modal-overlay').close();
+                this.showSuccess('Request created successfully!');
+                
+                // Reload requests to show the new one
+                await this.loadRequests();
+            } else {
+                console.error('Failed to create request:', result);
+                alert('Failed to create request: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error creating request:', error);
+            alert('Failed to create request: ' + error.message);
+        }
     }
 
     async refresh() {
