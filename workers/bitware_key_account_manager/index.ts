@@ -313,6 +313,85 @@ export default {
       }
 
       // ==================== KAM CLIENT ENDPOINTS (Session Token Required) ====================
+      
+      // Create new client
+      if (pathname === '/clients' && method === 'POST') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const body = await request.json();
+          const {
+            company_name,
+            contact_name,
+            contact_email,
+            phone,
+            industry,
+            company_size,
+            subscription_tier,
+            monthly_budget_usd,
+            account_status,
+            address
+          } = body;
+          
+          // Validate required fields
+          if (!company_name || !contact_name || !contact_email || !subscription_tier || !monthly_budget_usd) {
+            return badRequest('Missing required fields');
+          }
+          
+          // Generate client ID
+          const clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          
+          // Create the client
+          const stmt = env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
+            INSERT INTO clients (
+              client_id, company_name, contact_email, contact_name, phone,
+              subscription_tier, account_status, monthly_budget_usd, used_budget_current_month,
+              industry, company_size, address, created_at, last_activity
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          
+          const result = await stmt.bind(
+            clientId,
+            company_name,
+            contact_email,
+            contact_name,
+            phone || null,
+            subscription_tier,
+            account_status || 'active',
+            monthly_budget_usd,
+            0, // used_budget_current_month starts at 0
+            industry || null,
+            company_size || null,
+            address ? JSON.stringify(address) : null,
+            new Date().toISOString(),
+            new Date().toISOString()
+          ).run();
+          
+          if (result.success) {
+            return jsonResponse({
+              success: true,
+              client_id: clientId,
+              message: 'Client created successfully'
+            });
+          } else {
+            return serverError('Failed to create client');
+          }
+          
+        } catch (error) {
+          console.error('Create client error:', error);
+          return serverError('Failed to create client: ' + error.message);
+        }
+      }
+      
+      // Get all clients
       if (pathname === '/clients' && method === 'GET') {
         try {
           const auth = await authenticateRequest(request, env, db, {

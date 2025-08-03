@@ -459,54 +459,90 @@ class UsersPage {
             }
         }
 
-        window.SimpleModal.show({
+        const modal = window.SimpleModal.show({
             title: '➕ Add New User',
             size: 'medium',
             content: `
-                <form id="add-user-form" style="display: grid; gap: 1rem;">
-                    <div class="form-group">
-                        <label>Username *</label>
-                        <input type="text" name="username" required placeholder="johndoe" class="form-input">
+                <form id="add-user-form">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <!-- Left Column -->
+                        <div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Username *</label>
+                                <input type="text" name="username" required placeholder="johndoe" class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Email *</label>
+                                <input type="email" name="email" required placeholder="john@example.com" class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Full Name *</label>
+                                <input type="text" name="full_name" required placeholder="John Doe" class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Password *</label>
+                                <input type="password" name="password" required placeholder="Min. 8 characters" class="form-input" style="width: 100%;">
+                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Must be at least 8 characters</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column -->
+                        <div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Role *</label>
+                                <select name="role" required class="form-select" style="width: 100%;">
+                                    <option value="">Select Role</option>
+                                    <option value="admin">Administrator</option>
+                                    <option value="client">Client User</option>
+                                    <option value="support">Support Staff</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="client-select-group" style="display: none; margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Client</label>
+                                <select name="client_id" class="form-select" style="width: 100%;">
+                                    <option value="">Select Client</option>
+                                    <!-- Will be populated dynamically -->
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Department</label>
+                                <input type="text" name="department" placeholder="Engineering, Sales, etc." class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Status</label>
+                                <select name="status" class="form-select" style="width: 100%;">
+                                    <option value="active">Active</option>
+                                    <option value="pending">Pending Activation</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Email *</label>
-                        <input type="email" name="email" required placeholder="john@example.com" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Full Name *</label>
-                        <input type="text" name="full_name" required placeholder="John Doe" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Password *</label>
-                        <input type="password" name="password" required placeholder="********" class="form-input">
-                        <small style="color: var(--text-secondary);">Minimum 8 characters</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Role *</label>
-                        <select name="role" required class="form-select">
-                            <option value="">Select Role</option>
-                            <option value="admin">Administrator</option>
-                            <option value="client">Client User</option>
-                            <option value="support">Support Staff</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="client-select-group" style="display: none;">
-                        <label>Client</label>
-                        <select name="client_id" class="form-select">
-                            <option value="">Select Client</option>
-                            <!-- Will be populated dynamically -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Department</label>
-                        <input type="text" name="department" placeholder="Engineering, Sales, etc." class="form-input">
+                    
+                    <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); font-size: 0.875rem;">
+                        <strong>Note:</strong> User will receive an email with login instructions after creation.
                     </div>
                 </form>
             `,
-            primaryButton: {
-                text: 'Add User',
-                onClick: () => this.handleAddUser()
-            }
+            actions: [
+                {
+                    text: 'Cancel',
+                    class: 'btn-secondary',
+                    onclick: "document.getElementById('" + modal.id + "').close()"
+                },
+                {
+                    text: 'Save User',
+                    class: 'btn-primary',
+                    onclick: "window.usersPage.handleAddUser()"
+                }
+            ],
+            id: modal.id
         });
 
         // Add role change handler
@@ -531,8 +567,10 @@ class UsersPage {
             full_name: formData.get('full_name'),
             password: formData.get('password'),
             role: formData.get('role'),
+            user_type: formData.get('role'), // Add user_type for backend compatibility
             client_id: formData.get('client_id') || null,
-            department: formData.get('department') || null
+            department: formData.get('department') || null,
+            status: formData.get('status') || 'active'
         };
 
         // Validate
@@ -546,19 +584,50 @@ class UsersPage {
             return;
         }
 
+        // If client role is selected but no client is chosen
+        if (userData.role === 'client' && !userData.client_id) {
+            alert('Please select a client for client users');
+            return;
+        }
+
         try {
+            // Show loading state
+            const saveBtn = document.querySelector('.btn-primary');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'Creating...';
+            saveBtn.disabled = true;
+            
             const response = await this.apiClient.kamRequest('/users', 'POST', userData);
             
             if (response.success) {
-                window.SimpleModal.close();
-                this.showSuccess('User created successfully');
+                // Close all modals
+                document.querySelectorAll('.modal-overlay').forEach(modal => modal.remove());
+                document.body.style.overflow = ''; // Restore body scroll
+                
+                this.showSuccessMessage('User created successfully');
                 await this.loadUsers();
             } else {
+                // Restore button state
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
                 alert('Failed to create user: ' + (response.error || 'Unknown error'));
             }
         } catch (error) {
             console.error('Error creating user:', error);
-            alert('Failed to create user');
+            // Restore button state
+            const saveBtn = document.querySelector('.btn-primary');
+            if (saveBtn) {
+                saveBtn.textContent = 'Save User';
+                saveBtn.disabled = false;
+            }
+            alert('Failed to create user: ' + error.message);
+        } finally {
+            // Ensure button is restored in all cases
+            const saveBtn = document.querySelector('.btn-primary');
+            if (saveBtn && saveBtn.textContent === 'Creating...') {
+                saveBtn.textContent = 'Save User';
+                saveBtn.disabled = false;
+            }
         }
     }
 

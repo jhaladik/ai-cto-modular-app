@@ -477,7 +477,243 @@ class ClientsPage {
     }
 
     showAddClient() {
-        alert('Add Client functionality coming soon!\n\nThis will open a form to create a new client account.');
+        if (!window.SimpleModal) {
+            alert('Modal component not loaded');
+            return;
+        }
+
+        const modal = window.SimpleModal.show({
+            title: '➕ Add New Client',
+            size: 'large',
+            content: `
+                <form id="add-client-form">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <!-- Left Column - Basic Information -->
+                        <div>
+                            <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Company Information</h4>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Company Name *</label>
+                                <input type="text" name="company_name" required placeholder="Acme Corporation" class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Contact Name *</label>
+                                <input type="text" name="contact_name" required placeholder="John Smith" class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Contact Email *</label>
+                                <input type="email" name="contact_email" required placeholder="contact@company.com" class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Phone</label>
+                                <input type="tel" name="phone" placeholder="+1 (555) 123-4567" class="form-input" style="width: 100%;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Industry</label>
+                                <select name="industry" class="form-select" style="width: 100%;">
+                                    <option value="">Select Industry</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Retail">Retail</option>
+                                    <option value="Manufacturing">Manufacturing</option>
+                                    <option value="Education">Education</option>
+                                    <option value="Real Estate">Real Estate</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Company Size</label>
+                                <select name="company_size" class="form-select" style="width: 100%;">
+                                    <option value="">Select Size</option>
+                                    <option value="1-10">1-10 employees</option>
+                                    <option value="11-50">11-50 employees</option>
+                                    <option value="51-200">51-200 employees</option>
+                                    <option value="201-500">201-500 employees</option>
+                                    <option value="500+">500+ employees</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column - Subscription & Address -->
+                        <div>
+                            <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Subscription Details</h4>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Subscription Tier *</label>
+                                <select name="subscription_tier" required class="form-select" style="width: 100%;">
+                                    <option value="">Select Tier</option>
+                                    <option value="basic">🥉 Basic - $99/mo</option>
+                                    <option value="standard">🥈 Standard - $299/mo</option>
+                                    <option value="premium">🥇 Premium - $599/mo</option>
+                                    <option value="enterprise">💎 Enterprise - Custom</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Monthly Budget (USD) *</label>
+                                <input type="number" name="monthly_budget_usd" required placeholder="1000" min="0" step="100" class="form-input" style="width: 100%;">
+                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Maximum monthly spend limit</small>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Account Status</label>
+                                <select name="account_status" class="form-select" style="width: 100%;">
+                                    <option value="trial">Trial (30 days)</option>
+                                    <option value="active" selected>Active</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                            </div>
+                            
+                            <h4 style="margin-top: 1.5rem; margin-bottom: 1rem; color: var(--text-primary);">Address (Optional)</h4>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Street</label>
+                                    <input type="text" name="street" placeholder="123 Main St" class="form-input" style="width: 100%;">
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">City</label>
+                                    <input type="text" name="city" placeholder="San Francisco" class="form-input" style="width: 100%;">
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">State</label>
+                                    <input type="text" name="state" placeholder="CA" class="form-input" style="width: 100%;">
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">ZIP</label>
+                                    <input type="text" name="zip" placeholder="94105" class="form-input" style="width: 100%;">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Country</label>
+                                <input type="text" name="country" placeholder="United States" value="United States" class="form-input" style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); font-size: 0.875rem;">
+                        <strong>Note:</strong> The client will receive welcome emails with onboarding instructions and API credentials after creation.
+                    </div>
+                </form>
+            `,
+            actions: [
+                {
+                    text: 'Cancel',
+                    class: 'btn-secondary',
+                    onclick: "document.getElementById('" + modal.id + "').close()"
+                },
+                {
+                    text: 'Create Client',
+                    class: 'btn-primary',
+                    onclick: "clientsPage.handleAddClient()"
+                }
+            ],
+            id: modal.id
+        });
+    }
+
+    async handleAddClient() {
+        const form = document.getElementById('add-client-form');
+        const formData = new FormData(form);
+        
+        // Build client data
+        const clientData = {
+            company_name: formData.get('company_name'),
+            contact_name: formData.get('contact_name'),
+            contact_email: formData.get('contact_email'),
+            phone: formData.get('phone') || null,
+            industry: formData.get('industry') || null,
+            company_size: formData.get('company_size') || null,
+            subscription_tier: formData.get('subscription_tier'),
+            monthly_budget_usd: parseFloat(formData.get('monthly_budget_usd')),
+            account_status: formData.get('account_status') || 'active'
+        };
+
+        // Build address if provided
+        const street = formData.get('street');
+        const city = formData.get('city');
+        const state = formData.get('state');
+        const zip = formData.get('zip');
+        const country = formData.get('country');
+        
+        if (street || city || state || zip) {
+            clientData.address = {
+                street: street || '',
+                city: city || '',
+                state: state || '',
+                zip: zip || '',
+                country: country || 'United States'
+            };
+        }
+
+        // Validate required fields
+        if (!clientData.company_name || !clientData.contact_name || !clientData.contact_email || 
+            !clientData.subscription_tier || !clientData.monthly_budget_usd) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        try {
+            // Show loading state
+            const createBtn = document.querySelector('.btn-primary');
+            const originalText = createBtn.textContent;
+            createBtn.textContent = 'Creating...';
+            createBtn.disabled = true;
+            
+            const response = await this.apiClient.kamRequest('/clients', 'POST', clientData);
+            
+            if (response.success) {
+                // Close all modals
+                document.querySelectorAll('.modal-overlay').forEach(modal => modal.remove());
+                document.body.style.overflow = ''; // Restore body scroll
+                
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: var(--success);
+                    color: white;
+                    padding: 1rem 1.5rem;
+                    border-radius: var(--radius);
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    z-index: 1000;
+                    animation: slideIn 0.3s ease;
+                `;
+                successDiv.textContent = 'Client created successfully!';
+                document.body.appendChild(successDiv);
+                
+                setTimeout(() => successDiv.remove(), 3000);
+                
+                // Reload clients
+                await this.loadClients();
+            } else {
+                // Restore button state
+                createBtn.textContent = originalText;
+                createBtn.disabled = false;
+                alert('Failed to create client: ' + (response.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error creating client:', error);
+            // Restore button state
+            const createBtn = document.querySelector('.btn-primary');
+            if (createBtn) {
+                createBtn.textContent = 'Create Client';
+                createBtn.disabled = false;
+            }
+            alert('Failed to create client: ' + error.message);
+        }
     }
 
     exportClients() {
