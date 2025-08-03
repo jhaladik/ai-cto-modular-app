@@ -83,6 +83,8 @@ export async function onRequestPost(context) {
                               endpoint.startsWith('/client') ||   // Matches both /client and /client/
                               endpoint.startsWith('/users') || 
                               endpoint.startsWith('/dashboard') ||
+                              endpoint.startsWith('/requests') ||
+                              endpoint.startsWith('/templates') ||
                               endpoint.includes('admin');
         
         console.log('🔐 Admin endpoint check:', {
