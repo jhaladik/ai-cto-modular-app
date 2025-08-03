@@ -5,6 +5,8 @@
 // 🎯 Role: Enhanced session management for AI Factory + KAM frontend
 // 💾 Storage: { kv: "BITWARE_SESSION_STORE", d1: "KAM via service binding" }
 
+import { jsonResponse, errorResponse, unauthorizedResponse, serverErrorResponse } from '../../_shared/http-utils.js';
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   
@@ -38,13 +40,7 @@ export async function onRequestPost(context) {
           
           if (!kamResponse.ok) {
             const error = await kamResponse.json();
-            return new Response(JSON.stringify({ 
-              success: false, 
-              error: error.error || 'Authentication failed' 
-            }), {
-              status: 401,
-              headers: { 'Content-Type': 'application/json' }
-            });
+            return unauthorizedResponse(error.error || 'Authentication failed');
           }
           
           const userData = await kamResponse.json();
@@ -61,13 +57,7 @@ export async function onRequestPost(context) {
           };
         } catch (error) {
           console.error('Authentication service error:', error);
-          return new Response(JSON.stringify({ 
-            success: false, 
-            error: 'Authentication service unavailable' 
-          }), {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' }
-          });
+          return errorResponse('Authentication service unavailable', 503);
         }
         break;
         
@@ -92,13 +82,7 @@ export async function onRequestPost(context) {
           
           if (!kamResponse.ok) {
             const error = await kamResponse.json();
-            return new Response(JSON.stringify({ 
-              success: false, 
-              error: error.error || 'Authentication failed' 
-            }), {
-              status: 401,
-              headers: { 'Content-Type': 'application/json' }
-            });
+            return unauthorizedResponse(error.error || 'Authentication failed');
           }
           
           const userData = await kamResponse.json();
@@ -117,24 +101,12 @@ export async function onRequestPost(context) {
           };
         } catch (error) {
           console.error('Authentication service error:', error);
-          return new Response(JSON.stringify({ 
-            success: false, 
-            error: 'Authentication service unavailable' 
-          }), {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' }
-          });
+          return errorResponse('Authentication service unavailable', 503);
         }
         break;
         
       default:
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: 'Invalid login type' 
-        }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        return errorResponse('Invalid login type');
     }
     
     // Generate session token
@@ -173,7 +145,7 @@ export async function onRequestPost(context) {
       // Continue anyway - session is valid in KV
     }
     
-    return new Response(JSON.stringify({
+    return jsonResponse({
       success: true,
       sessionToken,
       user: {
@@ -191,18 +163,10 @@ export async function onRequestPost(context) {
           department: sessionData.department
         } : {})
       }
-    }), {
-      headers: { 'Content-Type': 'application/json' }
     });
     
   } catch (error) {
     console.error('Login error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: 'Invalid request' 
-    }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return errorResponse('Invalid request');
   }
 }

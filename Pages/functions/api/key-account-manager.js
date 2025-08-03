@@ -2,17 +2,11 @@
 // Corrected KAM proxy - integrates Pages sessions with KAM worker properly
 
 import { validateSession } from '../_shared/auth-helper.js';
-
-// CORS headers
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token, x-bitware-session-token, Authorization'
-};
+import { handleCors, jsonResponse, errorResponse, unauthorizedResponse, serverErrorResponse, corsHeaders } from '../_shared/http-utils.js';
 
 // Handle CORS preflight
 export async function onRequestOptions() {
-    return new Response(null, { headers: corsHeaders });
+    return handleCors();
 }
 
 // Main proxy handler
@@ -54,13 +48,7 @@ export async function onRequestPost(context) {
         
         if (!sessionToken) {
             console.error('❌ No session token found in headers');
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'No session token provided'
-            }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
+            return unauthorizedResponse('No session token provided');
         }
         
         console.log(`🔑 Validating Pages session: ${sessionToken.substring(0, 10)}...`);
@@ -79,14 +67,7 @@ export async function onRequestPost(context) {
         
         if (!sessionValidation.valid) {
             console.log('❌ Pages session invalid:', sessionValidation.error);
-            return new Response(JSON.stringify({
-                success: false,
-                error: sessionValidation.error || 'Session validation failed',
-                details: 'Check if you are logged in'
-            }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
+            return unauthorizedResponse(sessionValidation.error || 'Session validation failed');
         }
         
         const session = sessionValidation.session;
@@ -115,26 +96,13 @@ export async function onRequestPost(context) {
             // Admin operations - verify user is admin and use worker auth
             if (session.role !== 'admin' && session.userType !== 'internal') {
                 console.log('🚫 Admin access denied for role:', session.role);
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Admin access required'
-                }), {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                });
+                return errorResponse('Admin access required', 403);
             }
             
             // Use worker-to-worker authentication
             if (!env.WORKER_SHARED_SECRET) {
                 console.error('❌ WORKER_SHARED_SECRET not found in environment');
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Server configuration error',
-                    details: 'Missing authentication credentials'
-                }), {
-                    status: 500,
-                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                });
+                return serverErrorResponse('Server configuration error: Missing authentication credentials');
             }
             kamHeaders['Authorization'] = `Bearer ${env.WORKER_SHARED_SECRET}`;
             kamHeaders['X-Worker-ID'] = 'pages-kam-proxy';
@@ -144,14 +112,7 @@ export async function onRequestPost(context) {
             // Non-admin operations - use client API key
             if (!env.CLIENT_API_KEY) {
                 console.error('❌ CLIENT_API_KEY not found in environment');
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Server configuration error',
-                    details: 'Missing API credentials'
-                }), {
-                    status: 500,
-                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                });
+                return serverErrorResponse('Server configuration error: Missing API credentials');
             }
             kamHeaders['X-API-Key'] = env.CLIENT_API_KEY;
             console.log('🔧 Using client API key for regular endpoint');
@@ -193,22 +154,16 @@ export async function onRequestPost(context) {
             statusText: kamResponse.statusText,
             headers: {
                 'Content-Type': kamResponse.headers.get('Content-Type') || 'application/json',
-                ...corsHeaders
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token, x-bitware-session-token, Authorization, X-API-Key, X-Worker-ID'
             }
         });
         
     } catch (error) {
         console.error('❌ KAM Proxy Error:', error);
         
-        return new Response(JSON.stringify({
-            success: false,
-            error: 'Proxy error',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return serverErrorResponse(`Proxy error: ${error.message}`);
     }
 }
 

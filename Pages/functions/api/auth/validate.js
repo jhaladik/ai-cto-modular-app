@@ -1,4 +1,6 @@
 // functions/api/auth/validate.js
+import { jsonResponse, unauthorizedResponse, serverErrorResponse } from '../../_shared/http-utils.js';
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   
@@ -8,13 +10,7 @@ export async function onRequestPost(context) {
                          request.headers.get('X-Session-Token');
     
     if (!sessionToken) {
-      return new Response(JSON.stringify({ 
-        valid: false, 
-        error: 'No session token provided' 
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return unauthorizedResponse('No session token provided');
     }
 
     // Validate session in KV
@@ -22,13 +18,7 @@ export async function onRequestPost(context) {
     const sessionData = await env.BITWARE_SESSION_STORE.get(sessionKey);
     
     if (!sessionData) {
-      return new Response(JSON.stringify({ 
-        valid: false, 
-        error: 'Invalid or expired session' 
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return unauthorizedResponse('Invalid or expired session');
     }
 
     const session = JSON.parse(sessionData);
@@ -36,17 +26,11 @@ export async function onRequestPost(context) {
     // Check expiration
     if (Date.now() > session.expires) {
       await env.BITWARE_SESSION_STORE.delete(sessionKey);
-      return new Response(JSON.stringify({ 
-        valid: false, 
-        error: 'Session expired' 
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return unauthorizedResponse('Session expired');
     }
 
     // Return valid session with user data
-    return new Response(JSON.stringify({
+    return jsonResponse({
       valid: true,
       user: {
         email: session.username,
@@ -55,19 +39,11 @@ export async function onRequestPost(context) {
         userId: session.userId,
         userType: session.userType
       }
-    }), {
-      headers: { 'Content-Type': 'application/json' }
     });
     
   } catch (error) {
     console.error('Session validation error:', error);
-    return new Response(JSON.stringify({ 
-      valid: false, 
-      error: 'Validation failed' 
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return serverErrorResponse('Validation failed');
   }
 }
 

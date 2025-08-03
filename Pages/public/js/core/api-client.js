@@ -10,8 +10,7 @@ class AIFactoryAPIClient {
         this.sessionToken = localStorage.getItem('bitware-session-token');
         this.baseHeaders = {
             'Content-Type': 'application/json',
-            'X-Session-Token': this.sessionToken,
-            'x-bitware-session-token': this.sessionToken  // Add both header variants
+            'x-bitware-session-token': this.sessionToken  // Use lowercase header consistently
         };
     }
 
@@ -20,8 +19,7 @@ class AIFactoryAPIClient {
      */
     updateSessionToken(newToken) {
         this.sessionToken = newToken;
-        this.baseHeaders['X-Session-Token'] = newToken;
-        this.baseHeaders['x-bitware-session-token'] = newToken;  // Update both variants
+        this.baseHeaders['x-bitware-session-token'] = newToken;
     }
 
     /**
@@ -103,45 +101,12 @@ class AIFactoryAPIClient {
         return this.kamRequest(`/client/${clientId}`, 'GET');
     }
 
-    /**
-     * Get detailed client information by ID or email
-     */
-    async getClientDetail(clientId, email = null) {
-        // This endpoint exists for query-based access
-        return this.kamRequest('/client', 'GET', { 
-            client_id: clientId, 
-            email: email 
-        });
-    }
-    // ALSO REPLACE these 4 methods in Pages/public/js/core/api-client.js:
-
-    async getClientAnalytics(clientId, timeRange = '30d') {
-        return {
-            success: true,
-            data: { message: "Analytics endpoint coming soon", total_requests: 0, total_cost: 0 }
-        };
-    }
-    
-    async getClientCommunications(clientId, limit = 50, offset = 0) {
-        return {
-            success: true,
-            data: { communications: [], total: 0, message: "Communications endpoint coming soon" }
-        };
-    }
-    
-    async getClientRequests(clientId, limit = 20, offset = 0, status = null) {
-        return {
-            success: true,
-            data: { requests: [], total: 0, message: "Requests endpoint coming soon" }
-        };
-    }
-    
-    async getClientDeliverables(clientId, limit = 20, offset = 0) {
-        return {
-            success: true,
-            data: { deliverables: [], total: 0, message: "Deliverables endpoint coming soon" }
-        };
-    }
+    // REMOVED: getClientDetail - use getClient() instead
+    // TODO: Implement these methods when endpoints are ready:
+    // - getClientAnalytics(clientId, timeRange)
+    // - getClientCommunications(clientId, limit, offset)
+    // - getClientRequests(clientId, limit, offset, status)
+    // - getClientDeliverables(clientId, limit, offset)
         /**
      * Update client information
      */
@@ -201,13 +166,7 @@ class AIFactoryAPIClient {
         return this.kamRequest('/admin/recent-activity');
     }
 
-    /**
-     * Get client details
-     */
-    async getClientDetails(clientId) {
-        return this.kamRequest(`/clients/${clientId}`);
-    }
-
+    // REMOVED: getClientDetails - use getClient() instead
     // REMOVED: Duplicate updateClient method that was using wrong endpoint
 
     // =============================================================================

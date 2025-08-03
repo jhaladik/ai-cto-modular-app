@@ -2,6 +2,8 @@
 // Complete KAM worker implementation matching frontend specification exactly
 
 import { DatabaseService } from './services/database';
+import { authenticateRequest, validateClientAuth, validateWorkerAuth, validateSessionToken } from './helpers/auth';
+import { corsHeaders, jsonResponse, unauthorized, notFound, badRequest, serverError, success } from './helpers/http';
 
 // Types and interfaces
 interface Env {
@@ -64,83 +66,6 @@ interface Client {
   }>;
 }
 
-// Helper functions
-function jsonResponse(data: any, init?: ResponseInit) {
-  return new Response(JSON.stringify(data), {
-    headers: { 'Content-Type': 'application/json' },
-    ...init
-  });
-}
-
-function unauthorized(message: string = 'Unauthorized') {
-  return jsonResponse({ success: false, error: message }, { status: 401 });
-}
-
-function notFound(message: string = 'Endpoint not found') {
-  return jsonResponse({ success: false, error: message }, { status: 404 });
-}
-
-function badRequest(message: string = 'Bad request') {
-  return jsonResponse({ success: false, error: message }, { status: 400 });
-}
-
-function serverError(message: string = 'Internal server error') {
-  return jsonResponse({ success: false, error: message }, { status: 500 });
-}
-
-// Authentication validation functions
-function validateClientAuth(request: Request, env: Env): { valid: boolean; error?: string } {
-  const apiKey = request.headers.get('X-API-Key');
-  if (!apiKey) {
-    return { valid: false, error: 'X-API-Key header required' };
-  }
-  if (apiKey !== env.CLIENT_API_KEY) {
-    return { valid: false, error: 'Invalid API key' };
-  }
-  return { valid: true };
-}
-
-function validateWorkerAuth(request: Request, env: Env): { valid: boolean; error?: string } {
-  const authHeader = request.headers.get('Authorization');
-  const workerID = request.headers.get('X-Worker-ID');
-  
-  console.log('🔐 KAM validateWorkerAuth called');
-  console.log('📋 Headers:', {
-    hasAuth: !!authHeader,
-    authPrefix: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
-    workerID: workerID || 'none'
-  });
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('❌ Missing or invalid Bearer token');
-    return { valid: false, error: 'Bearer token required' };
-  }
-  
-  const token = authHeader.substring(7);
-  if (token !== env.WORKER_SHARED_SECRET) {
-    console.log('❌ Token mismatch');
-    console.log('Expected:', env.WORKER_SHARED_SECRET ? env.WORKER_SHARED_SECRET.substring(0, 10) + '...' : 'NOT SET');
-    console.log('Received:', token.substring(0, 10) + '...');
-    return { valid: false, error: 'Invalid worker token' };
-  }
-  
-  if (!workerID) {
-    console.log('❌ Missing X-Worker-ID');
-    return { valid: false, error: 'X-Worker-ID header required' };
-  }
-  
-  console.log('✅ Worker auth valid for:', workerID);
-  return { valid: true };
-}
-
-function validateSessionToken(request: Request): { valid: boolean; sessionToken?: string; error?: string } {
-  const sessionToken = request.headers.get('X-Session-Token') || request.headers.get('x-bitware-session-token');
-  if (!sessionToken) {
-    return { valid: false, error: 'Session token header required (X-Session-Token or x-bitware-session-token)' };
-  }
-  return { valid: true, sessionToken };
-}
-
 // Password hashing utilities (simple implementation for development)
 function hashPassword(password: string): string {
   // In production, use bcrypt or similar
@@ -163,12 +88,6 @@ export default {
     const url = new URL(request.url);
     const { pathname, method } = { pathname: url.pathname, method: request.method };
     
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Worker-ID, x-bitware-session-token, X-Session-Token', // <- Add X-Session-Token
-    };
-        
     // Handle CORS preflight
     if (method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
@@ -196,7 +115,7 @@ export default {
             worker: 'Authorization: Bearer token + X-Worker-ID header',
             session: 'x-bitware-session-token header'
           }
-        }, { headers: corsHeaders });
+        });
       }
 
       if (pathname === '/capabilities') {
@@ -212,7 +131,7 @@ export default {
           integrations: ['pages_frontend', 'orchestrator', 'openai'],
           database: 'D1',
           cache: 'KV'
-        }, { headers: corsHeaders });
+        });
       }
 
       if (pathname === '/health') {
@@ -223,14 +142,14 @@ export default {
             status: 'healthy',
             database: testQuery ? 'connected' : 'disconnected',
             timestamp: new Date().toISOString()
-          }, { headers: corsHeaders });
+          });
         } catch (error) {
           return jsonResponse({
             status: 'unhealthy',
             database: 'disconnected',
             error: 'Database connection failed',
             timestamp: new Date().toISOString()
-          }, { status: 503, headers: corsHeaders });
+          }, { status: 503 });
         }
       }
 
@@ -317,7 +236,7 @@ export default {
               last_login: new Date().toISOString()
             },
             kamContext
-          }, { headers: corsHeaders });
+          });
 
         } catch (error) {
           console.error('Login error:', error);
@@ -363,7 +282,7 @@ export default {
               email: user.email,
               role: user.role
             }
-          }, { headers: corsHeaders });
+          });
 
         } catch (error) {
           console.error('Session validation error:', error);
@@ -383,7 +302,7 @@ export default {
           return jsonResponse({
             success: true,
             message: 'Session terminated'
-          }, { headers: corsHeaders });
+          });
 
         } catch (error) {
           console.error('Logout error:', error);
@@ -394,31 +313,14 @@ export default {
       // ==================== KAM CLIENT ENDPOINTS (Session Token Required) ====================
       if (pathname === '/clients' && method === 'GET') {
         try {
-          const sessionValidation = validateSessionToken(request);
-          const workerAuth = validateWorkerAuth(request, env);
-          
-          console.log('🔐 /clients auth:', {
-            sessionValid: sessionValidation.valid,
-            workerValid: workerAuth.valid
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
           });
           
-          if (!sessionValidation.valid && !workerAuth.valid) {
-            return unauthorized('Authentication required');
-          }
-      
-          // Trust the Pages proxy's validation when using worker auth
-          if (workerAuth.valid) {
-            console.log('✅ Using worker auth - trusting Pages proxy validation');
-          } else if (sessionValidation.valid) {
-            // If using session auth directly, verify admin role
-            const session = await db.getSession(sessionValidation.sessionToken!);
-            if (!session || new Date(session.expires_at) < new Date()) {
-              return unauthorized('Session expired');
-            }
-            const user = await db.getUserById(session.user_id);
-            if (!user || user.role !== 'admin') {
-              return unauthorized('Admin access required');
-            }
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
           }
           
           const clients = await db.getAllClientsWithStats();
@@ -449,7 +351,7 @@ export default {
             active_count: activeCount,
             total_revenue: totalRevenue,
             total_usage: totalUsage
-          }, { headers: corsHeaders });
+          });
 
         } catch (error) {
           console.error('Get clients error:', error);
@@ -457,68 +359,6 @@ export default {
         }
       }
 
-      // DEPRECATED: Old client detail handler - removed in favor of unified handler below
-      // This handler was causing 401 errors because it didn't accept worker auth
-      /*
-      if (pathname.startsWith('/client/') && method === 'GET') {
-        try {
-          const sessionValidation = validateSessionToken(request);
-          if (!sessionValidation.valid) {
-            return unauthorized(sessionValidation.error);
-          }
-
-          const session = await db.getSession(sessionValidation.sessionToken!);
-          if (!session || new Date(session.expires_at) < new Date()) {
-            return unauthorized('Session expired');
-          }
-
-          const clientId = pathname.split('/')[2];
-          const client = await db.getClientById(clientId);
-
-          if (!client) {
-            return notFound('Client not found');
-          }
-
-          return jsonResponse({
-            success: true,
-            client: {
-              client_id: client.client_id,
-              company_name: client.company_name,
-              contact_email: client.contact_email,
-              contact_name: client.contact_name,
-              phone: client.phone,
-              subscription_tier: client.subscription_tier,
-              account_status: client.account_status,
-              monthly_budget_usd: client.monthly_budget_usd,
-              used_budget_current_month: client.used_budget_current_month,
-              industry: client.industry,
-              company_size: client.company_size,
-              created_at: client.created_at,
-              last_activity: client.last_activity,
-              address: client.address ? JSON.parse(client.address) : null,
-              usage_stats: {
-                requests_this_month: 245,
-                avg_response_time: 1.2,
-                success_rate: 98.5,
-                top_services: ['Universal Researcher', 'Content Classifier']
-              },
-              recent_reports: [
-                {
-                  id: 'report_1',
-                  title: 'AI Market Analysis Q3 2024',
-                  created: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-                  status: 'completed'
-                }
-              ]
-            }
-          }, { headers: corsHeaders });
-
-        } catch (error) {
-          console.error('Get client detail error:', error);
-          return serverError('Failed to retrieve client details');
-        }
-      }
-      */
 
       if (pathname === '/client' && method === 'GET') {
         try {
@@ -551,7 +391,7 @@ export default {
               monthly_budget_usd: client.monthly_budget_usd,
               used_budget_current_month: client.used_budget_current_month
             }
-          }, { headers: corsHeaders });
+          });
 
         } catch (error) {
           console.error('Get client by email error:', error);
@@ -562,26 +402,14 @@ export default {
       // Update client endpoint
       if (pathname === '/client' && method === 'PUT') {
         try {
-          const sessionValidation = validateSessionToken(request);
-          const workerAuth = validateWorkerAuth(request, env);
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
           
-          if (!sessionValidation.valid && !workerAuth.valid) {
-            return unauthorized('Authentication required');
-          }
-          
-          // Trust the Pages proxy's validation when using worker auth
-          if (workerAuth.valid) {
-            console.log('✅ Using worker auth - trusting Pages proxy validation');
-          } else if (sessionValidation.valid) {
-            // If using session auth directly, verify admin role
-            const session = await db.getSession(sessionValidation.sessionToken!);
-            if (!session || new Date(session.expires_at) < new Date()) {
-              return unauthorized('Session expired');
-            }
-            const user = await db.getUserById(session.user_id);
-            if (!user || user.role !== 'admin') {
-              return unauthorized('Admin access required');
-            }
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
           }
           
           const body: any = await request.json();
@@ -631,7 +459,7 @@ export default {
               return jsonResponse({
                 success: true,
                 message: 'Client updated successfully'
-              }, { headers: corsHeaders });
+              });
             } else {
               console.error('❌ Update returned false for client:', client_id);
               return serverError('Failed to update client - no changes made');
@@ -654,16 +482,13 @@ export default {
       // RESTful endpoint for getting client by ID
       if (pathname.startsWith('/client/') && method === 'GET') {
         try {
-          const sessionValidation = validateSessionToken(request);
-          const workerAuth = validateWorkerAuth(request, env);
-          
-          console.log('🔐 /client/:id auth:', {
-            sessionValid: sessionValidation.valid,
-            workerValid: workerAuth.valid
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true,
+            allowSession: true
           });
           
-          if (!sessionValidation.valid && !workerAuth.valid) {
-            return unauthorized('Authentication required');
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
           }
 
           // Extract client ID from path
@@ -784,7 +609,7 @@ export default {
             }
           };
 
-          return jsonResponse(dashboardData, { headers: corsHeaders });
+          return jsonResponse(dashboardData);
 
         } catch (error) {
           console.error('Get client dashboard error:', error);
@@ -795,23 +620,14 @@ export default {
       // ==================== USER MANAGEMENT ENDPOINTS ====================
       if (pathname === '/users' && method === 'GET') {
         try {
-          const sessionValidation = validateSessionToken(request);
-          const workerAuth = validateWorkerAuth(request, env);
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
+          });
           
-          if (!sessionValidation.valid && !workerAuth.valid) {
-            return unauthorized('Authentication required');
-          }
-      
-          // If using session auth, verify admin role
-          if (sessionValidation.valid) {
-            const session = await db.getSession(sessionValidation.sessionToken!);
-            if (!session || new Date(session.expires_at) < new Date()) {
-              return unauthorized('Session expired');
-            }
-            const user = await db.getUserById(session.user_id);
-            if (!user || user.role !== 'admin') {
-              return unauthorized('Admin access required');
-            }
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
           }
       
           const users = await db.getAllUsers();
@@ -843,7 +659,7 @@ export default {
               new_this_month: 2, // Mock data
               active_sessions: 5   // Mock data
             }
-          }, { headers: corsHeaders });
+          });
           
         } catch (error) {
           console.error('Get users error:', error);
@@ -854,19 +670,14 @@ export default {
 
       if (pathname === '/users' && method === 'POST') {
         try {
-          const sessionValidation = validateSessionToken(request);
-          if (!sessionValidation.valid) {
-            return unauthorized(sessionValidation.error);
-          }
-
-          const session = await db.getSession(sessionValidation.sessionToken!);
-          if (!session || new Date(session.expires_at) < new Date()) {
-            return unauthorized('Session expired');
-          }
-
-          const adminUser = await db.getUserById(session.user_id);
-          if (!adminUser || adminUser.role !== 'admin') {
-            return unauthorized('Admin access required');
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: false,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
           }
 
           const body = await request.json();
@@ -904,7 +715,7 @@ export default {
               created_at: new Date().toISOString()
             },
             message: 'User created successfully'
-          }, { headers: corsHeaders });
+          });
 
         } catch (error) {
           console.error('Create user error:', error);
@@ -916,36 +727,18 @@ export default {
       if (pathname === '/dashboard/stats' && method === 'GET') {
         try {
           console.log('📊 Dashboard stats requested');
-          const sessionValidation = validateSessionToken(request);
-          const workerAuth = validateWorkerAuth(request, env);
-          
-          console.log('🔐 Auth results:', {
-            sessionValid: sessionValidation.valid,
-            workerValid: workerAuth.valid,
-            sessionError: sessionValidation.error,
-            workerError: workerAuth.error
+          const auth = await authenticateRequest(request, env, db, {
+            requireAdmin: true,
+            allowWorker: true,
+            allowSession: true
           });
           
-          if (!sessionValidation.valid && !workerAuth.valid) {
-            console.log('❌ Both auth methods failed');
-            return unauthorized('Authentication required');
+          if (!auth.authenticated) {
+            console.log('❌ Authentication failed');
+            return unauthorized(auth.error || 'Authentication required');
           }
-      
-          // Trust the Pages proxy's validation when using worker auth
-          // The proxy already validated the session and verified admin role
-          if (workerAuth.valid) {
-            console.log('✅ Using worker auth - trusting Pages proxy validation');
-          } else if (sessionValidation.valid) {
-            // If using session auth directly, verify admin role  
-            const session = await db.getSession(sessionValidation.sessionToken!);
-            if (!session || new Date(session.expires_at) < new Date()) {
-              return unauthorized('Session expired');
-            }
-            const user = await db.getUserById(session.user_id);
-            if (!user || user.role !== 'admin') {
-              return unauthorized('Admin access required');
-            }
-          }
+          
+          console.log('✅ Auth successful:', auth.authType);
       
           // Use the working getAllClientsWithStats() instead of broken getDashboardStats()
           const clients = await db.getAllClientsWithStats();
@@ -980,7 +773,7 @@ export default {
                 failed_requests: 12
               }
             }
-          }, { headers: corsHeaders });
+          });
       
         } catch (error) {
           console.error('Dashboard stats error:', error);
@@ -1018,7 +811,7 @@ export default {
               full_name: user.full_name,
               department: user.department || 'General'
             }
-          }, { headers: corsHeaders });
+          });
 
         } catch (error) {
           console.error('Legacy validate user error:', error);
