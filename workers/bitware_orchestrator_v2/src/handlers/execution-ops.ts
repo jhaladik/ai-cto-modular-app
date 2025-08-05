@@ -44,16 +44,17 @@ export async function handleExecute(
     const estimatedTime = 180000; // Default 3 minutes, will be updated when template is fetched
     const estimatedCompletion = new Date(Date.now() + estimatedTime);
 
-    await env.EXECUTION_CACHE.put(
-      `execution:${executionId}`,
-      JSON.stringify({
-        executionId,
-        templateName: template_name,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      }),
-      { expirationTtl: 3600 }
-    );
+    // Skip caching due to KV limit
+    // await env.EXECUTION_CACHE.put(
+    //   `execution:${executionId}`,
+    //   JSON.stringify({
+    //     executionId,
+    //     templateName: template_name,
+    //     status: 'pending',
+    //     createdAt: new Date().toISOString()
+    //   }),
+    //   { expirationTtl: 3600 }
+    // );
 
     return jsonResponse({
       execution_id: executionId,

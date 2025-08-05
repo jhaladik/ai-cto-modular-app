@@ -178,7 +178,7 @@ export class WorkerCoordinator {
       const templateResponse = await binding.fetch(new Request(`https://worker.internal/api/templates/${data.template_id}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+          'Authorization': `Bearer ${this.env.WORKER_SECRET}`,
           'X-Worker-ID': 'bitware-orchestrator-v2'
         }
       }));
@@ -194,7 +194,7 @@ export class WorkerCoordinator {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+        'Authorization': `Bearer ${this.env.WORKER_SECRET}`,
         'X-Worker-ID': 'bitware-orchestrator-v2'
       },
       body: JSON.stringify({
@@ -235,7 +235,7 @@ export class WorkerCoordinator {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+        'Authorization': `Bearer ${this.env.WORKER_SECRET}`,
         'X-Worker-ID': 'bitware-orchestrator-v2'
       },
       body: JSON.stringify({

@@ -39,6 +39,12 @@ export class QueueManager {
   }
 
   async processQueue(): Promise<void> {
+    console.log('processQueue called:', {
+      isProcessing: this.isProcessing,
+      activeExecutions: this.activeExecutions.size,
+      maxConcurrent: this.maxConcurrent
+    });
+    
     if (this.isProcessing || this.activeExecutions.size >= this.maxConcurrent) {
       return;
     }
@@ -48,6 +54,8 @@ export class QueueManager {
     try {
       while (this.activeExecutions.size < this.maxConcurrent) {
         const nextItem = await this.getNextQueueItem();
+        
+        console.log('Next queue item:', nextItem);
         
         if (!nextItem) {
           break;
@@ -129,18 +137,31 @@ export class QueueManager {
   private async processExecution(queueItem: any): Promise<void> {
     const executionId = queueItem.execution_id;
     
+    console.log('Processing execution:', {
+      executionId,
+      templateName: queueItem.template_name,
+      parameters: queueItem.parameters
+    });
+    
     try {
       // Fetch master template from KAM
-      const kamResponse = await this.env.KAM.fetch(new Request(`https://kam.internal/api/master-templates/${queueItem.template_name}`, {
+      const kamUrl = `https://kam.internal/api/master-templates/${queueItem.template_name}`;
+      console.log('Fetching master template from KAM:', kamUrl);
+      
+      const kamResponse = await this.env.KAM.fetch(new Request(kamUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+          'Authorization': `Bearer ${this.env.WORKER_SECRET}`,
           'X-Worker-ID': 'bitware-orchestrator-v2'
         }
       }));
       
+      console.log('KAM response status:', kamResponse.status);
+      
       if (!kamResponse.ok) {
-        throw new Error('Failed to fetch master template from KAM');
+        const errorText = await kamResponse.text();
+        console.error('KAM error response:', errorText);
+        throw new Error(`Failed to fetch master template from KAM: ${errorText}`);
       }
       
       const masterTemplate = await kamResponse.json() as any;
@@ -189,7 +210,7 @@ export class QueueManager {
   private async updateQueueStatus(queueId: string, status: string): Promise<void> {
     await this.env.DB.prepare(`
       UPDATE execution_queue 
-      SET status = ?, updated_at = datetime('now')
+      SET status = ?
       WHERE queue_id = ?
     `).bind(status, queueId).run();
   }
@@ -260,7 +281,7 @@ export class QueueManager {
 
     await this.env.DB.prepare(`
       UPDATE execution_queue 
-      SET priority = ?, updated_at = datetime('now')
+      SET priority = ?
       WHERE execution_id = ? AND status IN ('queued', 'ready', 'blocked')
     `).bind(priorityScore, executionId).run();
   }
@@ -268,7 +289,7 @@ export class QueueManager {
   async cancelQueued(executionId: string): Promise<void> {
     await this.env.DB.prepare(`
       UPDATE execution_queue 
-      SET status = 'cancelled', updated_at = datetime('now')
+      SET status = 'cancelled'
       WHERE execution_id = ? AND status IN ('queued', 'ready', 'blocked')
     `).bind(executionId).run();
 

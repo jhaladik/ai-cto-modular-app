@@ -49,22 +49,33 @@ export class DatabaseService {
   async createExecution(execution: Partial<PipelineExecution>): Promise<string> {
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    await this.db.prepare(`
-      INSERT INTO pipeline_executions (
-        execution_id, request_id, client_id, template_name, parameters,
-        status, priority, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).bind(
-      executionId,
-      execution.request_id || null,
-      execution.client_id!,
-      execution.template_name!,
-      JSON.stringify(execution.parameters || {}),
-      execution.status || 'pending',
-      execution.priority || 'normal'
-    ).run();
-    
-    return executionId;
+    try {
+      console.log('Creating execution with:', {
+        executionId,
+        execution
+      });
+      
+      await this.db.prepare(`
+        INSERT INTO pipeline_executions (
+          execution_id, request_id, client_id, template_name, parameters,
+          status, priority, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(
+        executionId,
+        execution.request_id || null,
+        execution.client_id!,
+        execution.template_name!,
+        JSON.stringify(execution.parameters || {}),
+        execution.status || 'pending',
+        execution.priority || 'normal'
+      ).run();
+      
+      console.log('Execution created successfully');
+      return executionId;
+    } catch (error) {
+      console.error('Failed to create execution:', error);
+      throw error;
+    }
   }
 
   async updateExecution(
