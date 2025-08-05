@@ -99,7 +99,8 @@ class TemplateManager {
             { name: 'content_analyzer', display_name: 'Content Analyzer', base_cost: 0.08 },
             { name: 'report_generator', display_name: 'Report Generator', base_cost: 0.10 },
             { name: 'data_validator', display_name: 'Data Validator', base_cost: 0.03 },
-            { name: 'pdf_converter', display_name: 'PDF Converter', base_cost: 0.02 }
+            { name: 'pdf_converter', display_name: 'PDF Converter', base_cost: 0.02 },
+            { name: 'bitware-content-granulator', display_name: 'Content Granulator', base_cost: 0.05 }
         ];
     }
 
@@ -252,6 +253,7 @@ class TemplateManager {
                             <option value="research" ${this.selectedTemplate.category === 'research' ? 'selected' : ''}>Research</option>
                             <option value="analysis" ${this.selectedTemplate.category === 'analysis' ? 'selected' : ''}>Analysis</option>
                             <option value="content" ${this.selectedTemplate.category === 'content' ? 'selected' : ''}>Content</option>
+                            <option value="content_structuring" ${this.selectedTemplate.category === 'content_structuring' ? 'selected' : ''}>Content Structuring</option>
                             <option value="reporting" ${this.selectedTemplate.category === 'reporting' ? 'selected' : ''}>Reporting</option>
                             <option value="monitoring" ${this.selectedTemplate.category === 'monitoring' ? 'selected' : ''}>Monitoring</option>
                         </select>
@@ -306,12 +308,28 @@ class TemplateManager {
 
     renderPipelineTab() {
         const stages = this.selectedTemplate.pipeline_stages || 
-                      (this.selectedTemplate.worker_flow || []).map((worker, index) => ({
-                          stage_index: index,
-                          worker_name: worker,
-                          stage_name: `Stage ${index + 1}`,
-                          on_failure: 'stop'
-                      }));
+                      (this.selectedTemplate.worker_flow || []).map((worker, index) => {
+                          // Handle both string format (legacy) and object format (new)
+                          if (typeof worker === 'string') {
+                              return {
+                                  stage_index: index,
+                                  worker_name: worker,
+                                  stage_name: `Stage ${index + 1}`,
+                                  action: 'default',
+                                  params: {},
+                                  on_failure: 'stop'
+                              };
+                          } else {
+                              return {
+                                  stage_index: worker.step || index,
+                                  worker_name: worker.worker,
+                                  stage_name: `Stage ${worker.step || index + 1}`,
+                                  action: worker.action || 'default',
+                                  params: worker.params || {},
+                                  on_failure: 'stop'
+                              };
+                          }
+                      });
 
         return `
             <div class="pipeline-tab">
@@ -346,6 +364,53 @@ class TemplateManager {
                                         `).join('')}
                                     </select>
                                 </div>
+                                
+                                <div class="form-group">
+                                    <label>Action</label>
+                                    <input type="text" 
+                                           value="${stage.action || 'default'}" 
+                                           class="form-input"
+                                           placeholder="e.g., granulate, analyze, generate"
+                                           onchange="templateManager.updateStage(${index}, 'action', this.value)">
+                                </div>
+                                
+                                ${stage.worker_name === 'bitware-content-granulator' ? `
+                                    <div class="form-group">
+                                        <label>Worker Template</label>
+                                        <select class="form-select" 
+                                                onchange="templateManager.updateStageParam(${index}, 'structureType', this.value)">
+                                            <option value="course" ${stage.params?.structureType === 'course' ? 'selected' : ''}>Course Structure</option>
+                                            <option value="quiz" ${stage.params?.structureType === 'quiz' ? 'selected' : ''}>Quiz Generator</option>
+                                            <option value="novel" ${stage.params?.structureType === 'novel' ? 'selected' : ''}>Novel Planner</option>
+                                            <option value="workflow" ${stage.params?.structureType === 'workflow' ? 'selected' : ''}>Workflow Designer</option>
+                                            <option value="knowledge_map" ${stage.params?.structureType === 'knowledge_map' ? 'selected' : ''}>Knowledge Map</option>
+                                            <option value="learning_path" ${stage.params?.structureType === 'learning_path' ? 'selected' : ''}>Learning Path</option>
+                                        </select>
+                                    </div>
+                                ` : ''}
+                                
+                                <div class="form-group">
+                                    <label>Deliverable Handling</label>
+                                    <select class="form-select" 
+                                            onchange="templateManager.updateStage(${index}, 'deliverable_action', this.value)">
+                                        <option value="store" ${stage.deliverable_action === 'store' ? 'selected' : ''}>Store in Database</option>
+                                        <option value="pass" ${stage.deliverable_action === 'pass' ? 'selected' : ''}>Pass to Next Stage</option>
+                                        <option value="store_and_pass" ${stage.deliverable_action === 'store_and_pass' ? 'selected' : ''}>Store & Pass Forward</option>
+                                        <option value="transform" ${stage.deliverable_action === 'transform' ? 'selected' : ''}>Transform for Next Stage</option>
+                                    </select>
+                                </div>
+                                
+                                ${index < stages.length - 1 ? `
+                                    <div class="form-group">
+                                        <label>Output Mapping</label>
+                                        <input type="text" 
+                                               value="${stage.output_mapping || ''}" 
+                                               class="form-input"
+                                               placeholder="e.g., structure → input.content"
+                                               onchange="templateManager.updateStage(${index}, 'output_mapping', this.value)">
+                                        <small class="form-hint">How this stage's output maps to the next stage's input</small>
+                                    </div>
+                                ` : ''}
                                 
                                 <div class="form-group">
                                     <label>On Failure</label>
@@ -570,6 +635,37 @@ class TemplateManager {
         }
         this.selectedTemplate.pipeline_stages[index][field] = value;
         this.isDirty = true;
+        
+        // Update worker_flow when pipeline stages change
+        this.syncWorkerFlow();
+    }
+    
+    updateStageParam(index, paramName, value) {
+        if (!this.selectedTemplate.pipeline_stages) {
+            this.selectedTemplate.pipeline_stages = [];
+        }
+        if (!this.selectedTemplate.pipeline_stages[index].params) {
+            this.selectedTemplate.pipeline_stages[index].params = {};
+        }
+        this.selectedTemplate.pipeline_stages[index].params[paramName] = value;
+        this.isDirty = true;
+        
+        // Update worker_flow when params change
+        this.syncWorkerFlow();
+    }
+    
+    syncWorkerFlow() {
+        // Sync pipeline_stages to worker_flow format for backward compatibility
+        if (this.selectedTemplate.pipeline_stages) {
+            this.selectedTemplate.worker_flow = this.selectedTemplate.pipeline_stages.map((stage, index) => ({
+                worker: stage.worker_name,
+                step: index + 1,
+                action: stage.action || 'default',
+                params: stage.params || {},
+                deliverable_action: stage.deliverable_action || 'store',
+                output_mapping: stage.output_mapping
+            }));
+        }
     }
 
     updateParameter(index, field, value) {
@@ -696,11 +792,48 @@ class TemplateManager {
     }
 
     addPipelineStage() {
-        this.showMessage('Add pipeline stage coming soon!', 'info');
+        if (!this.selectedTemplate.pipeline_stages) {
+            this.selectedTemplate.pipeline_stages = [];
+        }
+        
+        const newStage = {
+            stage_index: this.selectedTemplate.pipeline_stages.length,
+            stage_name: `Stage ${this.selectedTemplate.pipeline_stages.length + 1}`,
+            worker_name: this.workers[0]?.name || 'topic_researcher',
+            action: 'default',
+            params: {},
+            deliverable_action: 'store',
+            on_failure: 'stop'
+        };
+        
+        this.selectedTemplate.pipeline_stages.push(newStage);
+        this.isDirty = true;
+        this.syncWorkerFlow();
+        
+        // Re-render the pipeline tab
+        document.getElementById('editor-tab-content').innerHTML = this.renderPipelineTab();
     }
 
     removeStage(index) {
-        this.showMessage('Remove stage coming soon!', 'info');
+        if (!this.selectedTemplate.pipeline_stages) return;
+        
+        if (confirm(`Remove ${this.selectedTemplate.pipeline_stages[index].stage_name}?`)) {
+            this.selectedTemplate.pipeline_stages.splice(index, 1);
+            
+            // Re-index stages
+            this.selectedTemplate.pipeline_stages.forEach((stage, i) => {
+                stage.stage_index = i;
+                if (!stage.stage_name || stage.stage_name.startsWith('Stage ')) {
+                    stage.stage_name = `Stage ${i + 1}`;
+                }
+            });
+            
+            this.isDirty = true;
+            this.syncWorkerFlow();
+            
+            // Re-render the pipeline tab
+            document.getElementById('editor-tab-content').innerHTML = this.renderPipelineTab();
+        }
     }
 
     addParameter() {
