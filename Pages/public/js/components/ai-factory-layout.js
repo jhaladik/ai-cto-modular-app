@@ -163,6 +163,7 @@ class AIFactoryLayout {
                     title: 'AI Workers',
                     items: [
                         { path: '/orchestrator', icon: '🎛️', label: 'Orchestrator 2.0' },
+                        { path: '/granulation', icon: '🧱', label: 'Content Granulator' },
                         { path: '/workers/topic-researcher', icon: '🔎', label: 'Topic Researcher' },
                         { path: '/workers/universal-researcher', icon: '🔍', label: 'Universal Researcher', disabled: true },
                         { path: '/workers/content-classifier', icon: '🏷️', label: 'Content Classifier', disabled: true },
@@ -682,6 +683,14 @@ class AIFactoryLayout {
                         return;
                     }
                     await this.loadOrchestrator(contentArea);
+                    break;
+                case '/granulation':
+                    // ADMIN ONLY - content granulator
+                    if (this.config.userType !== 'admin') {
+                        await this.navigate('/my-account');
+                        return;
+                    }
+                    await this.loadGranulation(contentArea);
                     break;
                 default:
                     // Check if it's a client detail route with dynamic ID
@@ -1486,6 +1495,60 @@ class AIFactoryLayout {
             });
         } else {
             alert('Add user functionality coming soon!');
+        }
+    }
+
+    /**
+     * Load granulation page - ADMIN ONLY
+     */
+    async loadGranulation(contentArea) {
+        console.log('🧱 Loading Content Granulator...');
+        
+        if (window.GranulationPage) {
+            try {
+                // Create and mount granulation page
+                if (!window.granulationPage) {
+                    window.granulationPage = new GranulationPage(window.apiClient);
+                }
+                contentArea.innerHTML = window.granulationPage.render();
+                await window.granulationPage.mount();
+                console.log('✅ Content Granulator loaded successfully');
+            } catch (error) {
+                console.error('❌ Failed to load Content Granulator:', error);
+                contentArea.innerHTML = `
+                    <div class="error-state">
+                        <h3>Failed to load Content Granulator</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        } else {
+            contentArea.innerHTML = `
+                <div class="info-section" style="text-align: center; padding: 3rem;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">🧱</div>
+                    <h3>Content Granulator</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                        AI-powered content structure generation
+                    </p>
+                    <div class="feature-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem; text-align: left;">
+                        <div class="feature-card">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📚</div>
+                            <h4>Course Creation</h4>
+                            <p style="font-size: 0.875rem; color: var(--text-secondary);">Generate structured educational content</p>
+                        </div>
+                        <div class="feature-card">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📝</div>
+                            <h4>Quiz Generation</h4>
+                            <p style="font-size: 0.875rem; color: var(--text-secondary);">Create assessments and evaluations</p>
+                        </div>
+                        <div class="feature-card">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">✅</div>
+                            <h4>AI Validation</h4>
+                            <p style="font-size: 0.875rem; color: var(--text-secondary);">Ensure quality with intelligent validation</p>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
     }
 

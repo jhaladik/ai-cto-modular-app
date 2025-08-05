@@ -12,16 +12,16 @@ vars = { ENVIRONMENT = "staging", VERSION = "1.0.0" }
 [[d1_databases]]
 binding = "DB"
 database_name = "content-granulator-db"
-database_id = "YOUR_DATABASE_ID_HERE"
+database_id = "f8b4192a-0c00-4504-b758-feecd9f8015a"
 
 # KV Namespaces for caching
 [[kv_namespaces]]
 binding = "TEMPLATE_CACHE"
-id = "YOUR_TEMPLATE_CACHE_ID"
+id = "f8033cde336b4762bc5970fc2f1307a7"
 
 [[kv_namespaces]]
 binding = "JOB_CACHE"
-id = "YOUR_JOB_CACHE_ID"
+id = "a41c43448f7c4fc28bc7f5a91ca19e64"
 
 # R2 Storage for large structures
 [[r2_buckets]]

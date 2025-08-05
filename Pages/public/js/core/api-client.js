@@ -509,6 +509,72 @@ class AIFactoryAPIClient {
         const user = this.getCurrentUser();
         return user?.subscription_tier || 'basic';
     }
+
+    // =========================================================================
+    // CONTENT GRANULATOR API
+    // =========================================================================
+
+    /**
+     * Get granulator templates
+     */
+    async getGranulatorTemplates(structureType = null) {
+        const url = structureType 
+            ? `/api/granulator/templates?structure_type=${structureType}`
+            : '/api/granulator/templates';
+        return this.makeRequest('GET', url);
+    }
+
+    /**
+     * Get granulator statistics
+     */
+    async getGranulatorStats() {
+        return this.makeRequest('GET', '/api/granulator/stats');
+    }
+
+    /**
+     * Create new granulation job
+     */
+    async createGranulation(data) {
+        return this.makeRequest('POST', '/api/granulator/granulate', data);
+    }
+
+    /**
+     * Get granulation job details
+     */
+    async getGranulationJob(jobId) {
+        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}`);
+    }
+
+    /**
+     * Get granulation job status
+     */
+    async getGranulationJobStatus(jobId) {
+        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}/status`);
+    }
+
+    /**
+     * Retry failed granulation
+     */
+    async retryGranulation(jobId) {
+        return this.makeRequest('POST', `/api/granulator/jobs/${jobId}/retry`);
+    }
+
+    /**
+     * Validate granulation manually
+     */
+    async validateGranulation(jobId, validationLevel = 2) {
+        return this.makeRequest('POST', '/api/granulator/validate', {
+            jobId,
+            validationLevel
+        });
+    }
+
+    /**
+     * Get validation history
+     */
+    async getValidationHistory(jobId) {
+        return this.makeRequest('GET', `/api/granulator/validation/history?job_id=${jobId}`);
+    }
 }
 
 // Export for use in other modules

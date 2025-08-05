@@ -68,6 +68,7 @@ class KAMRouter {
         this.addRoute('/requests', () => this.loadRequestsPage());
         this.addRoute('/templates', () => this.loadTemplateManager());
         this.addRoute('/orchestrator', () => this.loadOrchestrator());
+        this.addRoute('/granulation', () => this.loadGranulationPage());
         
         // Client routes  
         this.addRoute('/my-account', () => this.loadMyAccount());
@@ -290,6 +291,14 @@ class KAMRouter {
             await window.aiFactoryLayout.navigate('/orchestrator');
         } else {
             this.showLayoutError('Orchestrator');
+        }
+    }
+
+    async loadGranulationPage() {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate('/granulation');
+        } else {
+            this.showLayoutError('Content Granulator');
         }
     }
 
