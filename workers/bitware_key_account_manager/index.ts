@@ -1301,35 +1301,23 @@ export default {
             return badRequest('No template selected for this request');
           }
           
-          // Get template details
-          const template = await db.getTemplateByName(request_detail.selected_template);
-          
-          if (!template) {
-            return badRequest('Selected template not found in cache');
-          }
-          
-          // Extract template-specific parameters for workers
+          // Extract parameters from request body
           const body = await request.json();
           const { parameters = {} } = body;
           
-          // For granulation templates, add structure type and other params
-          const workerParams: any = { ...parameters };
-          if (template.category === 'content_structuring') {
-            // Map template to granulator structure type
-            const structureTypeMap: Record<string, string> = {
-              'content_granulation_course': 'course',
-              'content_granulation_quiz': 'quiz',
-              'content_granulation_novel': 'novel',
-              'content_granulation_workflow': 'workflow',
-              'content_granulation_knowledge_map': 'knowledge_map',
-              'content_granulation_learning_path': 'learning_path'
-            };
-            
-            workerParams.structureType = structureTypeMap[template.template_name] || 'knowledge_map';
-            workerParams.granularityLevel = parameters.granularityLevel || 3;
-            workerParams.validationEnabled = parameters.validationEnabled !== false;
-            workerParams.validationLevel = parameters.validationLevel || 2;
+          // Get master template details
+          const masterTemplate = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
+            SELECT * FROM master_templates 
+            WHERE template_name = ? AND is_active = 1
+          `).bind(request_detail.selected_template).first();
+          
+          if (!masterTemplate) {
+            return badRequest('Selected template not found');
           }
+          
+          // Parameters are passed as-is to the orchestrator
+          // The orchestrator will handle merging with worker template defaults
+          const workerParams = { ...parameters };
           
           try {
             // Call Orchestrator v2 to execute pipeline
@@ -1348,7 +1336,7 @@ export default {
                   request_id: requestId,
                   template_name: request_detail.selected_template,
                   parameters: workerParams,
-                  priority: request_detail.urgency_override || 'normal',
+                  priority: request_detail.urgency_override === 'medium' ? 'normal' : (request_detail.urgency_override || 'normal'),
                   client_id: request_detail.client_id,
                   metadata: {
                     original_message: request_detail.original_message,
@@ -1372,7 +1360,7 @@ export default {
                   request_id: requestId,
                   template_name: request_detail.selected_template,
                   parameters: workerParams,
-                  priority: request_detail.urgency_override || 'normal',
+                  priority: request_detail.urgency_override === 'medium' ? 'normal' : (request_detail.urgency_override || 'normal'),
                   client_id: request_detail.client_id,
                   metadata: {
                     original_message: request_detail.original_message,
@@ -1708,6 +1696,36 @@ export default {
         } catch (error) {
           console.error('Get communications error:', error);
           return serverError('Failed to retrieve communications');
+        }
+      }
+
+      // ==================== MASTER TEMPLATES ENDPOINTS ====================
+      
+      if (pathname.match(/^\/api\/master-templates\/[^\/]+$/) && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const templateName = pathname.split('/')[3];
+          const result = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
+            SELECT * FROM master_templates 
+            WHERE template_name = ? AND is_active = 1
+          `).bind(templateName).first();
+          
+          if (!result) {
+            return notFound('Master template not found');
+          }
+          
+          return jsonResponse(result);
+          
+        } catch (error) {
+          console.error('Get master template error:', error);
+          return serverError('Failed to retrieve master template');
         }
       }
 

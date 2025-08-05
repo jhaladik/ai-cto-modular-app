@@ -130,14 +130,50 @@ export class QueueManager {
     const executionId = queueItem.execution_id;
     
     try {
-      const template = await this.db.getTemplate(queueItem.template_name);
-      if (!template) {
-        throw new Error(`Template ${queueItem.template_name} not found`);
+      // Fetch master template from KAM
+      const kamResponse = await this.env.KAM.fetch(new Request(`https://kam.internal/api/master-templates/${queueItem.template_name}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+          'X-Worker-ID': 'bitware-orchestrator-v2'
+        }
+      }));
+      
+      if (!kamResponse.ok) {
+        throw new Error('Failed to fetch master template from KAM');
       }
+      
+      const masterTemplate = await kamResponse.json() as any;
+      
+      // Parse pipeline stages
+      const pipelineStages = JSON.parse(masterTemplate.pipeline_stages || '[]');
+      
+      // Build pipeline template for executor
+      const pipelineTemplate = {
+        template_name: masterTemplate.template_name,
+        display_name: masterTemplate.display_name,
+        stages: pipelineStages.map((stage: any) => ({
+          stage_order: stage.stage || stage.stage_order,
+          worker_name: stage.worker,
+          template_ref: stage.template_ref,
+          action: 'execute_template', // Standard action for template execution
+          params: {
+            template_id: stage.template_ref,
+            ...stage.params_override
+          },
+          input_mapping: stage.input_map || stage.input_mapping,
+          timeout_ms: 30000,
+          retry_config: {
+            max_attempts: 3,
+            backoff_ms: 1000
+          }
+        })),
+        estimated_time_ms: masterTemplate.max_execution_time_ms || 60000
+      };
 
       const parameters = JSON.parse(queueItem.parameters || '{}');
       
-      await this.executor.execute(executionId, template, parameters);
+      await this.executor.execute(executionId, pipelineTemplate, parameters);
       
       await this.updateQueueStatus(queueItem.queue_id, 'completed');
       

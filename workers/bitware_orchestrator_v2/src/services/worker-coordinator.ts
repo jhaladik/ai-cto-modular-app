@@ -172,6 +172,22 @@ export class WorkerCoordinator {
       JSON.stringify(handshake)
     ).run();
 
+    // If action is execute_template, we need to fetch template details first
+    let templateDetails = null;
+    if (action === 'execute_template' && data.template_id) {
+      const templateResponse = await binding.fetch(new Request(`https://worker.internal/api/templates/${data.template_id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+          'X-Worker-ID': 'bitware-orchestrator-v2'
+        }
+      }));
+      
+      if (templateResponse.ok) {
+        templateDetails = await templateResponse.json();
+      }
+    }
+
     // First, send handshake
     const handshakeUrl = `https://worker.internal/api/handshake`;
     const handshakeResponse = await binding.fetch(new Request(handshakeUrl, {
@@ -184,15 +200,21 @@ export class WorkerCoordinator {
       body: JSON.stringify({
         executionId,
         stageId,
-        action,
-        inputData: data,
+        action: action === 'execute_template' ? 'granulate' : action,
+        inputData: {
+          ...data,
+          // Add template-specific parameters if we have them
+          ...(templateDetails?.template?.base_parameters ? JSON.parse(templateDetails.template.base_parameters) : {}),
+          // Override with any stage-specific params
+          ...data
+        },
         dataReference: dataRef,
         resourceRequirements: {
-          estimatedTokens: 2000,
-          timeoutMs: 30000
+          estimatedTokens: templateDetails?.template?.avg_tokens || 2000,
+          timeoutMs: templateDetails?.template?.estimated_time_ms || 30000
         },
         validationConfig: {
-          enabled: data.validationEnabled || true,
+          enabled: data.validationEnabled !== false,
           level: data.validationLevel || 2
         }
       })

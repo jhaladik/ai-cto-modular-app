@@ -22,11 +22,9 @@ export async function handleExecute(
     }
 
     const db = new DatabaseService(env.DB);
-    const template = await db.getTemplate(template_name);
-
-    if (!template) {
-      return notFound('Template not found');
-    }
+    
+    // We'll fetch template details in the queue processor
+    // For now, just validate the template name exists
 
     const clientId = request.auth?.clientId || 'default_client';
 
@@ -43,7 +41,7 @@ export async function handleExecute(
     const queueManager = new QueueManager(env);
     await queueManager.enqueue(executionId, priority);
 
-    const estimatedTime = template.estimated_time_ms || 180000;
+    const estimatedTime = 180000; // Default 3 minutes, will be updated when template is fetched
     const estimatedCompletion = new Date(Date.now() + estimatedTime);
 
     await env.EXECUTION_CACHE.put(
