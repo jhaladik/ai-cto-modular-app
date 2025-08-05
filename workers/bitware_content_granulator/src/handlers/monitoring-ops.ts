@@ -121,12 +121,12 @@ export async function handleGetTemplates(env: Env, request: AuthenticatedRequest
     
     return jsonResponse({
       templates: templates.map(t => ({
-        name: t.templateName,
-        structureType: t.structureType,
-        complexityLevel: t.complexityLevel,
-        targetAudience: t.targetAudience,
-        usageCount: t.usageCount,
-        description: `${t.structureType} template for ${t.targetAudience || 'general audience'}`
+        name: t.template_name || t.templateName,
+        structureType: t.structure_type || t.structureType,
+        complexityLevel: t.complexity_level || t.complexityLevel,
+        targetAudience: t.target_audience || t.targetAudience,
+        usageCount: t.usage_count || t.usageCount,
+        description: `${t.structure_type || t.structureType} template for ${t.target_audience || t.targetAudience || 'general audience'}`
       })),
       total: templates.length
     });
@@ -147,14 +147,15 @@ export async function handleGetTemplate(env: Env, templateName: string, request:
     
     return jsonResponse({
       template: {
-        name: template.templateName,
-        structureType: template.structureType,
-        complexityLevel: template.complexityLevel,
-        targetAudience: template.targetAudience,
-        schema: JSON.parse(template.templateSchema),
-        validationRules: template.validationRules ? JSON.parse(template.validationRules) : null,
-        usageCount: template.usageCount,
-        createdAt: template.createdAt
+        name: template.template_name || template.templateName,
+        structureType: template.structure_type || template.structureType,
+        complexityLevel: template.complexity_level || template.complexityLevel,
+        targetAudience: template.target_audience || template.targetAudience,
+        schema: JSON.parse(template.template_schema || template.templateSchema),
+        validationRules: template.validation_rules || template.validationRules ? JSON.parse(template.validation_rules || template.validationRules) : null,
+        usageCount: template.usage_count || template.usageCount,
+        createdAt: template.created_at || template.createdAt,
+        aiPromptTemplate: template.ai_prompt_template || template.aiPromptTemplate
       }
     });
   } catch (error) {

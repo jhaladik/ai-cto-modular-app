@@ -496,7 +496,19 @@ export async function handleGetJobStructure(env: Env, jobId: number, request: Au
     }
     
     // Get structure from storage
-    const structure = await storage.getStructure(jobId);
+    let structure = await storage.getStructure(jobId);
+    
+    // If not in storage, try to get from database (inline storage)
+    if (!structure) {
+      const elements = await db.getStructureElements(jobId);
+      if (elements && elements.length > 0) {
+        structure = buildHierarchicalStructure(elements);
+      }
+    }
+    
+    if (!structure) {
+      return jsonResponse({ error: 'Structure not found' }, 404);
+    }
     
     return jsonResponse({
       jobId,

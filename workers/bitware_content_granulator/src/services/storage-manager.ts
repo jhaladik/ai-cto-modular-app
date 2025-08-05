@@ -90,4 +90,25 @@ export class StorageManager {
   getStructureSize(structure: any): number {
     return new TextEncoder().encode(JSON.stringify(structure)).length;
   }
+
+  async getStructure(jobId: number): Promise<any | null> {
+    // First try KV
+    const kvKey = `structure:${jobId}`;
+    const kvData = await this.env.JOB_CACHE.get(kvKey);
+    if (kvData) {
+      return JSON.parse(kvData);
+    }
+
+    // Then try R2
+    const r2Key = `structures/${jobId}.json`;
+    const r2Object = await this.env.STRUCTURE_STORAGE.get(r2Key);
+    if (r2Object) {
+      const r2Data = await r2Object.text();
+      return JSON.parse(r2Data);
+    }
+
+    // If not found in storage, it might be inline in the database
+    // Return null and let the caller handle getting it from DB
+    return null;
+  }
 }

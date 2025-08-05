@@ -23,6 +23,15 @@ class GranulationPage {
         this.switchTab = this.switchTab.bind(this);
         this.showTemplateDetails = this.showTemplateDetails.bind(this);
         this.testTemplate = this.testTemplate.bind(this);
+        
+        // Create a safe showToast wrapper
+        this.showToast = (message, type = 'info') => {
+            if (window.uiUtils && this.showToast) {
+                this.showToast(message, type);
+            } else {
+                console.log(`[${type.toUpperCase()}] ${message}`);
+            }
+        };
     }
 
     render() {
@@ -329,7 +338,7 @@ class GranulationPage {
                                     <div class="validation-score">
                                         <span class="score-label">Accuracy:</span>
                                         <span class="score-value ${job.validation_result.passed ? 'passed' : 'failed'}">
-                                            ${job.validation_result.accuracy_percentage.toFixed(1)}%
+                                            ${job.validation_result?.accuracy_percentage ? job.validation_result.accuracy_percentage.toFixed(1) : '0.0'}%
                                         </span>
                                     </div>
                                     <div class="validation-details">
@@ -383,12 +392,12 @@ class GranulationPage {
             const response = await this.apiClient.createGranulation(data);
             
             if (response.jobId) {
-                window.uiUtils.showToast('Granulation job created successfully!', 'success');
+                this.showToast('Granulation job created successfully!', 'success');
                 await this.refresh();
             }
         } catch (error) {
             console.error('❌ Error creating granulation:', error);
-            window.uiUtils.showToast(error.message || 'Failed to create granulation', 'error');
+            this.showToast(error.message || 'Failed to create granulation', 'error');
         }
     }
 
@@ -413,7 +422,7 @@ class GranulationPage {
             }
         } catch (error) {
             console.error('❌ Error downloading structure:', error);
-            window.uiUtils.showToast('Failed to download structure', 'error');
+            this.showToast('Failed to download structure', 'error');
         }
     }
 
@@ -421,12 +430,12 @@ class GranulationPage {
         try {
             const response = await this.apiClient.retryGranulation(jobId);
             if (response.success) {
-                window.uiUtils.showToast('Granulation retry initiated', 'success');
+                this.showToast('Granulation retry initiated', 'success');
                 await this.refresh();
             }
         } catch (error) {
             console.error('❌ Error retrying job:', error);
-            window.uiUtils.showToast('Failed to retry granulation', 'error');
+            this.showToast('Failed to retry granulation', 'error');
         }
     }
 
@@ -620,15 +629,17 @@ class GranulationPage {
      * Render single template card
      */
     renderTemplateCard(template) {
+        // Template object is already logged elsewhere
+        
         const typeIcon = this.getStructureTypeIcon(template.structureType);
         const complexityStars = '⭐'.repeat(template.complexityLevel || 1);
 
         return `
-            <div class="template-card" data-template="${template.templateName}">
+            <div class="template-card" data-template="${template.name}">
                 <div class="template-header">
                     <div class="template-icon">${typeIcon}</div>
                     <div class="template-title">
-                        <h3>${this.escapeHtml(template.templateName)}</h3>
+                        <h3>${this.escapeHtml(template.name)}</h3>
                         <span class="template-type">${template.structureType}</span>
                     </div>
                 </div>
@@ -650,14 +661,14 @@ class GranulationPage {
                     </div>
                 </div>
                 <div class="template-actions">
-                    <button class="btn btn-sm" onclick="granulationPage.showTemplateDetails('${template.templateName}')" title="View Details">
+                    <button class="btn btn-sm" onclick="granulationPage.showTemplateDetails('${template.name}')" title="View Details">
                         👁️ Details
                     </button>
-                    <button class="btn btn-sm" onclick="granulationPage.testTemplate('${template.templateName}')" title="Test Template">
+                    <button class="btn btn-sm" onclick="granulationPage.testTemplate('${template.name}')" title="Test Template">
                         🧪 Test
                     </button>
                     ${this.apiClient.isAdmin() ? `
-                        <button class="btn btn-sm" onclick="granulationPage.editTemplate('${template.templateName}')" title="Edit Template">
+                        <button class="btn btn-sm" onclick="granulationPage.editTemplate('${template.name}')" title="Edit Template">
                             ✏️ Edit
                         </button>
                     ` : ''}
@@ -704,7 +715,7 @@ class GranulationPage {
                         <h3>${this.escapeHtml(job.topic)}</h3>
                         <div class="deliverable-meta">
                             <span class="badge badge-${job.structure_type}">${job.structure_type}</span>
-                            <span class="quality-badge ${qualityClass}">Quality: ${(job.quality_score * 100).toFixed(0)}%</span>
+                            <span class="quality-badge ${qualityClass}">Quality: ${job.quality_score ? (job.quality_score * 100).toFixed(0) : '0'}%</span>
                             <span class="date-badge">Created: ${this.formatDate(job.completed_at)}</span>
                         </div>
                     </div>
@@ -716,11 +727,11 @@ class GranulationPage {
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Processing:</span>
-                        <span class="stat-value">${(job.processing_time_ms / 1000).toFixed(1)}s</span>
+                        <span class="stat-value">${job.processing_time_ms ? (job.processing_time_ms / 1000).toFixed(1) : '0.0'}s</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Cost:</span>
-                        <span class="stat-value">$${job.cost_usd.toFixed(4)}</span>
+                        <span class="stat-value">$${job.cost_usd ? job.cost_usd.toFixed(4) : '0.0000'}</span>
                     </div>
                 </div>
                 <div class="deliverable-actions">
@@ -743,13 +754,19 @@ class GranulationPage {
      */
     async showTemplateDetails(templateName) {
         try {
-            const template = await this.apiClient.getGranulationTemplate(templateName);
-            this.selectedTemplate = template;
+            const response = await this.apiClient.getGranulationTemplate(templateName);
+            // The API returns { template: {...} }
+            this.selectedTemplate = response.template || response;
+            
             this.activeTab = 'template-details';
             this.renderContent();
         } catch (error) {
             console.error('❌ Error loading template details:', error);
-            window.uiUtils.showToast('Failed to load template details', 'error');
+            if (window.uiUtils && this.showToast) {
+                this.showToast('Failed to load template details', 'error');
+            } else {
+                console.error('Failed to load template details');
+            }
         }
     }
 
@@ -757,7 +774,7 @@ class GranulationPage {
      * Test template with sample data
      */
     async testTemplate(templateName) {
-        this.selectedTemplate = { templateName };
+        this.selectedTemplate = { name: templateName };
         this.activeTab = 'template-test';
         this.renderContent();
     }
@@ -767,13 +784,14 @@ class GranulationPage {
      */
     async editTemplate(templateName) {
         try {
-            const template = await this.apiClient.getGranulationTemplate(templateName);
-            this.selectedTemplate = template;
+            const response = await this.apiClient.getGranulationTemplate(templateName);
+            // The API returns { template: {...} }
+            this.selectedTemplate = response.template || response;
             this.activeTab = 'template-edit';
             this.renderContent();
         } catch (error) {
             console.error('❌ Error editing template:', error);
-            window.uiUtils.showToast('Failed to load template for editing', 'error');
+            this.showToast('Failed to load template for editing', 'error');
         }
     }
 
@@ -789,7 +807,7 @@ class GranulationPage {
             this.renderContent();
         } catch (error) {
             console.error('❌ Error loading structure:', error);
-            window.uiUtils.showToast('Failed to load structure', 'error');
+            this.showToast('Failed to load structure', 'error');
         }
     }
 
@@ -836,7 +854,7 @@ class GranulationPage {
                     <button class="btn btn-sm" onclick="granulationPage.switchTab('templates')">
                         ← Back to Templates
                     </button>
-                    <h2>${typeIcon} ${this.escapeHtml(template.templateName)}</h2>
+                    <h2>${typeIcon} ${this.escapeHtml(template.name)}</h2>
                 </div>
 
                 <div class="detail-sections">
@@ -845,7 +863,7 @@ class GranulationPage {
                         <table class="detail-table">
                             <tr>
                                 <td class="label">Template Name:</td>
-                                <td>${template.templateName}</td>
+                                <td>${template.name}</td>
                             </tr>
                             <tr>
                                 <td class="label">Structure Type:</td>
@@ -880,7 +898,7 @@ class GranulationPage {
                     <div class="detail-section">
                         <h3>Template Schema</h3>
                         <div class="code-block">
-                            <pre>${JSON.stringify(template.templateSchema, null, 2)}</pre>
+                            <pre>${JSON.stringify(template.schema, null, 2)}</pre>
                         </div>
                     </div>
 
@@ -907,7 +925,7 @@ class GranulationPage {
                     <button class="btn btn-sm" onclick="granulationPage.switchTab('templates')">
                         ← Back to Templates
                     </button>
-                    <h2>🧪 Test Template${this.selectedTemplate ? ': ' + this.selectedTemplate.templateName : ''}</h2>
+                    <h2>🧪 Test Template${this.selectedTemplate ? ': ' + this.selectedTemplate.name : ''}</h2>
                 </div>
 
                 <div class="test-container">
@@ -919,8 +937,8 @@ class GranulationPage {
                                 <select id="test-template" name="templateName" required onchange="granulationPage.updateTestForm(this.value)">
                                     <option value="">Select a template...</option>
                                     ${this.templates.map(t => `
-                                        <option value="${t.templateName}" ${this.selectedTemplate?.templateName === t.templateName ? 'selected' : ''}>
-                                            ${this.getStructureTypeIcon(t.structureType)} ${t.templateName}
+                                        <option value="${t.name}" ${this.selectedTemplate?.name === t.name ? 'selected' : ''}>
+                                            ${this.getStructureTypeIcon(t.structureType)} ${t.name}
                                         </option>
                                     `).join('')}
                                 </select>
@@ -984,7 +1002,7 @@ class GranulationPage {
                     <button class="btn btn-sm" onclick="granulationPage.switchTab('templates')">
                         ← Back to Templates
                     </button>
-                    <h2>✏️ Edit Template: ${this.escapeHtml(template.templateName)}</h2>
+                    <h2>✏️ Edit Template: ${this.escapeHtml(template.name)}</h2>
                 </div>
 
                 <form id="template-edit-form" onsubmit="event.preventDefault(); granulationPage.saveTemplateChanges();">
@@ -1067,7 +1085,7 @@ class GranulationPage {
                         </div>
                         <div class="info-card">
                             <span class="info-label">Quality Score:</span>
-                            <span class="info-value">${(job.quality_score * 100).toFixed(0)}%</span>
+                            <span class="info-value">${job.quality_score ? (job.quality_score * 100).toFixed(0) : '0'}%</span>
                         </div>
                         <div class="info-card">
                             <span class="info-label">Elements:</span>
@@ -1075,7 +1093,7 @@ class GranulationPage {
                         </div>
                         <div class="info-card">
                             <span class="info-label">Processing Time:</span>
-                            <span class="info-value">${(job.processing_time_ms / 1000).toFixed(1)}s</span>
+                            <span class="info-value">${job.processing_time_ms ? (job.processing_time_ms / 1000).toFixed(1) : '0.0'}s</span>
                         </div>
                     </div>
                 </div>
@@ -1285,7 +1303,7 @@ class GranulationPage {
         
         templateSelect.innerHTML = filteredTemplates.length > 0
             ? `<option value="">Select a template...</option>` + 
-              filteredTemplates.map(t => `<option value="${t.templateName}">${t.templateName}</option>`).join('')
+              filteredTemplates.map(t => `<option value="${t.name}">${t.name}</option>`).join('')
             : '<option value="">No templates available for this type</option>';
 
         // Select prefilled template if available
@@ -1317,13 +1335,13 @@ class GranulationPage {
         try {
             const response = await this.apiClient.createGranulation(data);
             if (response.jobId) {
-                window.uiUtils.showToast('Granulation job created successfully!', 'success');
+                this.showToast('Granulation job created successfully!', 'success');
                 this.switchTab('jobs');
                 await this.refresh();
             }
         } catch (error) {
             console.error('❌ Error creating job:', error);
-            window.uiUtils.showToast(error.message || 'Failed to create granulation job', 'error');
+            this.showToast(error.message || 'Failed to create granulation job', 'error');
         }
     }
 
@@ -1409,21 +1427,21 @@ class GranulationPage {
             try {
                 updates.validationRules = JSON.parse(validationRulesStr);
             } catch (error) {
-                window.uiUtils.showToast('Invalid JSON in validation rules', 'error');
+                this.showToast('Invalid JSON in validation rules', 'error');
                 return;
             }
         }
 
         try {
-            const response = await this.apiClient.updateGranulationTemplate(this.selectedTemplate.templateName, updates);
+            const response = await this.apiClient.updateGranulationTemplate(this.selectedTemplate.name, updates);
             if (response.success) {
-                window.uiUtils.showToast('Template updated successfully!', 'success');
+                this.showToast('Template updated successfully!', 'success');
                 this.switchTab('templates');
                 await this.refresh();
             }
         } catch (error) {
             console.error('❌ Error saving template:', error);
-            window.uiUtils.showToast(error.message || 'Failed to save template changes', 'error');
+            this.showToast(error.message || 'Failed to save template changes', 'error');
         }
     }
 
