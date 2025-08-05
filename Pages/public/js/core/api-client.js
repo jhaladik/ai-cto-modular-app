@@ -519,7 +519,7 @@ class AIFactoryAPIClient {
      */
     async getGranulatorTemplates(structureType = null) {
         const params = structureType ? `?structure_type=${structureType}` : '';
-        const response = await this.request(`/api/granulator/templates${params}`);
+        const response = await this.workerRequest('granulator', `/templates${params}`, 'GET');
         return response;
     }
 
@@ -527,17 +527,14 @@ class AIFactoryAPIClient {
      * Get granulator statistics
      */
     async getGranulatorStats() {
-        return this.request('/api/granulator/stats');
+        return this.workerRequest('granulator', '/stats', 'GET');
     }
 
     /**
      * Create new granulation job
      */
     async createGranulation(data) {
-        return this.request('/api/granulator/granulate', {
-            method: 'POST',
-            body: data
-        });
+        return this.workerRequest('granulator', '/granulate', 'POST', data);
     }
 
     /**
@@ -545,76 +542,65 @@ class AIFactoryAPIClient {
      */
     async getGranulationJobs(filters = {}) {
         const params = new URLSearchParams(filters);
-        return this.request(`/api/granulator/jobs?${params}`);
+        return this.workerRequest('granulator', `/jobs?${params}`, 'GET');
     }
 
     /**
      * Get single granulation job
      */
     async getGranulationJob(jobId) {
-        return this.request(`/api/granulator/jobs/${jobId}`);
+        return this.workerRequest('granulator', `/jobs/${jobId}`, 'GET');
     }
 
     /**
      * Get job structure/deliverables
      */
     async getGranulationStructure(jobId) {
-        return this.request(`/api/granulator/jobs/${jobId}/structure`);
+        return this.workerRequest('granulator', `/jobs/${jobId}/structure`, 'GET');
     }
 
     /**
      * Test granulation template
      */
     async testGranulationTemplate(templateName, testData) {
-        return this.request(`/api/granulator/templates/${templateName}/test`, {
-            method: 'POST',
-            body: testData
-        });
+        return this.workerRequest('granulator', `/templates/${templateName}/test`, 'POST', testData);
     }
 
     /**
      * Get template details
      */
     async getGranulationTemplate(templateName) {
-        return this.request(`/api/granulator/templates/${templateName}`);
+        return this.workerRequest('granulator', `/templates/${templateName}`, 'GET');
     }
 
     /**
      * Update template (admin only)
      */
     async updateGranulationTemplate(templateName, updates) {
-        return this.request(`/api/granulator/templates/${templateName}`, {
-            method: 'PUT',
-            body: updates
-        });
+        return this.workerRequest('granulator', `/templates/${templateName}`, 'PUT', updates);
     }
 
     /**
      * Retry failed granulation
      */
     async retryGranulation(jobId) {
-        return this.request(`/api/granulator/jobs/${jobId}/retry`, {
-            method: 'POST'
-        });
+        return this.workerRequest('granulator', `/jobs/${jobId}/retry`, 'POST');
     }
 
     /**
      * Get granulation job status
      */
     async getGranulationJobStatus(jobId) {
-        return this.request(`/api/granulator/jobs/${jobId}/status`);
+        return this.workerRequest('granulator', `/jobs/${jobId}/status`, 'GET');
     }
 
     /**
      * Validate granulation manually
      */
     async validateGranulation(jobId, validationLevel = 2) {
-        return this.request('/api/granulator/validate', {
-            method: 'POST',
-            body: {
-                jobId,
-                validationLevel
-            }
+        return this.workerRequest('granulator', '/validate', 'POST', {
+            jobId,
+            validationLevel
         });
     }
 
@@ -622,7 +608,7 @@ class AIFactoryAPIClient {
      * Get validation history
      */
     async getValidationHistory(jobId) {
-        return this.request(`/api/granulator/validation/history?job_id=${jobId}`);
+        return this.workerRequest('granulator', `/validation/history?job_id=${jobId}`, 'GET');
     }
 }
 

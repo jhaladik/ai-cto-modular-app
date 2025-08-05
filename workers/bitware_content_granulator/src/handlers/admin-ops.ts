@@ -2,6 +2,38 @@ import { Env, AuthenticatedRequest } from '../types';
 import { jsonResponse, parseJsonBody } from '../helpers/http';
 import { DatabaseService } from '../services/database';
 
+// Public stats endpoint (non-admin)
+export async function handleGetPublicStats(env: Env): Promise<Response> {
+  try {
+    // Get basic stats
+    const stats = await env.DB.prepare(`
+      SELECT 
+        COUNT(*) as total_jobs,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_jobs,
+        COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_jobs,
+        COUNT(CASE WHEN status = 'processing' THEN 1 END) as processing_jobs,
+        AVG(CASE WHEN status = 'completed' THEN quality_score END) as avg_quality_score,
+        AVG(CASE WHEN status = 'completed' THEN processing_time_ms END) as avg_processing_time
+      FROM granulation_jobs
+      WHERE started_at >= datetime('now', '-30 days')
+    `).first();
+    
+    return jsonResponse({
+      stats: {
+        totalJobs: stats?.total_jobs || 0,
+        completedJobs: stats?.completed_jobs || 0,
+        failedJobs: stats?.failed_jobs || 0,
+        processingJobs: stats?.processing_jobs || 0,
+        avgQualityScore: Math.round((stats?.avg_quality_score || 0) * 100) / 100,
+        avgProcessingTime: Math.round(stats?.avg_processing_time || 0)
+      }
+    });
+  } catch (error) {
+    console.error('Error getting public stats:', error);
+    return jsonResponse({ error: 'Failed to get stats' }, 500);
+  }
+}
+
 export async function handleGetStats(env: Env): Promise<Response> {
   try {
     const db = new DatabaseService(env);

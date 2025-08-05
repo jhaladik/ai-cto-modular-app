@@ -16,7 +16,10 @@ import {
   handleGranulateNovel,
   handleGranulateWorkflow,
   handleGetJob,
+  handleGetJobs,
   handleGetJobStatus,
+  handleGetJobStructure,
+  handleRetryJob,
   handleValidate,
   handleGetValidationHistory
 } from './handlers/granulation-ops';
@@ -30,6 +33,7 @@ import {
 
 import {
   handleGetStats,
+  handleGetPublicStats,
   handleManageTemplates,
   handleGetAnalytics
 } from './handlers/admin-ops';
@@ -97,6 +101,10 @@ export default {
       }
 
       // Job management endpoints
+      if (method === 'GET' && path === '/api/jobs') {
+        return handleGetJobs(env, authenticatedRequest!);
+      }
+
       if (method === 'GET' && path.match(/^\/api\/jobs\/\d+$/)) {
         const jobId = parseInt(path.split('/')[3]);
         return handleGetJob(env, jobId, authenticatedRequest!);
@@ -105,6 +113,16 @@ export default {
       if (method === 'GET' && path.match(/^\/api\/jobs\/\d+\/status$/)) {
         const jobId = parseInt(path.split('/')[3]);
         return handleGetJobStatus(env, jobId, authenticatedRequest!);
+      }
+
+      if (method === 'GET' && path.match(/^\/api\/jobs\/\d+\/structure$/)) {
+        const jobId = parseInt(path.split('/')[3]);
+        return handleGetJobStructure(env, jobId, authenticatedRequest!);
+      }
+
+      if (method === 'POST' && path.match(/^\/api\/jobs\/\d+\/retry$/)) {
+        const jobId = parseInt(path.split('/')[3]);
+        return handleRetryJob(env, jobId, authenticatedRequest!);
       }
 
       // Validation endpoints
@@ -136,6 +154,11 @@ export default {
       if (method === 'GET' && path.match(/^\/api\/progress\/[\w-]+$/)) {
         const executionId = path.split('/')[3];
         return handleGetProgress(env, executionId, authenticatedRequest!);
+      }
+
+      // Public stats endpoint
+      if (method === 'GET' && path === '/api/stats') {
+        return handleGetPublicStats(env);
       }
 
       // Admin endpoints (worker auth required)

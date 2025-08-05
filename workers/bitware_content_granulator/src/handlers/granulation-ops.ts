@@ -420,3 +420,144 @@ function buildHierarchicalStructure(elements: any[]): any {
   
   return rootElements.length === 1 ? rootElements[0] : rootElements;
 }
+
+// List all jobs
+export async function handleGetJobs(env: Env, request: AuthenticatedRequest): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const clientId = url.searchParams.get('client_id');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
+    
+    // Build query
+    let query = `
+      SELECT 
+        j.id, j.client_id, j.topic, j.structure_type, 
+        t.template_name,
+        j.status, j.quality_score, j.validation_level, 
+        CASE WHEN j.validation_enabled = 1 THEN 
+          CASE WHEN v.passed = 1 THEN 1 ELSE 0 END 
+        ELSE NULL END as validation_passed,
+        j.processing_time_ms, j.cost_usd, j.started_at, j.completed_at
+      FROM granulation_jobs j
+      LEFT JOIN granulation_templates t ON j.template_id = t.id
+      LEFT JOIN validation_results v ON j.id = v.job_id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    
+    // Apply filters
+    if (status) {
+      query += ` AND j.status = ?`;
+      params.push(status);
+    }
+    
+    if (clientId && request.auth.type === 'worker') {
+      query += ` AND j.client_id = ?`;
+      params.push(clientId);
+    } else if (request.auth.type === 'client') {
+      query += ` AND j.client_id = ?`;
+      params.push(request.auth.clientId);
+    }
+    
+    query += ` ORDER BY j.started_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+    
+    const jobs = await env.DB.prepare(query).bind(...params).all();
+    
+    return jsonResponse({
+      jobs: jobs.results,
+      total: jobs.results.length,
+      limit,
+      offset
+    });
+  } catch (error) {
+    console.error('Error listing jobs:', error);
+    return jsonResponse({ error: 'Failed to list jobs' }, 500);
+  }
+}
+
+// Get job structure
+export async function handleGetJobStructure(env: Env, jobId: number, request: AuthenticatedRequest): Promise<Response> {
+  try {
+    const db = new DatabaseService(env);
+    const storage = new StorageManager(env);
+    
+    // Get job
+    const job = await db.getJob(jobId);
+    if (!job) {
+      return jsonResponse({ error: 'Job not found' }, 404);
+    }
+    
+    // Check access
+    if (request.auth.type === 'client' && job.clientId !== request.auth.clientId) {
+      return jsonResponse({ error: 'Access denied' }, 403);
+    }
+    
+    // Get structure from storage
+    const structure = await storage.getStructure(jobId);
+    
+    return jsonResponse({
+      jobId,
+      structure,
+      metadata: {
+        topic: job.topic,
+        structureType: job.structureType,
+        templateName: job.templateName,
+        qualityScore: job.qualityScore,
+        validationPassed: job.validationPassed,
+        createdAt: job.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error getting job structure:', error);
+    return jsonResponse({ error: 'Failed to get job structure' }, 500);
+  }
+}
+
+// Retry failed job
+export async function handleRetryJob(env: Env, jobId: number, request: AuthenticatedRequest): Promise<Response> {
+  try {
+    // Get job with template info
+    const jobResult = await env.DB.prepare(`
+      SELECT j.*, t.template_name 
+      FROM granulation_jobs j
+      LEFT JOIN granulation_templates t ON j.template_id = t.id
+      WHERE j.id = ?
+    `).bind(jobId).first();
+    
+    if (!jobResult) {
+      return jsonResponse({ error: 'Job not found' }, 404);
+    }
+    
+    // Check access
+    if (request.auth.type === 'client' && jobResult.client_id !== request.auth.clientId) {
+      return jsonResponse({ error: 'Access denied' }, 403);
+    }
+    
+    // Check if job can be retried
+    if (jobResult.status !== 'failed') {
+      return jsonResponse({ error: 'Only failed jobs can be retried' }, 400);
+    }
+    
+    // Create new granulation request
+    const granulator = new GranulatorService(env);
+    const result = await granulator.granulate({
+      topic: jobResult.topic,
+      structureType: jobResult.structure_type as any,
+      templateName: jobResult.template_name || 'default',
+      targetAudience: 'general audience',
+      parameters: {}
+    }, jobResult.client_id);
+    
+    return jsonResponse({
+      status: 'success',
+      newJobId: result.jobId,
+      originalJobId: jobId
+    });
+  } catch (error) {
+    console.error('Error retrying job:', error);
+    return jsonResponse({ error: 'Failed to retry job' }, 500);
+  }
+}
