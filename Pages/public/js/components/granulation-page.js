@@ -163,7 +163,9 @@ class GranulationPage {
 
     async loadStats() {
         try {
-            this.stats = await this.apiClient.getGranulatorStats();
+            const response = await this.apiClient.getGranulatorStats();
+            // API returns { stats: {...} }
+            this.stats = response.stats || response;
         } catch (error) {
             console.error('❌ Error loading stats:', error);
             this.stats = null;
@@ -175,41 +177,36 @@ class GranulationPage {
         if (!summaryElement) return;
 
         const stats = this.stats || {
-            totalGranulations: 0,
+            totalJobs: 0,
+            completedJobs: 0,
+            failedJobs: 0,
+            processingJobs: 0,
             avgQualityScore: 0,
-            performanceMetrics: { avgProcessingTime: 0, successRate: 0 },
-            validationMetrics: { avgAccuracy: 0 }
+            avgProcessingTime: 0
         };
 
+        // Calculate success rate
+        const successRate = stats.totalJobs > 0 
+            ? ((stats.completedJobs / stats.totalJobs) * 100).toFixed(0) 
+            : 0;
+
         summaryElement.innerHTML = `
-            <div class="summary-cards">
-                <div class="summary-card">
-                    <div class="summary-icon">📊</div>
-                    <div class="summary-content">
-                        <div class="summary-value">${stats.totalGranulations || 0}</div>
-                        <div class="summary-label">Total Granulations</div>
-                    </div>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">📊 ${stats.totalJobs || 0}</div>
+                    <div class="metric-label">Total Jobs</div>
                 </div>
-                <div class="summary-card">
-                    <div class="summary-icon">⭐</div>
-                    <div class="summary-content">
-                        <div class="summary-value">${((stats.avgQualityScore || 0) * 100).toFixed(0)}%</div>
-                        <div class="summary-label">Avg Quality Score</div>
-                    </div>
+                <div class="metric-card">
+                    <div class="metric-value">⭐ ${(stats.avgQualityScore * 100).toFixed(0)}%</div>
+                    <div class="metric-label">Avg Quality Score</div>
                 </div>
-                <div class="summary-card">
-                    <div class="summary-icon">⚡</div>
-                    <div class="summary-content">
-                        <div class="summary-value">${(stats.performanceMetrics?.avgProcessingTime / 1000 || 0).toFixed(1)}s</div>
-                        <div class="summary-label">Avg Processing Time</div>
-                    </div>
+                <div class="metric-card">
+                    <div class="metric-value">⚡ ${(stats.avgProcessingTime / 1000).toFixed(1)}s</div>
+                    <div class="metric-label">Avg Processing Time</div>
                 </div>
-                <div class="summary-card">
-                    <div class="summary-icon">✅</div>
-                    <div class="summary-content">
-                        <div class="summary-value">${(stats.validationMetrics?.avgAccuracy || 0).toFixed(0)}%</div>
-                        <div class="summary-label">Validation Accuracy</div>
-                    </div>
+                <div class="metric-card">
+                    <div class="metric-value">✅ ${successRate}%</div>
+                    <div class="metric-label">Success Rate</div>
                 </div>
             </div>
         `;

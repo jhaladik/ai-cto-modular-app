@@ -1291,51 +1291,309 @@ export default {
             return badRequest('No template selected for this request');
           }
           
-          // Update request status to processing
-          await db.updateRequest(requestId, {
-            request_status: 'processing',
-            started_processing_at: new Date().toISOString(),
-            orchestrator_pipeline_id: 'pipeline_' + Date.now() // Mock pipeline ID
-          });
-          
-          // In real implementation, this would call the orchestrator
-          // For now, simulate with mock worker sessions
+          // Get template details
           const template = await db.getTemplateByName(request_detail.selected_template);
           
-          if (template && template.worker_flow) {
-            for (const worker of template.worker_flow) {
-              const sessionId = await db.createWorkerSession({
-                request_id: requestId,
-                client_id: request_detail.client_id,
-                worker_name: worker.worker,
-                step_order: worker.step
-              });
-              
-              // Simulate completion
-              await db.updateWorkerSession(sessionId, {
-                execution_time_ms: Math.floor(Math.random() * 5000) + 1000,
-                worker_cost_usd: Math.random() * 0.05 + 0.01,
-                worker_success: true,
-                completed_at: new Date().toISOString()
-              });
-            }
+          if (!template) {
+            return badRequest('Selected template not found in cache');
           }
           
-          // Mark request as completed
-          await db.updateRequest(requestId, {
-            request_status: 'completed',
-            completed_at: new Date().toISOString()
-          });
+          // Extract template-specific parameters for workers
+          const body = await request.json();
+          const { parameters = {} } = body;
           
-          return jsonResponse({
-            success: true,
-            message: 'Template execution started',
-            pipeline_id: 'pipeline_' + Date.now()
-          });
+          // For granulation templates, add structure type and other params
+          const workerParams: any = { ...parameters };
+          if (template.category === 'content_structuring') {
+            // Map template to granulator structure type
+            const structureTypeMap: Record<string, string> = {
+              'content_granulation_course': 'course',
+              'content_granulation_quiz': 'quiz',
+              'content_granulation_novel': 'novel',
+              'content_granulation_workflow': 'workflow',
+              'content_granulation_knowledge_map': 'knowledge_map',
+              'content_granulation_learning_path': 'learning_path'
+            };
+            
+            workerParams.structureType = structureTypeMap[template.template_name] || 'knowledge_map';
+            workerParams.granularityLevel = parameters.granularityLevel || 3;
+            workerParams.validationEnabled = parameters.validationEnabled !== false;
+            workerParams.validationLevel = parameters.validationLevel || 2;
+          }
+          
+          try {
+            // Call Orchestrator v2 to execute pipeline
+            let orchestratorResponse;
+            
+            if (env.ORCHESTRATOR_V2) {
+              // Use service binding if available
+              const orchestratorRequest = new Request('https://orchestrator/execute', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                  'X-Worker-ID': 'bitware_key_account_manager'
+                },
+                body: JSON.stringify({
+                  request_id: requestId,
+                  template_name: request_detail.selected_template,
+                  parameters: workerParams,
+                  priority: request_detail.urgency_override || 'normal',
+                  client_id: request_detail.client_id,
+                  metadata: {
+                    original_message: request_detail.original_message,
+                    processed_request: request_detail.processed_request,
+                    confidence_score: request_detail.template_confidence_score
+                  }
+                })
+              });
+              
+              orchestratorResponse = await env.ORCHESTRATOR_V2.fetch(orchestratorRequest);
+            } else {
+              // Fallback to HTTP if service binding not available
+              orchestratorResponse = await fetch('https://bitware-orchestrator-v2.jhaladik.workers.dev/execute', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                  'X-Worker-ID': 'bitware_key_account_manager'
+                },
+                body: JSON.stringify({
+                  request_id: requestId,
+                  template_name: request_detail.selected_template,
+                  parameters: workerParams,
+                  priority: request_detail.urgency_override || 'normal',
+                  client_id: request_detail.client_id,
+                  metadata: {
+                    original_message: request_detail.original_message,
+                    processed_request: request_detail.processed_request,
+                    confidence_score: request_detail.template_confidence_score
+                  }
+                })
+              });
+            }
+            
+            if (!orchestratorResponse.ok) {
+              const error = await orchestratorResponse.text();
+              throw new Error(`Orchestrator error: ${error}`);
+            }
+            
+            const orchestratorResult = await orchestratorResponse.json();
+            
+            // Update request status to processing
+            await db.updateRequest(requestId, {
+              request_status: 'processing',
+              started_processing_at: new Date().toISOString(),
+              orchestrator_pipeline_id: orchestratorResult.execution_id
+            });
+            
+            return jsonResponse({
+              success: true,
+              message: 'Pipeline execution started',
+              execution_id: orchestratorResult.execution_id,
+              pipeline_id: orchestratorResult.execution_id,
+              estimated_completion: orchestratorResult.estimated_completion,
+              progress_url: orchestratorResult.progress_url
+            });
+            
+          } catch (error) {
+            console.error('Failed to execute pipeline:', error);
+            
+            // Update request status to failed
+            await db.updateRequest(requestId, {
+              request_status: 'failed',
+              completed_at: new Date().toISOString()
+            });
+            
+            return serverError('Failed to execute pipeline: ' + error.message);
+          }
           
         } catch (error) {
           console.error('Execute template error:', error);
           return serverError('Failed to execute template');
+        }
+      }
+      
+      // ==================== EXECUTION STATUS ENDPOINTS ====================
+      
+      if (pathname.match(/^\/requests\/[^\/]+\/status$/) && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const requestId = pathname.split('/')[2];
+          const request_detail = await db.getRequestById(requestId);
+          
+          if (!request_detail) {
+            return notFound('Request not found');
+          }
+          
+          // Get execution status from Orchestrator v2
+          if (request_detail.orchestrator_pipeline_id && env.ORCHESTRATOR_V2) {
+            try {
+              const statusRequest = new Request(
+                `https://orchestrator/execution/${request_detail.orchestrator_pipeline_id}`,
+                {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                    'X-Worker-ID': 'bitware_key_account_manager'
+                  }
+                }
+              );
+              
+              const statusResponse = await env.ORCHESTRATOR_V2.fetch(statusRequest);
+              
+              if (statusResponse.ok) {
+                const executionData = await statusResponse.json();
+                
+                // Update request status based on execution
+                if (executionData.status === 'completed' && request_detail.request_status !== 'completed') {
+                  await db.updateRequest(requestId, {
+                    request_status: 'completed',
+                    completed_at: executionData.completed_at
+                  });
+                } else if (executionData.status === 'failed' && request_detail.request_status !== 'failed') {
+                  await db.updateRequest(requestId, {
+                    request_status: 'failed',
+                    completed_at: new Date().toISOString()
+                  });
+                }
+                
+                return jsonResponse({
+                  success: true,
+                  request_id: requestId,
+                  request_status: executionData.status === 'completed' ? 'completed' : 
+                                executionData.status === 'failed' ? 'failed' : 
+                                request_detail.request_status,
+                  execution: executionData,
+                  worker_sessions: await db.getWorkerSessionsByRequest(requestId)
+                });
+              }
+            } catch (error) {
+              console.error('Failed to get execution status:', error);
+            }
+          }
+          
+          // Fallback to database status
+          return jsonResponse({
+            success: true,
+            request_id: requestId,
+            request_status: request_detail.request_status,
+            orchestrator_pipeline_id: request_detail.orchestrator_pipeline_id,
+            started_at: request_detail.started_processing_at,
+            completed_at: request_detail.completed_at,
+            worker_sessions: await db.getWorkerSessionsByRequest(requestId)
+          });
+          
+        } catch (error) {
+          console.error('Get request status error:', error);
+          return serverError('Failed to retrieve request status');
+        }
+      }
+      
+      if (pathname.match(/^\/requests\/[^\/]+\/deliverables$/) && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true,
+            allowSession: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Authentication required');
+          }
+          
+          const requestId = pathname.split('/')[2];
+          const request_detail = await db.getRequestById(requestId);
+          
+          if (!request_detail) {
+            return notFound('Request not found');
+          }
+          
+          if (request_detail.request_status !== 'completed') {
+            return jsonResponse({
+              success: false,
+              message: 'Request is not yet completed',
+              status: request_detail.request_status
+            });
+          }
+          
+          // Get worker sessions with outputs
+          const workerSessions = await db.getWorkerSessionsByRequest(requestId);
+          const deliverables = [];
+          
+          // For each completed worker session, check for outputs
+          for (const session of workerSessions) {
+            if (session.worker_success && session.output_reference) {
+              // For granulator worker, get the structure
+              if (session.worker_name === 'bitware-content-granulator' && env.CONTENT_GRANULATOR) {
+                try {
+                  const structureRequest = new Request(
+                    `https://granulator/api/jobs/${session.output_reference}/structure`,
+                    {
+                      method: 'GET',
+                      headers: {
+                        'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                        'X-Worker-ID': 'bitware_key_account_manager'
+                      }
+                    }
+                  );
+                  
+                  const structureResponse = await env.CONTENT_GRANULATOR.fetch(structureRequest);
+                  
+                  if (structureResponse.ok) {
+                    const structureData = await structureResponse.json();
+                    deliverables.push({
+                      id: `deliverable_${session.session_id}`,
+                      type: 'structure',
+                      worker: session.worker_name,
+                      name: `${request_detail.selected_template}_structure.json`,
+                      format: 'json',
+                      size_bytes: JSON.stringify(structureData).length,
+                      created_at: session.completed_at,
+                      download_url: `/api/requests/${requestId}/deliverables/${session.session_id}/download`,
+                      preview_available: true,
+                      metadata: {
+                        job_id: session.output_reference,
+                        quality_score: structureData.qualityScore,
+                        element_count: structureData.actualElements
+                      }
+                    });
+                  }
+                } catch (error) {
+                  console.error('Failed to get granulator output:', error);
+                }
+              } else {
+                // Generic deliverable for other workers
+                deliverables.push({
+                  id: `deliverable_${session.session_id}`,
+                  type: 'output',
+                  worker: session.worker_name,
+                  name: `${session.worker_name}_output.json`,
+                  format: 'json',
+                  created_at: session.completed_at,
+                  download_url: `/api/requests/${requestId}/deliverables/${session.session_id}/download`
+                });
+              }
+            }
+          }
+          
+          return jsonResponse({
+            success: true,
+            request_id: requestId,
+            deliverables,
+            total_count: deliverables.length
+          });
+          
+        } catch (error) {
+          console.error('Get deliverables error:', error);
+          return serverError('Failed to retrieve deliverables');
         }
       }
       

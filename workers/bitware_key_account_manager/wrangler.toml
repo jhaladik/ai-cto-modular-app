@@ -26,6 +26,11 @@ preview_id = "fcf99a13f93840a4acdb70e5473de7da" # Set during deployment: wrangle
 binding = "ORCHESTRATOR"
 service = "bitware-orchestrator"
 
+# Service binding for orchestrator v2
+[[services]]
+binding = "ORCHESTRATOR_V2"
+service = "bitware-orchestrator-v2"
+
 # Service binding for content granulator
 [[services]]
 binding = "CONTENT_GRANULATOR"
