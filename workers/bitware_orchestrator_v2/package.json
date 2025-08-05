@@ -1,0 +1,32 @@
+{
+  "name": "bitware-orchestrator-v2",
+  "version": "2.0.0",
+  "description": "Orchestrator 2.0 - Central coordination and resource management for AI Factory",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "build": "tsc",
+    "test": "echo \"Test script to be implemented\"",
+    "db:init": "wrangler d1 execute orchestrator-v2-db --file=schema/orchestrator.sql && wrangler d1 execute orchestrator-v2-db --file=schema/resources.sql && wrangler d1 execute orchestrator-v2-db --file=schema/execution.sql",
+    "db:seed": "wrangler d1 execute orchestrator-v2-db --file=schema/seed.sql",
+    "db:reset": "npm run db:init && npm run db:seed"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "orchestrator",
+    "pipeline",
+    "ai-factory"
+  ],
+  "author": "AI Factory Team",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.22.1"
+  },
+  "dependencies": {}
+}

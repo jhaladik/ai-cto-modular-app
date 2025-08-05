@@ -1,0 +1,94 @@
+name = "bitware-orchestrator-v2"
+main = "src/index.ts"
+compatibility_date = "2024-01-04"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+VERSION = "2.0.0"
+WORKER_SECRET = "internal-worker-auth-token-2024"
+CLIENT_API_KEY = "external-client-api-key-2024"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "orchestrator-v2-db"
+database_id = "99a86f8e-35f8-42b7-b016-99c58f62531d"
+
+# KV Namespaces
+[[kv_namespaces]]
+binding = "EXECUTION_CACHE"
+id = "08d9a6b9902241f797f17f38c0b33e42"
+
+[[kv_namespaces]]
+binding = "RESOURCE_CACHE"
+id = "abb3f6e72a2e477bb7da787f5cb36e49"
+
+[[kv_namespaces]]
+binding = "DATA_REFS"
+id = "3c37d910634b473cbd4ed0801da7484e"
+
+# R2 Bucket for large data storage
+[[r2_buckets]]
+binding = "DATA_STORAGE"
+bucket_name = "orchestrator-v2-data"
+
+# Service Bindings to other workers
+[[services]]
+binding = "KAM"
+service = "bitware-key-account-manager"
+
+# These will be uncommented as workers are deployed
+# [[services]]
+# binding = "TOPIC_RESEARCHER"
+# service = "bitware-topic-researcher"
+
+# [[services]]
+# binding = "RSS_FINDER"
+# service = "bitware-rss-source-finder"
+
+# [[services]]
+# binding = "FEED_FETCHER"
+# service = "bitware-feed-fetcher"
+
+# [[services]]
+# binding = "CONTENT_CLASSIFIER"
+# service = "bitware-content-classifier"
+
+# [[services]]
+# binding = "REPORT_BUILDER"
+# service = "bitware-report-builder"
+
+# [[services]]
+# binding = "UNIVERSAL_RESEARCHER"
+# service = "bitware-universal-researcher"
+
+# [[services]]
+# binding = "OPTIMIZER"
+# service = "bitware-ai-factory-optimizer"
+
+# Staging environment
+[env.staging]
+name = "bitware-orchestrator-v2-staging"
+vars = { ENVIRONMENT = "staging" }
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "orchestrator-v2-db-staging"
+database_id = "orchestrator-v2-db-staging-id"
+
+[[env.staging.kv_namespaces]]
+binding = "EXECUTION_CACHE"
+id = "orchestrator-v2-execution-cache-staging"
+
+[[env.staging.kv_namespaces]]
+binding = "RESOURCE_CACHE"
+id = "orchestrator-v2-resource-cache-staging"
+
+[[env.staging.kv_namespaces]]
+binding = "DATA_REFS"
+id = "orchestrator-v2-data-refs-staging"
+
+[[env.staging.r2_buckets]]
+binding = "DATA_STORAGE"
+bucket_name = "orchestrator-v2-data-staging"

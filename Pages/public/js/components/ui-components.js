@@ -590,6 +590,7 @@ const UIUtils = {
 window.StatCard = StatCard;
 window.ClientCard = ClientCard;
 window.SimpleModal = SimpleModal;
+window.Modal = SimpleModal; // Alias for compatibility
 window.LoadingComponent = LoadingComponent;
 window.ErrorComponent = ErrorComponent;
 window.EmptyState = EmptyState;
@@ -597,5 +598,10 @@ window.Toast = Toast;
 window.Breadcrumb = Breadcrumb;
 window.Pagination = Pagination;
 window.UIUtils = UIUtils;
+
+// Helper function for showing toasts
+window.showToast = function(message, type = 'info', duration = 3000) {
+    return Toast.show({ message, type, duration });
+};
 
 console.log('✅ UI Components loaded (clean version)');

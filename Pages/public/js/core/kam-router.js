@@ -66,13 +66,15 @@ class KAMRouter {
         this.addRoute('/clients/:id', (params) => this.loadClientDetail(params.id));
         this.addRoute('/users', () => this.loadUserManagement());
         this.addRoute('/requests', () => this.loadRequestsPage());
+        this.addRoute('/templates', () => this.loadTemplateManager());
+        this.addRoute('/orchestrator', () => this.loadOrchestrator());
         
         // Client routes  
         this.addRoute('/my-account', () => this.loadMyAccount());
         this.addRoute('/my-reports', () => this.loadMyReports());
         this.addRoute('/billing', () => this.loadBilling());
         
-        // Worker routes (placeholder)
+        // Worker routes
         this.addRoute('/workers/:worker', (params) => this.loadWorker(params.worker));
         
         // Settings and misc
@@ -275,12 +277,32 @@ class KAMRouter {
         }
     }
 
+    async loadTemplateManager() {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate('/templates');
+        } else {
+            this.showLayoutError('Template Manager');
+        }
+    }
+
+    async loadOrchestrator() {
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate('/orchestrator');
+        } else {
+            this.showLayoutError('Orchestrator');
+        }
+    }
+
     async loadBilling() {
         this.showComingSoon('Billing', 'Billing information and payment methods will be available here.');
     }
 
     async loadWorker(workerName) {
-        this.showComingSoon(`${workerName}`, `The ${workerName} worker interface is currently under development.`);
+        if (window.aiFactoryLayout) {
+            await window.aiFactoryLayout.navigate(`/workers/${workerName}`);
+        } else {
+            this.showComingSoon(`${workerName}`, `The ${workerName} worker interface is currently under development.`);
+        }
     }
 
     async loadSettings() {

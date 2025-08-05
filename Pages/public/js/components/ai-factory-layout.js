@@ -162,6 +162,8 @@ class AIFactoryLayout {
                 {
                     title: 'AI Workers',
                     items: [
+                        { path: '/orchestrator', icon: '🎛️', label: 'Orchestrator 2.0' },
+                        { path: '/workers/topic-researcher', icon: '🔎', label: 'Topic Researcher' },
                         { path: '/workers/universal-researcher', icon: '🔍', label: 'Universal Researcher', disabled: true },
                         { path: '/workers/content-classifier', icon: '🏷️', label: 'Content Classifier', disabled: true },
                         { path: '/workers/report-builder', icon: '📑', label: 'Report Builder', disabled: true }
@@ -673,6 +675,14 @@ class AIFactoryLayout {
                     }
                     await this.loadTemplateManager(contentArea);
                     break;
+                case '/orchestrator':
+                    // ADMIN ONLY - orchestrator control center
+                    if (this.config.userType !== 'admin') {
+                        await this.navigate('/my-account');
+                        return;
+                    }
+                    await this.loadOrchestrator(contentArea);
+                    break;
                 default:
                     // Check if it's a client detail route with dynamic ID
                     if (path.startsWith('/clients/') && path.split('/').length === 3) {
@@ -684,7 +694,13 @@ class AIFactoryLayout {
                         const clientId = this.extractClientId(path);
                         console.log(`📋 Loading client detail for: ${clientId}`);
                         await this.loadClientDetail(contentArea, clientId);
-                    } else {
+                    } 
+                    // Check if it's a worker route
+                    else if (path.startsWith('/workers/')) {
+                        const workerName = path.split('/')[2];
+                        await this.loadWorkerPage(contentArea, workerName);
+                    } 
+                    else {
                         this.loadPlaceholderContent(contentArea, path);
                     }
             }
@@ -965,6 +981,102 @@ class AIFactoryLayout {
                 </div>
             `;
         }
+    }
+
+    /**
+     * Load orchestrator page - ADMIN ONLY
+     */
+    async loadOrchestrator(contentArea) {
+        console.log('🎛️ Loading Orchestrator 2.0...');
+        
+        if (window.OrchestratorPage) {
+            try {
+                // Create and mount orchestrator page
+                if (!window.orchestratorPage) {
+                    window.orchestratorPage = new OrchestratorPage(window.apiClient);
+                }
+                contentArea.innerHTML = window.orchestratorPage.render();
+                await window.orchestratorPage.mount();
+                console.log('✅ Orchestrator loaded successfully');
+            } catch (error) {
+                console.error('❌ Failed to load Orchestrator:', error);
+                contentArea.innerHTML = `
+                    <div class="error-state">
+                        <h3>Failed to load Orchestrator</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        } else {
+            console.error('❌ OrchestratorPage component not loaded');
+            contentArea.innerHTML = `
+                <div class="error-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                    <h3>Component Not Loaded</h3>
+                    <p>OrchestratorPage component is not available.</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="window.location.reload()">
+                            🔄 Reload Page
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Load worker page - ADMIN ONLY
+     */
+    async loadWorkerPage(contentArea, workerName) {
+        console.log(`🤖 Loading worker page for: ${workerName}`);
+        
+        // For now, we'll show a placeholder for worker pages
+        // Later, we can create specific components for each worker
+        contentArea.innerHTML = `
+            <div class="worker-page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="page-icon">${this.getWorkerIcon(workerName)}</span>
+                        ${this.formatWorkerName(workerName)}
+                    </h1>
+                    <p class="page-subtitle">Worker configuration and monitoring</p>
+                </div>
+                <div class="coming-soon">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🚧</div>
+                    <h3>Worker Interface Coming Soon</h3>
+                    <p>The dedicated interface for ${this.formatWorkerName(workerName)} is under development.</p>
+                    <div style="margin-top: 2rem;">
+                        <button class="btn btn-primary" onclick="aiFactoryLayout.navigate('/orchestrator')">
+                            🎛️ View in Orchestrator
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Get worker icon
+     */
+    getWorkerIcon(workerName) {
+        const icons = {
+            'topic-researcher': '🔎',
+            'universal-researcher': '🔍',
+            'content-classifier': '🏷️',
+            'report-builder': '📑',
+            'rss-source-finder': '📡',
+            'feed-fetcher': '📰'
+        };
+        return icons[workerName] || '🤖';
+    }
+
+    /**
+     * Format worker name for display
+     */
+    formatWorkerName(workerName) {
+        return workerName.split('-').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
     }
 
     /**
