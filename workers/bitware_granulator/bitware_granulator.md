@@ -59,7 +59,10 @@ CREATE TABLE granulation_jobs (
   quality_score REAL,
   processing_time_ms INTEGER,
   cost_usd REAL,
-  status TEXT DEFAULT 'processing', -- 'processing', 'completed', 'failed'
+  status TEXT DEFAULT 'processing', -- 'processing', 'completed', 'failed', 'validating', 'retry'
+  validation_enabled BOOLEAN DEFAULT false,
+  validation_level INTEGER DEFAULT 1, -- 1-3
+  validation_threshold REAL DEFAULT 85.0,
   started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   completed_at DATETIME,
   FOREIGN KEY (template_id) REFERENCES granulation_templates(id)
@@ -83,6 +86,22 @@ CREATE TABLE structure_elements (
   FOREIGN KEY (parent_id) REFERENCES structure_elements(id)
 );
 
+-- Validation results for quality assurance
+CREATE TABLE validation_results (
+  id INTEGER PRIMARY KEY,
+  job_id INTEGER NOT NULL,
+  validation_level INTEGER NOT NULL,
+  accuracy_percentage REAL NOT NULL,
+  questions_asked TEXT NOT NULL, -- JSON array of questions
+  scores TEXT NOT NULL, -- JSON array of scores
+  passed BOOLEAN NOT NULL,
+  retry_count INTEGER DEFAULT 0,
+  validation_time_ms INTEGER,
+  ai_feedback TEXT, -- Detailed AI explanation
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (job_id) REFERENCES granulation_jobs(id)
+);
+
 -- Template performance analytics
 CREATE TABLE template_analytics (
   id INTEGER PRIMARY KEY,
@@ -91,6 +110,8 @@ CREATE TABLE template_analytics (
   success_rate REAL,
   avg_quality_score REAL,
   avg_processing_time INTEGER,
+  avg_validation_accuracy REAL,
+  validation_failure_rate REAL,
   user_satisfaction REAL,
   optimization_suggestions TEXT,
   FOREIGN KEY (template_id) REFERENCES granulation_templates(id)
@@ -154,6 +175,11 @@ CREATE TABLE template_analytics (
     "include_assessments": true,
     "include_practical_exercises": true,
     "generate_prerequisites": true
+  },
+  "validation": {
+    "enabled": true,
+    "level": 2,
+    "threshold": 90.0
   }
 }
 ```
@@ -173,6 +199,13 @@ CREATE TABLE template_analytics (
     "exercises": 12
   },
   "quality_score": 0.89,
+  "validation": {
+    "enabled": true,
+    "accuracy_percentage": 92.5,
+    "passed": true,
+    "level_used": 2,
+    "validation_time_ms": 2340
+  },
   "structure": {
     "course_overview": {
       "title": "AI for Beginners: Complete Learning Path",
@@ -340,6 +373,136 @@ Add, update, or optimize granulation templates.
       }
     }
   }
+}
+```
+
+## 🔍 **AI-Powered Validation System**
+
+### **Pre-Handshake Validation Pattern**
+
+The Content Granulator implements an intelligent validation system that ensures output quality before confirming completion to the Orchestrator. This feature uses information theory principles to maximize validation efficiency.
+
+#### **Validation Flow**
+```typescript
+// Validation occurs before handshake acknowledgment
+1. Worker completes granulation task
+2. IF validation_enabled:
+   - Execute validation check (Level 1-3)
+   - Calculate accuracy percentage using AI
+   - IF accuracy < threshold:
+     - Set status to 'validating'
+     - Notify Orchestrator of validation failure
+     - Await retry decision
+   - ELSE:
+     - Proceed with successful handshake
+3. Complete handshake with validation metrics
+```
+
+#### **Information Theory Approach**
+
+Using Shannon entropy principles to maximize information gain per validation question:
+
+**Level 1 - Single Question (High Entropy)**
+- Quick binary validation (~1 second)
+- Question: "Does the structure comprehensively cover all essential aspects of '{topic}' for the target audience?"
+- Scoring: 0-100% based on AI assessment
+- Use case: Fast validation for simple topics or trusted templates
+
+**Level 2 - Two Questions (Discriminative)**
+- Balanced validation (~2-3 seconds)
+- Q1: "Is the logical flow and progression from basic to advanced concepts properly maintained throughout the structure?"
+- Q2: "Are all component relationships, dependencies, and hierarchies correctly defined and coherent?"
+- Scoring: Weighted average (50% each)
+- Use case: Standard validation for most granulations
+
+**Level 3 - Three Questions (Comprehensive)**
+- Thorough validation (~4-5 seconds)
+- Q1: "Completeness: Are all required elements present with appropriate depth and coverage?" (40% weight)
+- Q2: "Coherence: Do all components logically connect with proper transitions and relationships?" (35% weight)
+- Q3: "Appropriateness: Does the complexity and depth match the specified target audience and learning objectives?" (25% weight)
+- Use case: Critical content or high-value requests
+
+#### **Validation Configuration**
+
+```json
+// In handshake request from Orchestrator
+{
+  "execution_id": "exec-123",
+  "validation_config": {
+    "enabled": true,
+    "level": 2,              // 1-3
+    "threshold": 85.0,       // Minimum accuracy percentage
+    "retry_on_fail": true,   // Auto-retry if validation fails
+    "max_retries": 2        // Maximum retry attempts
+  }
+}
+
+// Worker response includes validation results
+{
+  "status": "completed",
+  "validation_result": {
+    "accuracy_percentage": 92.5,
+    "level_used": 2,
+    "threshold": 85.0,
+    "passed": true,
+    "details": {
+      "question_scores": [95.0, 90.0],
+      "weighted_average": 92.5,
+      "ai_confidence": 0.89
+    },
+    "retry_count": 0,
+    "validation_time_ms": 2340
+  }
+}
+```
+
+#### **Adaptive Validation Features**
+
+1. **Structure-Specific Thresholds**
+   - Course structures: 90% (high accuracy needed)
+   - Quiz generation: 95% (must be factually correct)
+   - Novel outlines: 80% (more creative freedom)
+   - Workflows: 85% (balance of accuracy and flexibility)
+
+2. **Cost-Aware Validation**
+   - Level selection based on request priority
+   - Skip validation for low-value requests
+   - Cache validation results for similar topics
+
+3. **Learning Loop**
+   - Store validation results for analysis
+   - Improve prompts based on failure patterns
+   - Adjust thresholds based on user feedback
+
+4. **Graceful Degradation**
+   - Return partial results with warnings if validation fails
+   - Provide specific improvement suggestions
+   - Allow manual override for experimental content
+
+#### **Validation API Endpoints**
+
+```typescript
+// Manual validation endpoint
+POST /api/validate
+{
+  "job_id": 42,
+  "validation_level": 2,
+  "custom_threshold": 90.0
+}
+
+// Get validation history
+GET /api/validation/history?job_id=42
+{
+  "validations": [
+    {
+      "timestamp": "2024-01-15T10:30:00Z",
+      "level": 2,
+      "accuracy": 92.5,
+      "passed": true,
+      "questions": [...],
+      "scores": [...]
+    }
+  ]
 }
 ```
 
