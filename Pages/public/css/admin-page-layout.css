@@ -1,0 +1,250 @@
+/**
+ * Admin Page Layout Standards
+ * Common layout patterns for all admin pages
+ */
+
+/* =============================================================================
+   BASE PAGE CONTAINER
+   All admin pages should use this pattern
+============================================================================= */
+
+.admin-page {
+    width: 100%;
+    margin: 0;
+    /* No padding - parent .ai-factory-content provides it */
+}
+
+/* Page-specific modifiers */
+.admin-page.dashboard-page,
+.admin-page.clients-page,
+.admin-page.users-page,
+.admin-page.requests-page,
+.admin-page.template-manager,
+.admin-page.orchestrator-page {
+    /* Ensure consistent base behavior */
+    padding: 0;
+    overflow: visible;
+}
+
+/* =============================================================================
+   PAGE HEADER
+   Already defined in admin-modern.css but documenting usage
+============================================================================= */
+
+/* 
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-2xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border);
+}
+*/
+
+/* =============================================================================
+   STANDARD TABS
+   Common tab pattern for pages that need them
+============================================================================= */
+
+.page-tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    margin: 0 calc(-1 * var(--spacing-2xl)); /* Extend to parent edges */
+    margin-bottom: var(--spacing-xl);
+    padding: 0 var(--spacing-2xl);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.page-tabs-container {
+    display: flex;
+    gap: var(--spacing-xs);
+    min-width: max-content;
+}
+
+.page-tab {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.page-tab:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.page-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.page-tab-icon {
+    font-size: 1.2em;
+}
+
+/* =============================================================================
+   CONTENT AREA
+   Main content container
+============================================================================= */
+
+.page-content {
+    width: 100%;
+    /* No padding - sections handle their own spacing */
+}
+
+/* =============================================================================
+   CONTENT SECTIONS
+   Reusable section containers
+============================================================================= */
+
+.content-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+}
+
+.content-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.section-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.section-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+/* =============================================================================
+   LAYOUT UTILITIES
+   Helper classes for common patterns
+============================================================================= */
+
+/* Grid layouts */
+.content-grid {
+    display: grid;
+    gap: var(--spacing-lg);
+}
+
+.content-grid.cols-2 {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.content-grid.cols-3 {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.content-grid.cols-4 {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Split layouts (for template manager style) */
+.split-layout {
+    display: flex;
+    gap: var(--spacing-xl);
+    height: calc(100vh - var(--header-height) - 200px); /* Account for header and padding */
+}
+
+.split-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.split-main {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+}
+
+/* =============================================================================
+   RESPONSIVE
+   Mobile adjustments
+============================================================================= */
+
+@media (max-width: 1024px) {
+    .split-layout {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .split-sidebar {
+        width: 100%;
+        max-height: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-tabs {
+        margin: 0 calc(-1 * var(--spacing-lg));
+        padding: 0 var(--spacing-lg);
+    }
+    
+    .page-tab {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-xs);
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .section-actions {
+        width: 100%;
+    }
+    
+    .section-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .content-grid.cols-2,
+    .content-grid.cols-3,
+    .content-grid.cols-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================================================
+   MIGRATION HELPERS
+   Temporary classes to help with migration
+============================================================================= */
+
+/* Remove these after all pages are updated */
+.orchestrator-page .orchestrator-tabs {
+    /* Override to use standard pattern */
+    margin: 0 calc(-1 * var(--spacing-2xl)) !important;
+}
+
+.template-manager .template-manager-content {
+    /* Adjust for standard padding */
+    margin-top: 0 !important;
+}

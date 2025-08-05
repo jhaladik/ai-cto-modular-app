@@ -335,7 +335,29 @@
                         })
                     });
 
-                    const data = await response.json();
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+                    
+                    // First, let's read the response as text to see what we're getting
+                    const responseText = await response.text();
+                    console.log('Response text:', responseText);
+                    console.log('Response length:', responseText.length);
+                    
+                    // If response is empty, handle it
+                    if (!responseText) {
+                        console.error('Empty response from server');
+                        throw new Error('Server returned empty response');
+                    }
+                    
+                    // Try to parse as JSON
+                    let data;
+                    try {
+                        data = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.error('Failed to parse response as JSON:', parseError);
+                        console.error('Raw response:', responseText);
+                        throw new Error('Invalid JSON response from server');
+                    }
 
                     if (data.success) {
                         // Store session data
@@ -352,7 +374,13 @@
                     }
                 } catch (error) {
                     console.error('Login error:', error);
-                    this.showError('Network error. Please try again.');
+                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                        this.showError('Network connection error. Please check your connection.');
+                    } else if (error instanceof SyntaxError) {
+                        this.showError('Server response error. Please try again.');
+                    } else {
+                        this.showError(`Error: ${error.message || 'Unknown error occurred'}`);
+                    }
                 } finally {
                     this.setLoading(false);
                 }

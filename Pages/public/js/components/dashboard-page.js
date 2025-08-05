@@ -19,7 +19,7 @@ class DashboardPage {
      */
     render() {
         return `
-            <div class="dashboard-page">
+            <div class="admin-page dashboard-page">
                 <!-- Page Header -->
                 <div class="page-header">
                     <h1 class="page-title">🎛️ System Dashboard</h1>

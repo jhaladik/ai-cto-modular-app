@@ -22,7 +22,7 @@ class RequestsPage {
 
     render() {
         return `
-            <div class="requests-page">
+            <div class="admin-page requests-page">
                 <!-- Page Header -->
                 <div class="page-header">
                     <h1 class="page-title">📋 Request Management</h1>

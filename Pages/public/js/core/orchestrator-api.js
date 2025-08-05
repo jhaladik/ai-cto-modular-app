@@ -16,28 +16,29 @@ class OrchestratorAPI {
     }
 
     /**
-     * Make authenticated request to orchestrator through the proxy
+     * Make authenticated request to orchestrator through the proxy (KAM pattern)
      */
     async request(endpoint, options = {}) {
         // Refresh token before each request
         this.refreshSessionToken();
         
-        // Remove leading slash from endpoint for proxy
-        const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-        const url = `${this.proxyUrl}/${cleanEndpoint}`;
-        
         const headers = {
             'Content-Type': 'application/json',
-            'x-bitware-session-token': this.sessionToken,
-            ...options.headers
+            'x-bitware-session-token': this.sessionToken
         };
 
         try {
-            console.log(`[Orchestrator API] Request: ${options.method || 'GET'} ${url}`);
+            console.log(`[Orchestrator API] Request: ${options.method || 'GET'} ${endpoint}`);
             
-            const response = await fetch(url, {
-                ...options,
-                headers
+            // Use KAM pattern - POST to proxy with endpoint/method/data
+            const response = await fetch(this.proxyUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: options.method || 'GET',
+                    data: options.body ? JSON.parse(options.body) : {}
+                })
             });
 
             if (!response.ok) {

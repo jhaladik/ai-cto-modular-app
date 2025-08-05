@@ -26,11 +26,11 @@ class OrchestratorPage {
      */
     render() {
         return `
-            <div class="orchestrator-page">
+            <div class="admin-page orchestrator-page">
                 ${this.renderHeader()}
                 ${this.renderTabs()}
-                <div class="orchestrator-content">
-                    <div id="orchestrator-tab-content">
+                <div class="page-content">
+                    <div id="orchestrator-tab-content" class="tab-content">
                         ${this.renderTabContent()}
                     </div>
                 </div>
@@ -78,13 +78,13 @@ class OrchestratorPage {
         ];
 
         return `
-            <div class="orchestrator-tabs">
-                <div class="tabs-container">
+            <div class="page-tabs">
+                <div class="page-tabs-container">
                     ${tabs.map(tab => `
-                        <button class="tab-button ${this.activeTab === tab.id ? 'active' : ''}"
+                        <button class="page-tab ${this.activeTab === tab.id ? 'active' : ''}"
                                 onclick="window.orchestratorPage.switchTab('${tab.id}')">
-                            <span class="tab-icon">${tab.icon}</span>
-                            <span class="tab-label">${tab.label}</span>
+                            <span class="page-tab-icon">${tab.icon}</span>
+                            <span class="page-tab-label">${tab.label}</span>
                         </button>
                     `).join('')}
                 </div>
@@ -530,16 +530,29 @@ class OrchestratorPage {
     async loadActiveExecutions() {
         try {
             const response = await this.orchestratorAPI.getQueue();
-            const activeExecutions = response.executions || [];
+            const activeExecutions = response.queue || response.executions || [];
             
-            // Update dashboard stats
-            document.getElementById('active-pipelines').textContent = 
-                activeExecutions.filter(e => e.status === 'running').length;
-            document.getElementById('queue-length').textContent = 
-                activeExecutions.filter(e => e.status === 'queued').length;
+            // Update dashboard stats if elements exist
+            const activePipelinesEl = document.getElementById('active-pipelines');
+            const queueLengthEl = document.getElementById('queue-length');
+            
+            if (activePipelinesEl) {
+                activePipelinesEl.textContent = 
+                    activeExecutions.filter(e => e.status === 'running').length;
+            }
+            
+            if (queueLengthEl) {
+                queueLengthEl.textContent = 
+                    activeExecutions.filter(e => e.status === 'queued' || e.status === 'pending').length;
+            }
             
             // Update active executions list
             this.renderActiveExecutionsList(activeExecutions);
+            
+            // Update execution queue
+            this.renderExecutionQueue(activeExecutions.filter(e => 
+                e.status === 'queued' || e.status === 'pending'
+            ));
             
         } catch (error) {
             console.error('Failed to load executions:', error);
@@ -552,13 +565,13 @@ class OrchestratorPage {
     async loadResourceStatus() {
         try {
             const response = await this.orchestratorAPI.getResourceStatus();
-            this.resources = response.resource_pool;
+            this.resources = response.pools || response.resource_pool || [];
             
             // Update resource gauges
             this.updateResourceGauges();
             
             // Update cost tracking
-            this.updateCostTracking(response.cost_summary);
+            this.updateCostTracking(response.usage_summary || response.cost_summary || {});
             
         } catch (error) {
             console.error('Failed to load resources:', error);
@@ -582,10 +595,50 @@ class OrchestratorPage {
     }
 
     /**
+     * Render execution queue
+     */
+    renderExecutionQueue(queuedExecutions) {
+        const container = document.getElementById('execution-queue');
+        if (!container) return;
+        
+        if (queuedExecutions.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">✅</div>
+                    <p>No items in queue</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="queue-list">
+                ${queuedExecutions.map((execution, index) => `
+                    <div class="queue-item">
+                        <div class="queue-position">#${index + 1}</div>
+                        <div class="queue-details">
+                            <div class="queue-id">${execution.execution_id}</div>
+                            <div class="queue-template">${execution.template_name}</div>
+                            <div class="queue-priority priority-${execution.priority || 'normal'}">
+                                ${execution.priority || 'normal'} priority
+                            </div>
+                        </div>
+                        <div class="queue-actions">
+                            <button class="btn btn-sm" onclick="window.orchestratorPage.cancelExecution('${execution.execution_id}')">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    /**
      * Render active executions list
      */
     renderActiveExecutionsList(executions) {
-        const container = document.getElementById('active-executions-list');
+        const container = document.getElementById('active-pipeline-list');
         if (!container) return;
         
         if (executions.length === 0) {
@@ -665,29 +718,50 @@ class OrchestratorPage {
      * Update resource gauges
      */
     updateResourceGauges() {
-        if (!this.resources) return;
+        if (!this.resources || !Array.isArray(this.resources)) return;
         
-        // Update API gauge
-        if (this.resources.openai_api) {
-            const apiUsage = (this.resources.openai_api.used_today / this.resources.openai_api.daily_limit) * 100;
+        // Find OpenAI resources
+        const openaiResource = this.resources.find(r => 
+            r.resource_name === 'openai_gpt4' || r.resource_name === 'openai_gpt35'
+        );
+        
+        if (openaiResource) {
+            const apiUsage = openaiResource.utilization_percentage || 0;
             this.updateGauge('api-gauge', apiUsage);
-            document.getElementById('openai-usage').textContent = this.resources.openai_api.used_today;
-            document.getElementById('openai-limit').textContent = this.resources.openai_api.daily_limit;
+            
+            const usageEl = document.getElementById('openai-usage');
+            const limitEl = document.getElementById('openai-limit');
+            
+            if (usageEl) usageEl.textContent = openaiResource.current_usage || 0;
+            if (limitEl) limitEl.textContent = openaiResource.daily_limit || 0;
         }
         
-        // Update storage gauge
-        if (this.resources.storage) {
-            const kvUsage = this.resources.storage.kv_usage.percentage_used || 0;
-            this.updateGauge('storage-gauge', kvUsage);
-            document.getElementById('kv-usage').textContent = 
-                Math.round(this.resources.storage.kv_usage.used_mb || 0);
-            document.getElementById('r2-usage').textContent = 
-                Math.round(this.resources.storage.r2_usage.used_gb || 0);
+        // Find storage resources
+        const kvResource = this.resources.find(r => r.resource_name === 'kv_storage');
+        const r2Resource = this.resources.find(r => r.resource_name === 'r2_storage');
+        
+        if (kvResource || r2Resource) {
+            // Use KV usage for the gauge since it has limits
+            const storageUsage = kvResource ? kvResource.utilization_percentage || 0 : 0;
+            this.updateGauge('storage-gauge', storageUsage);
+            
+            const kvUsageEl = document.getElementById('kv-usage');
+            const r2UsageEl = document.getElementById('r2-usage');
+            
+            if (kvUsageEl && kvResource) {
+                kvUsageEl.textContent = Math.round(kvResource.current_usage || 0);
+            }
+            if (r2UsageEl && r2Resource) {
+                r2UsageEl.textContent = Math.round(r2Resource.current_usage || 0);
+            }
         }
         
         // Update overall resource usage
         const overallUsage = this.calculateOverallResourceUsage();
-        document.getElementById('resource-usage').textContent = `${Math.round(overallUsage)}%`;
+        const resourceUsageEl = document.getElementById('resource-usage');
+        if (resourceUsageEl) {
+            resourceUsageEl.textContent = `${Math.round(overallUsage)}%`;
+        }
     }
 
     /**
@@ -717,20 +791,18 @@ class OrchestratorPage {
      * Calculate overall resource usage
      */
     calculateOverallResourceUsage() {
-        if (!this.resources) return 0;
+        if (!this.resources || !Array.isArray(this.resources)) return 0;
         
         let totalUsage = 0;
         let count = 0;
         
-        if (this.resources.openai_api) {
-            totalUsage += (this.resources.openai_api.used_today / this.resources.openai_api.daily_limit) * 100;
-            count++;
-        }
-        
-        if (this.resources.storage?.kv_usage) {
-            totalUsage += this.resources.storage.kv_usage.percentage_used || 0;
-            count++;
-        }
+        // Calculate average usage across all resources with limits
+        this.resources.forEach(resource => {
+            if (resource.daily_limit || resource.monthly_limit) {
+                totalUsage += resource.utilization_percentage || 0;
+                count++;
+            }
+        });
         
         return count > 0 ? totalUsage / count : 0;
     }
@@ -741,14 +813,34 @@ class OrchestratorPage {
     updateCostTracking(costSummary) {
         if (!costSummary) return;
         
-        document.getElementById('daily-cost').textContent = 
-            this.orchestratorAPI.formatCostEstimate(costSummary.today || 0);
-        document.getElementById('today-cost').textContent = 
-            this.orchestratorAPI.formatCostEstimate(costSummary.today || 0);
-        document.getElementById('week-cost').textContent = 
-            this.orchestratorAPI.formatCostEstimate(costSummary.this_week || 0);
-        document.getElementById('month-cost').textContent = 
-            this.orchestratorAPI.formatCostEstimate(costSummary.this_month || 0);
+        const dailyCostEl = document.getElementById('daily-cost');
+        const todayCostEl = document.getElementById('today-cost');
+        const weekCostEl = document.getElementById('week-cost');
+        const monthCostEl = document.getElementById('month-cost');
+        
+        if (dailyCostEl) {
+            dailyCostEl.textContent = this.orchestratorAPI.formatCostEstimate(
+                costSummary.total_cost_today || costSummary.today || 0
+            );
+        }
+        
+        if (todayCostEl) {
+            todayCostEl.textContent = this.orchestratorAPI.formatCostEstimate(
+                costSummary.total_cost_today || costSummary.today || 0
+            );
+        }
+        
+        if (weekCostEl) {
+            weekCostEl.textContent = this.orchestratorAPI.formatCostEstimate(
+                costSummary.this_week || 0
+            );
+        }
+        
+        if (monthCostEl) {
+            monthCostEl.textContent = this.orchestratorAPI.formatCostEstimate(
+                costSummary.this_month || 0
+            );
+        }
     }
 
     /**

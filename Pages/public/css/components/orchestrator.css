@@ -3,69 +3,33 @@
  * Comprehensive styling for pipeline orchestration UI
  */
 
+/* Reset box sizing */
+.orchestrator-page *,
+.orchestrator-page *::before,
+.orchestrator-page *::after {
+    box-sizing: border-box;
+}
+
 /* Main Container */
 .orchestrator-page {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+    /* Remove any default spacing since parent has padding */
+    margin: 0;
+    width: 100%;
     background: var(--bg-primary);
 }
 
-/* Tabs */
-.orchestrator-tabs {
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    padding: 0 var(--spacing-xl);
-    overflow-x: auto;
-}
-
-.tabs-container {
-    display: flex;
-    gap: var(--spacing-xs);
-    min-width: max-content;
-}
-
-.tab-button {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.tab-button:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-}
-
-.tab-button.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-}
-
-.tab-icon {
-    font-size: 1.2em;
-}
+/* Remove orchestrator-specific tab styles - using standard page-tabs from admin-page-layout.css */
 
 /* Content Area */
-.orchestrator-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--spacing-xl);
+#orchestrator-tab-content {
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 /* Dashboard Styles */
 .orchestrator-dashboard {
-    max-width: 1400px;
-    margin: 0 auto;
+    width: 100%;
 }
 
 .stats-grid {
@@ -262,8 +226,7 @@
 
 /* Resource Monitor Styles */
 .resource-monitor {
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%;
 }
 
 .section-header {
@@ -591,11 +554,7 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .orchestrator-tabs {
-        padding: 0 var(--spacing-md);
-    }
-    
-    .orchestrator-content {
+    #orchestrator-tab-content {
         padding: var(--spacing-md);
     }
     
@@ -625,4 +584,60 @@
         align-items: flex-start;
         gap: var(--spacing-md);
     }
+}/* Responsive Adjustments */
+@media (max-width: 768px) {
+    #orchestrator-tab-content {
+        padding: 0;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .resource-gauges {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        align-items: stretch;
+    }
+    
+    .section-actions {
+        width: 100%;
+    }
+    
+    .section-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Layout Constraints */
+.pipeline-manager,
+.execution-history,
+.template-editor,
+.system-logs,
+.worker-status {
+    width: 100%;
+}
+
+/* Prevent horizontal overflow */
+.orchestrator-page table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.orchestrator-page pre,
+.orchestrator-page code {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Ensure cards don't overflow */
+.orchestrator-page .card,
+.orchestrator-page .panel {
+    max-width: 100%;
+    overflow: hidden;
 }

@@ -20,7 +20,7 @@ class UsersPage {
 
     render() {
         return `
-            <div class="users-page">
+            <div class="admin-page users-page">
                 <div class="page-header">
                     <h1 class="page-title">👥 User Management</h1>
                     <div class="page-actions">

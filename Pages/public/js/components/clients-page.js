@@ -26,7 +26,7 @@ class ClientsPage {
      */
     render() {
         return `
-            <div class="clients-page">
+            <div class="admin-page clients-page">
                 <!-- Page Header -->
                 <div class="page-header">
                     <h1 class="page-title">👥 Client Management</h1>

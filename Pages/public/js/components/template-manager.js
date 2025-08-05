@@ -15,13 +15,28 @@ class TemplateManager {
         this.loadTemplates = this.loadTemplates.bind(this);
         this.selectTemplate = this.selectTemplate.bind(this);
         this.saveTemplate = this.saveTemplate.bind(this);
-        this.previewTemplate = this.previewTemplate.bind(this);
         this.calculateCost = this.calculateCost.bind(this);
+        this.showImportDialog = this.showImportDialog.bind(this);
+        this.createNewTemplate = this.createNewTemplate.bind(this);
+        this.duplicateTemplate = this.duplicateTemplate.bind(this);
+        this.deleteTemplate = this.deleteTemplate.bind(this);
+        this.filterTemplates = this.filterTemplates.bind(this);
+        this.switchTab = this.switchTab.bind(this);
+        this.updateField = this.updateField.bind(this);
+        this.updateStage = this.updateStage.bind(this);
+        this.updateParameter = this.updateParameter.bind(this);
+        this.addPipelineStage = this.addPipelineStage.bind(this);
+        this.removeStage = this.removeStage.bind(this);
+        this.addParameter = this.addParameter.bind(this);
+        this.removeParameter = this.removeParameter.bind(this);
+        this.updateParameterTiers = this.updateParameterTiers.bind(this);
+        this.addUseCase = this.addUseCase.bind(this);
+        this.removeUseCase = this.removeUseCase.bind(this);
     }
 
     render() {
         return `
-            <div class="template-manager">
+            <div class="admin-page template-manager">
                 <div class="page-header">
                     <h1 class="page-title">🎯 Template Manager</h1>
                     <div class="page-actions">
@@ -657,6 +672,116 @@ class TemplateManager {
         if (hours > 0) return `${hours}h ${minutes % 60}m`;
         if (minutes > 0) return `${minutes}m`;
         return `${seconds}s`;
+    }
+
+    // Stub methods for UI actions
+    showImportDialog() {
+        this.showMessage('Import from Orchestrator coming soon!', 'info');
+    }
+
+    createNewTemplate() {
+        this.showMessage('Create new template coming soon!', 'info');
+    }
+
+    duplicateTemplate() {
+        if (!this.selectedTemplate) return;
+        this.showMessage('Duplicate template coming soon!', 'info');
+    }
+
+    deleteTemplate() {
+        if (!this.selectedTemplate) return;
+        if (confirm(`Are you sure you want to delete "${this.selectedTemplate.display_name}"?`)) {
+            this.showMessage('Delete template coming soon!', 'info');
+        }
+    }
+
+    addPipelineStage() {
+        this.showMessage('Add pipeline stage coming soon!', 'info');
+    }
+
+    removeStage(index) {
+        this.showMessage('Remove stage coming soon!', 'info');
+    }
+
+    addParameter() {
+        this.showMessage('Add parameter coming soon!', 'info');
+    }
+
+    removeParameter(index) {
+        this.showMessage('Remove parameter coming soon!', 'info');
+    }
+
+    updateParameterTiers(index, tierType, tier, checked) {
+        if (!this.selectedTemplate.parameters) return;
+        const param = this.selectedTemplate.parameters[index];
+        if (!param[tierType]) param[tierType] = [];
+        
+        if (checked) {
+            if (!param[tierType].includes(tier)) {
+                param[tierType].push(tier);
+            }
+        } else {
+            param[tierType] = param[tierType].filter(t => t !== tier);
+        }
+        
+        this.isDirty = true;
+    }
+
+    filterTemplates(event) {
+        const searchTerm = event.target.value.toLowerCase();
+        // TODO: Implement template filtering
+        this.showMessage('Search functionality coming soon!', 'info');
+    }
+
+    addUseCase(value, inputElement) {
+        if (!value.trim()) return;
+        
+        if (!this.selectedTemplate.typical_use_cases) {
+            this.selectedTemplate.typical_use_cases = [];
+        }
+        
+        this.selectedTemplate.typical_use_cases.push(value.trim());
+        this.isDirty = true;
+        inputElement.value = '';
+        this.renderTemplateEditor();
+    }
+
+    removeUseCase(index) {
+        if (this.selectedTemplate.typical_use_cases) {
+            this.selectedTemplate.typical_use_cases.splice(index, 1);
+            this.isDirty = true;
+            this.renderTemplateEditor();
+        }
+    }
+
+    renderTierSettingsTab() {
+        return `
+            <div class="tier-settings-tab">
+                <h3>Tier Settings</h3>
+                <p>Configure which subscription tiers can access this template and parameter limits.</p>
+                <div class="coming-soon">Coming in Phase 2</div>
+            </div>
+        `;
+    }
+
+    renderCostTab() {
+        return `
+            <div class="cost-tab">
+                <h3>Cost & Estimates</h3>
+                <p>Configure cost calculation and estimates for this template.</p>
+                <div class="coming-soon">Coming in Phase 2 - Dynamic Cost Estimation</div>
+            </div>
+        `;
+    }
+
+    renderExamplesTab() {
+        return `
+            <div class="examples-tab">
+                <h3>Example Deliverables</h3>
+                <p>Add example outputs and deliverables for this template.</p>
+                <div class="coming-soon">Coming in Phase 3 - Template Preview System</div>
+            </div>
+        `;
     }
 
     // Mock data for development
