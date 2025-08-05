@@ -131,7 +131,7 @@ export async function handleProcess(env: Env, request: AuthenticatedRequest): Pr
         ...progressData,
         status: 'completed',
         progress: 100,
-        completedAt: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
         result
       });
       

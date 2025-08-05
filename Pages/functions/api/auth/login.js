@@ -7,11 +7,26 @@
 
 import { jsonResponse, errorResponse, unauthorizedResponse, serverErrorResponse } from '../../_shared/http-utils.js';
 
+export async function onRequestOptions(context) {
+  // Handle CORS preflight
+  return new Response(null, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    }
+  });
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   
   try {
-    const { username, password, loginType = 'admin' } = await request.json();
+    console.log('Login request received');
+    const body = await request.json();
+    console.log('Request body:', body);
+    const { username, password, loginType = 'admin' } = body;
     
     let sessionData = null;
     let clientData = null;
@@ -22,6 +37,21 @@ export async function onRequestPost(context) {
       case 'user':
         // Admin/User authentication via unified KAM database
         try {
+          console.log('Checking environment:', {
+            hasKAMBinding: !!env.KEY_ACCOUNT_MANAGER,
+            hasWorkerSecret: !!env.WORKER_SHARED_SECRET
+          });
+          
+          if (!env.KEY_ACCOUNT_MANAGER) {
+            console.error('KEY_ACCOUNT_MANAGER binding not found');
+            return errorResponse('Configuration error', 500);
+          }
+          
+          if (!env.WORKER_SHARED_SECRET) {
+            console.error('WORKER_SHARED_SECRET not configured');
+            return errorResponse('Configuration error', 500);
+          }
+          
           const kamResponse = await env.KEY_ACCOUNT_MANAGER.fetch(
             new Request('https://kam.internal/auth/validate-user', {
               method: 'POST',

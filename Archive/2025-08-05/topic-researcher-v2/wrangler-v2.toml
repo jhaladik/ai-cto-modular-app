@@ -1,0 +1,120 @@
+name = "bitware-topic-researcher-v2"
+main = "index-v2.ts"
+compatibility_date = "2024-03-08"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "TOPIC_RESEARCH_DB"
+database_name = "topic-research-db"
+database_id = "cfe96e96-0c70-4918-9c7d-92d1b236e531"
+
+# KV Namespace bindings
+[[kv_namespaces]]
+binding = "RESEARCH_CACHE"
+id = "9f36993b564143468c36ce9819301efe"
+
+[[kv_namespaces]]
+binding = "PROGRESS_CACHE"
+id = "topic-researcher-progress-cache" # Will be created
+
+[[kv_namespaces]]
+binding = "RESULT_CACHE"
+id = "topic-researcher-result-cache" # Will be created
+
+# Environment variables
+[vars]
+# Worker Configuration
+WORKER_NAME = "bitware_topic_researcher"
+VERSION = "2.0.0"  # Orchestrator 2.0 compatible
+PROTOCOL_VERSION = "2.0"
+
+# Orchestrator URL
+ORCHESTRATOR_URL = "https://bitware-orchestrator-v2.jhaladik.workers.dev"
+
+# AI Configuration
+AI_MODEL = "gpt-4o-mini"
+MAX_AI_SOURCES = 6
+DEFAULT_SEARCH_DEPTH = 3
+DEFAULT_MIN_QUALITY = 0.6
+DEFAULT_MAX_SOURCES = 10
+
+# Performance Settings
+REQUEST_TIMEOUT_MS = 120000     # 120 seconds for handshake protocol
+AI_TIMEOUT_MS = 45000           # 45 seconds for OpenAI API calls
+VALIDATION_TIMEOUT_MS = 5000    # 5 seconds per source validation
+RETRY_ATTEMPTS = 2
+RETRY_DELAY_MS = 1000
+
+# Caching Configuration  
+CACHE_TTL_HOURS = 1             # 1 hour cache for research results
+PERFORMANCE_CACHE_TTL = 900     # 15 minutes for analytics data
+MAX_CACHE_SIZE_KB = 500         # Maximum cache entry size
+REFERENCE_TTL_HOURS = 24        # 24 hours for data references
+
+# Cost Management
+MAX_COST_PER_REQUEST = 0.5      # USD - Maximum cost per research request
+DAILY_COST_LIMIT = 20.0         # USD - Daily spending limit
+TOKEN_RATE_LIMIT = 20000        # OpenAI tokens per hour limit
+
+# Analytics Configuration
+ENABLE_PERFORMANCE_TRACKING = true
+ENABLE_DETAILED_ANALYTICS = true
+ANALYTICS_RETENTION_DAYS = 90   # How long to keep detailed analytics
+HOURLY_AGGREGATION = true       # Enable hourly performance aggregation
+
+# Quality Control
+MIN_SOURCES_FOR_SUCCESS = 3     # Minimum sources to consider request successful
+MAX_VALIDATION_FAILURES = 2     # Maximum failed validations before skipping
+DUPLICATE_DETECTION = true      # Enable duplicate source detection
+
+# Rate Limiting and Throttling
+MAX_CONCURRENT_VALIDATIONS = 3  # Parallel source validations
+VALIDATION_DELAY_MS = 500       # Delay between validations
+RESPECTFUL_CRAWLING = true      # Enable polite crawling delays
+
+# Orchestrator 2.0 Features
+ENABLE_HANDSHAKE_PROTOCOL = true
+ENABLE_REFERENCE_HANDLING = true
+ENABLE_PROGRESS_REPORTING = true
+ENABLE_CHECKPOINTS = true
+MAX_INLINE_DATA_SIZE = 1024    # Bytes - data smaller than this stays inline
+MAX_KV_DATA_SIZE = 1048576      # 1MB - data larger goes to orchestrator
+
+# Feature Flags
+ENABLE_WEB_SEARCH = true        # Enable web search discovery
+ENABLE_AI_DISCOVERY = true      # Enable AI-powered source suggestions
+ENABLE_HYBRID_MODE = true       # Combine web search + AI discovery
+ENABLE_QUALITY_REASONING = true # Include AI reasoning for quality scores
+ENABLE_LEGACY_ENDPOINTS = true  # Keep backward compatibility
+
+# Development and Debugging
+DEBUG_MODE = false              # Enable detailed logging
+VERBOSE_ANALYTICS = false       # Log all analytics operations
+SIMULATION_MODE = false         # For testing without external API calls
+
+# Secrets that need to be set via `wrangler secret put`:
+# 
+# Required secrets:
+# wrangler secret put OPENAI_API_KEY
+# wrangler secret put CLIENT_API_KEY  
+# wrangler secret put WORKER_SHARED_SECRET
+
+# Setup Instructions:
+# 
+# 1. Create new KV namespaces for v2:
+#    wrangler kv:namespace create "PROGRESS_CACHE"
+#    wrangler kv:namespace create "RESULT_CACHE"
+#
+# 2. Update the namespace IDs above with the returned values
+#
+# 3. Deploy the v2 worker:
+#    wrangler deploy -c wrangler-v2.toml
+#
+# 4. Update orchestrator's worker registry:
+#    Add this worker with protocol_version: "2.0"
+#
+# 5. Test handshake protocol:
+#    curl -X POST https://bitware-topic-researcher-v2.workers.dev/api/handshake \
+#      -H "Content-Type: application/json" \
+#      -d '{"packet_id":"test","execution_id":"exec","stage_id":"stage","input_ref":{"storage_type":"inline","inline_data":{"topic":"AI"}}}'
