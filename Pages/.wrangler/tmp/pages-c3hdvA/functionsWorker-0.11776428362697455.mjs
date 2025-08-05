@@ -38,16 +38,42 @@ async function handleCors() {
 __name(handleCors, "handleCors");
 
 // api/auth/login.js
+async function onRequestOptions(context) {
+  return new Response(null, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "86400"
+    }
+  });
+}
+__name(onRequestOptions, "onRequestOptions");
 async function onRequestPost(context) {
   const { request, env } = context;
   try {
-    const { username, password, loginType = "admin" } = await request.json();
+    console.log("Login request received");
+    const body = await request.json();
+    console.log("Request body:", body);
+    const { username, password, loginType = "admin" } = body;
     let sessionData = null;
     let clientData = null;
     switch (loginType) {
       case "admin":
       case "user":
         try {
+          console.log("Checking environment:", {
+            hasKAMBinding: !!env.KEY_ACCOUNT_MANAGER,
+            hasWorkerSecret: !!env.WORKER_SHARED_SECRET
+          });
+          if (!env.KEY_ACCOUNT_MANAGER) {
+            console.error("KEY_ACCOUNT_MANAGER binding not found");
+            return errorResponse("Configuration error", 500);
+          }
+          if (!env.WORKER_SHARED_SECRET) {
+            console.error("WORKER_SHARED_SECRET not configured");
+            return errorResponse("Configuration error", 500);
+          }
           const kamResponse = await env.KEY_ACCOUNT_MANAGER.fetch(
             new Request("https://kam.internal/auth/validate-user", {
               method: "POST",
@@ -336,6 +362,117 @@ async function onRequest(context) {
 }
 __name(onRequest, "onRequest");
 
+// api/orchestrator/[path].js
+async function onRequest2(context) {
+  const corsHeaders2 = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key, X-Worker-ID, x-bitware-session-token"
+  };
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders2 });
+  }
+  try {
+    let path = "";
+    if (context.params && context.params.path) {
+      if (Array.isArray(context.params.path)) {
+        path = context.params.path.join("/");
+      } else {
+        path = context.params.path;
+      }
+    }
+    console.log("[Orchestrator Proxy] Path:", path);
+    console.log("[Orchestrator Proxy] Method:", context.request.method);
+    const sessionToken = context.request.headers.get("x-bitware-session-token");
+    if (!sessionToken) {
+      return new Response(JSON.stringify({
+        error: "Authentication required",
+        message: "Session token not provided"
+      }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders2
+        }
+      });
+    }
+    const validateUrl = "https://bitware-key-account-manager.jhaladik.workers.dev/auth/validate";
+    const validateResponse = await fetch(validateUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-bitware-session-token": sessionToken
+      }
+    });
+    if (!validateResponse.ok) {
+      console.error("[Orchestrator Proxy] Session validation failed:", validateResponse.status);
+      return new Response(JSON.stringify({
+        error: "Authentication failed",
+        message: "Invalid or expired session"
+      }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders2
+        }
+      });
+    }
+    const sessionData = await validateResponse.json();
+    console.log("[Orchestrator Proxy] Session validated for user:", sessionData.email);
+    if (sessionData.role !== "admin") {
+      return new Response(JSON.stringify({
+        error: "Forbidden",
+        message: "Admin access required"
+      }), {
+        status: 403,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders2
+        }
+      });
+    }
+    const orchestratorUrl = `https://bitware-orchestrator-v2.jhaladik.workers.dev/${path}`;
+    console.log("[Orchestrator Proxy] Forwarding to:", orchestratorUrl);
+    const requestBody = context.request.method !== "GET" && context.request.method !== "HEAD" ? await context.request.text() : null;
+    const orchestratorResponse = await fetch(orchestratorUrl, {
+      method: context.request.method,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_WORKER_SECRET",
+        // TODO: Use env variable
+        "X-Worker-ID": "bitware_pages_proxy",
+        "X-Session-User-Id": sessionData.user_id,
+        "X-Session-Email": sessionData.email,
+        "X-Session-Role": sessionData.role
+      },
+      body: requestBody
+    });
+    console.log("[Orchestrator Proxy] Response status:", orchestratorResponse.status);
+    const responseText = await orchestratorResponse.text();
+    return new Response(responseText, {
+      status: orchestratorResponse.status,
+      headers: {
+        "Content-Type": orchestratorResponse.headers.get("Content-Type") || "application/json",
+        ...corsHeaders2
+      }
+    });
+  } catch (error) {
+    console.error("[Orchestrator Proxy] Error:", error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Proxy error",
+      message: error.message
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders2
+      }
+    });
+  }
+}
+__name(onRequest2, "onRequest");
+
 // _shared/auth-helper.js
 async function validateSession(request, env) {
   const sessionToken = request.headers.get("x-bitware-session-token");
@@ -368,10 +505,10 @@ async function validateSession(request, env) {
 __name(validateSession, "validateSession");
 
 // api/key-account-manager.js
-async function onRequestOptions() {
+async function onRequestOptions2() {
   return handleCors();
 }
-__name(onRequestOptions, "onRequestOptions");
+__name(onRequestOptions2, "onRequestOptions");
 async function onRequestPost4(context) {
   const { request, env } = context;
   try {
@@ -423,7 +560,7 @@ async function onRequestPost4(context) {
       "Content-Type": "application/json"
     };
     const isAdminEndpoint = endpoint.startsWith("/clients") || endpoint.startsWith("/client") || // Matches both /client and /client/
-    endpoint.startsWith("/users") || endpoint.startsWith("/dashboard") || endpoint.includes("admin");
+    endpoint.startsWith("/users") || endpoint.startsWith("/dashboard") || endpoint.startsWith("/requests") || endpoint.startsWith("/templates") || endpoint.includes("admin");
     console.log("\u{1F510} Admin endpoint check:", {
       isAdminEndpoint,
       endpoint,
@@ -513,6 +650,13 @@ var routes = [
   {
     routePath: "/api/auth/login",
     mountPath: "/api/auth",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions]
+  },
+  {
+    routePath: "/api/auth/login",
+    mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost]
@@ -546,6 +690,13 @@ var routes = [
     modules: [onRequest]
   },
   {
+    routePath: "/api/orchestrator/:path",
+    mountPath: "/api/orchestrator",
+    method: "",
+    middlewares: [],
+    modules: [onRequest2]
+  },
+  {
     routePath: "/api/key-account-manager",
     mountPath: "/api",
     method: "GET",
@@ -557,7 +708,7 @@ var routes = [
     mountPath: "/api",
     method: "OPTIONS",
     middlewares: [],
-    modules: [onRequestOptions]
+    modules: [onRequestOptions2]
   },
   {
     routePath: "/api/key-account-manager",
@@ -1062,7 +1213,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-UPfiLr/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-SfSK2O/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -1094,7 +1245,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-UPfiLr/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-SfSK2O/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

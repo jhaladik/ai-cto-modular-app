@@ -4,6 +4,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🔄 Latest Updates
 
+### 2025-08-05 - Content Granulator DEPLOYED WITH FULL FRONTEND! 🧱
+
+#### Content Granulator Worker & Frontend Complete
+- **✅ Content Granulator Live**: https://bitware-content-granulator.jhaladik.workers.dev
+- **✅ Frontend Integration**: Full admin UI with templates, jobs, and deliverables management
+- **✅ Database Schema Fixed**: Added missing columns (actualElements, qualityScore, processingTimeMs, costUsd)
+- **✅ Structure Transformation**: Handles OpenAI response variations automatically
+
+#### Content Granulator Features Implemented
+**Worker Capabilities**:
+- **AI-Powered Structure Generation**: Uses OpenAI GPT-4o-mini for content structuring
+- **Template Management**: 8 predefined templates (course, quiz, novel, workflow, etc.)
+- **Validation System**: 3-level AI validation with configurable thresholds
+- **Storage Management**: Automatic KV/R2 tiering for large structures
+- **Handshake Protocol**: Supports Orchestrator 2.0 reference-based data transfer
+
+**Frontend Features**:
+- **Three-Tab Interface**: Jobs, Templates, and Deliverables views
+- **Template Testing**: Test templates with sample data before using
+- **Template Editing**: Admin users can modify prompts and validation rules
+- **Job Management**: Create, monitor, and retry granulation jobs
+- **Structure Viewer**: Tree-based visualization for generated structures
+- **Export/Download**: Export structures as JSON files
+
+**API Endpoints**:
+```javascript
+// Templates
+GET  /api/templates             // List all templates
+GET  /api/templates/{name}      // Get template details
+POST /api/templates/{name}/test // Test template
+PUT  /api/templates/{name}      // Update template (admin)
+
+// Jobs
+POST /api/granulate            // Create granulation job
+GET  /api/jobs                 // List jobs
+GET  /api/jobs/{id}            // Get job details
+GET  /api/jobs/{id}/structure  // Get generated structure
+POST /api/jobs/{id}/retry      // Retry failed job
+
+// Stats & Health
+GET  /api/stats                // Granulation statistics
+GET  /health                   // Health check
+```
+
 ### 2025-08-04 - Orchestrator 2.0 DEPLOYED TO PRODUCTION! 🚀
 
 #### Phase 1 & 2 COMPLETE - Full Production Deployment
@@ -233,6 +277,8 @@ The KAM worker serves as the authentication and client management hub for the en
      - `requests-page.js`: Request lifecycle management with template assignment
      - `template-manager.js`: Template configuration with tier restrictions
      - `permissions-display.js`: Permission system visualization
+     - `granulation-page.js`: Content granulation management with template testing
+     - `orchestrator-page.js`: Pipeline execution and monitoring
    - **Shared Utilities:**
      - `auth.js`: Browser authentication client
      - `api.js`: Legacy orchestrator communication
@@ -246,16 +292,19 @@ The KAM worker serves as the authentication and client management hub for the en
    **Backend Functions (`/functions/`):**
    - `/api/auth/`: Login, logout, validation endpoints
    - `/api/kam/[path].js`: Dynamic proxy to KAM worker
+   - `/api/granulator/[path].js`: Dynamic proxy to Content Granulator
    - `/_shared/`: Authentication helpers
 
 2. **Backend Workers (/workers/)**: 
    
    **Worker 2.0:**
    - `bitware_universal_researcher`: Advanced research capabilities with enhanced AI features
+   - `bitware_orchestrator_v2`: Resource-aware pipeline orchestration with handshake protocol
+   - `bitware_content_granulator`: AI-powered content structure generation
    
    **Workers 1.0 (Production Ready):**
    - `bitware_key_account_manager`: Client relationship management and authentication
-   - `bitware_orchestrator`: Central pipeline coordinator
+   - `bitware_orchestrator`: Central pipeline coordinator (legacy)
    - `bitware_topic_researcher`: AI-powered research
    - `bitware_rss_source_finder`: RSS discovery
    - `bitware_feed_fetcher`: Article extraction

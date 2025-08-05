@@ -539,6 +539,56 @@ class AIFactoryAPIClient {
     }
 
     /**
+     * Get granulation jobs
+     */
+    async getGranulationJobs(filters = {}) {
+        const params = new URLSearchParams(filters);
+        return this.makeRequest('GET', `/api/granulator/jobs?${params}`);
+    }
+
+    /**
+     * Get single granulation job
+     */
+    async getGranulationJob(jobId) {
+        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}`);
+    }
+
+    /**
+     * Get job structure/deliverables
+     */
+    async getGranulationStructure(jobId) {
+        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}/structure`);
+    }
+
+    /**
+     * Test granulation template
+     */
+    async testGranulationTemplate(templateName, testData) {
+        return this.makeRequest('POST', `/api/granulator/templates/${templateName}/test`, testData);
+    }
+
+    /**
+     * Get template details
+     */
+    async getGranulationTemplate(templateName) {
+        return this.makeRequest('GET', `/api/granulator/templates/${templateName}`);
+    }
+
+    /**
+     * Update template (admin only)
+     */
+    async updateGranulationTemplate(templateName, updates) {
+        return this.makeRequest('PUT', `/api/granulator/templates/${templateName}`, updates);
+    }
+
+    /**
+     * Retry failed granulation
+     */
+    async retryGranulation(jobId) {
+        return this.makeRequest('POST', `/api/granulator/jobs/${jobId}/retry`);
+    }
+
+    /**
      * Get granulation job details
      */
     async getGranulationJob(jobId) {

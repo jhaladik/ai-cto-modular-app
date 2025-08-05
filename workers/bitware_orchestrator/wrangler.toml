@@ -42,6 +42,10 @@ service = "bitware-content-classifier"
 binding = "REPORT_BUILDER"
 service = "bitware-report-builder"
 
+[[services]]
+binding = "CONTENT_GRANULATOR"
+service = "bitware-content-granulator"
+
 # Environment variables
 [vars]
 
