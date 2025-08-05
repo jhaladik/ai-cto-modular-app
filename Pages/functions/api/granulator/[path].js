@@ -50,33 +50,42 @@ export async function onRequest(context) {
         const headers = new Headers(request.headers);
         
         // Use worker-to-worker authentication
-        headers.set('Authorization', `Bearer ${env.WORKER_SHARED_SECRET || 'internal-worker-auth-token-2024'}`);
+        headers.set('Authorization', `Bearer ${env.WORKER_SECRET || 'internal-worker-auth-token-2024'}`);
         headers.set('X-Worker-ID', 'bitware-pages-proxy');
         
         // Remove session token from forwarded headers
         headers.delete('x-bitware-session-token');
         
-        // Build granulator URL
-        const granulatorUrl = env.GRANULATOR_URL || 'https://bitware-content-granulator.jhaladik.workers.dev';
-        const targetUrl = `${granulatorUrl}${fullPath}`;
-        
-        console.log(`[Granulator Proxy] Forwarding to: ${targetUrl}`);
-        
-        // Create request options
-        const requestOptions = {
-            method,
-            headers,
-            // Cloudflare Workers specific option to preserve the body
-            cf: request.cf
-        };
-        
-        // Only include body for methods that support it
-        if (method !== 'GET' && method !== 'HEAD') {
-            requestOptions.body = request.body;
+        // Use service binding if available, otherwise fall back to URL
+        let response;
+        if (env.CONTENT_GRANULATOR) {
+            console.log('[Granulator Proxy] Using service binding');
+            
+            // Create new request with modified URL for service binding
+            const serviceRequest = new Request(`https://granulator${fullPath}`, {
+                method,
+                headers,
+                body: method !== 'GET' && method !== 'HEAD' ? request.body : undefined,
+                cf: request.cf
+            });
+            
+            response = await env.CONTENT_GRANULATOR.fetch(serviceRequest);
+        } else {
+            // Fallback to direct URL
+            const granulatorUrl = env.GRANULATOR_URL || 'https://bitware-content-granulator.jhaladik.workers.dev';
+            const targetUrl = `${granulatorUrl}${fullPath}`;
+            
+            console.log(`[Granulator Proxy] Using URL: ${targetUrl}`);
+            
+            const requestOptions = {
+                method,
+                headers,
+                body: method !== 'GET' && method !== 'HEAD' ? request.body : undefined,
+                cf: request.cf
+            };
+            
+            response = await fetch(targetUrl, requestOptions);
         }
-        
-        // Make the request to the granulator
-        const response = await fetch(targetUrl, requestOptions);
         
         // Create a new response with the granulator's response
         const modifiedResponse = new Response(response.body, {

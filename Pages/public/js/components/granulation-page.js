@@ -1436,5 +1436,5 @@ class GranulationPage {
     }
 }
 
-// Register the page
-window.granulationPage = new GranulationPage();
+// Export for global use
+window.GranulationPage = GranulationPage;

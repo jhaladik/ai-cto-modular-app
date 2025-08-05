@@ -484,6 +484,83 @@ service = "bitware-worker-name"
 
 5. **Security**: Multi-layer authentication with session management and API key rotation support
 
+## 🚨 CRITICAL: Worker Proxy Implementation Pattern
+
+### The KAM/Orchestrator Pattern (REQUIRED for all new workers)
+All new worker proxies in Pages functions MUST follow this exact pattern:
+
+1. **Proxy File Structure**: `/functions/api/[worker-name].js` (single file, NOT [path].js)
+2. **Request Method**: ALL requests come as POST to the proxy
+3. **Request Body Format**:
+```javascript
+{
+    endpoint: "/actual/endpoint/path",
+    method: "GET|POST|PUT|DELETE",  // The real HTTP method
+    data: {}  // Request payload for POST/PUT
+}
+```
+
+4. **Proxy Implementation Example** (from orchestrator.js):
+```javascript
+export async function onRequestPost(context) {
+    const { request, env } = context;
+    
+    // Parse the KAM-pattern request
+    const { endpoint, method = 'GET', data = {} } = await request.json();
+    
+    // Validate session
+    const sessionToken = request.headers.get('x-bitware-session-token');
+    // ... session validation ...
+    
+    // Forward to worker using service binding
+    if (env.WORKER_NAME) {
+        const serviceRequest = new Request(`https://worker${endpoint}`, {
+            method: method,
+            headers: {
+                'Authorization': `Bearer ${env.WORKER_SECRET}`,
+                'X-Worker-ID': 'bitware_pages_proxy'
+            },
+            body: method !== 'GET' ? JSON.stringify(data) : undefined
+        });
+        
+        return await env.WORKER_NAME.fetch(serviceRequest);
+    }
+}
+```
+
+5. **Frontend API Client Usage**:
+```javascript
+// WRONG - Direct REST call
+await fetch('/api/granulator/templates', { method: 'GET' })
+
+// CORRECT - KAM pattern
+await fetch('/api/granulator', {
+    method: 'POST',
+    body: JSON.stringify({
+        endpoint: '/templates',
+        method: 'GET'
+    })
+})
+```
+
+### Service Bindings vs URLs
+- Always use service bindings when available (env.WORKER_NAME)
+- Service bindings are faster and more secure than HTTP calls
+- Only fall back to URLs for external workers or testing
+
+### Common Mistakes to Avoid
+1. ❌ Using `[path].js` catch-all routes - these don't work with the KAM pattern
+2. ❌ Trying to forward the original HTTP method directly
+3. ❌ Not wrapping all requests in POST with endpoint/method/data
+4. ❌ Using makeRequest() in api-client.js instead of the proper proxy pattern
+
+### Fixing the Granulator
+To fix the granulator proxy:
+1. Rename `/api/granulator/[path].js` to `/api/granulator.js`
+2. Change it to only accept POST requests
+3. Parse `{endpoint, method, data}` from request body
+4. Update api-client.js to use the KAM pattern for all granulator calls
+
 ## Common Tasks
 
 ### Adding a New Frontend Page

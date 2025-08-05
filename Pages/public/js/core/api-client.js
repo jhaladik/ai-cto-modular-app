@@ -518,24 +518,26 @@ class AIFactoryAPIClient {
      * Get granulator templates
      */
     async getGranulatorTemplates(structureType = null) {
-        const url = structureType 
-            ? `/api/granulator/templates?structure_type=${structureType}`
-            : '/api/granulator/templates';
-        return this.makeRequest('GET', url);
+        const params = structureType ? `?structure_type=${structureType}` : '';
+        const response = await this.request(`/api/granulator/templates${params}`);
+        return response;
     }
 
     /**
      * Get granulator statistics
      */
     async getGranulatorStats() {
-        return this.makeRequest('GET', '/api/granulator/stats');
+        return this.request('/api/granulator/stats');
     }
 
     /**
      * Create new granulation job
      */
     async createGranulation(data) {
-        return this.makeRequest('POST', '/api/granulator/granulate', data);
+        return this.request('/api/granulator/granulate', {
+            method: 'POST',
+            body: data
+        });
     }
 
     /**
@@ -543,79 +545,76 @@ class AIFactoryAPIClient {
      */
     async getGranulationJobs(filters = {}) {
         const params = new URLSearchParams(filters);
-        return this.makeRequest('GET', `/api/granulator/jobs?${params}`);
+        return this.request(`/api/granulator/jobs?${params}`);
     }
 
     /**
      * Get single granulation job
      */
     async getGranulationJob(jobId) {
-        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}`);
+        return this.request(`/api/granulator/jobs/${jobId}`);
     }
 
     /**
      * Get job structure/deliverables
      */
     async getGranulationStructure(jobId) {
-        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}/structure`);
+        return this.request(`/api/granulator/jobs/${jobId}/structure`);
     }
 
     /**
      * Test granulation template
      */
     async testGranulationTemplate(templateName, testData) {
-        return this.makeRequest('POST', `/api/granulator/templates/${templateName}/test`, testData);
+        return this.request(`/api/granulator/templates/${templateName}/test`, {
+            method: 'POST',
+            body: testData
+        });
     }
 
     /**
      * Get template details
      */
     async getGranulationTemplate(templateName) {
-        return this.makeRequest('GET', `/api/granulator/templates/${templateName}`);
+        return this.request(`/api/granulator/templates/${templateName}`);
     }
 
     /**
      * Update template (admin only)
      */
     async updateGranulationTemplate(templateName, updates) {
-        return this.makeRequest('PUT', `/api/granulator/templates/${templateName}`, updates);
+        return this.request(`/api/granulator/templates/${templateName}`, {
+            method: 'PUT',
+            body: updates
+        });
     }
 
     /**
      * Retry failed granulation
      */
     async retryGranulation(jobId) {
-        return this.makeRequest('POST', `/api/granulator/jobs/${jobId}/retry`);
-    }
-
-    /**
-     * Get granulation job details
-     */
-    async getGranulationJob(jobId) {
-        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}`);
+        return this.request(`/api/granulator/jobs/${jobId}/retry`, {
+            method: 'POST'
+        });
     }
 
     /**
      * Get granulation job status
      */
     async getGranulationJobStatus(jobId) {
-        return this.makeRequest('GET', `/api/granulator/jobs/${jobId}/status`);
-    }
-
-    /**
-     * Retry failed granulation
-     */
-    async retryGranulation(jobId) {
-        return this.makeRequest('POST', `/api/granulator/jobs/${jobId}/retry`);
+        return this.request(`/api/granulator/jobs/${jobId}/status`);
     }
 
     /**
      * Validate granulation manually
      */
     async validateGranulation(jobId, validationLevel = 2) {
-        return this.makeRequest('POST', '/api/granulator/validate', {
-            jobId,
-            validationLevel
+        return this.request('/api/granulator/validate', {
+            method: 'POST',
+            body: {
+                jobId,
+                validationLevel
+            }
         });
     }
 
@@ -623,7 +622,7 @@ class AIFactoryAPIClient {
      * Get validation history
      */
     async getValidationHistory(jobId) {
-        return this.makeRequest('GET', `/api/granulator/validation/history?job_id=${jobId}`);
+        return this.request(`/api/granulator/validation/history?job_id=${jobId}`);
     }
 }
 
