@@ -73,7 +73,56 @@ export class GranulatorService {
       
       // Call OpenAI
       const aiResponse = await this.openai.generateStructure(prompt);
-      const structure = JSON.parse(aiResponse.content);
+      console.log('OpenAI raw response:', aiResponse.content);
+      
+      let structure;
+      try {
+        structure = JSON.parse(aiResponse.content);
+        console.log('Parsed structure:', JSON.stringify(structure).substring(0, 200));
+      } catch (parseError) {
+        console.error('Failed to parse OpenAI response:', parseError);
+        throw new Error('Invalid JSON response from OpenAI');
+      }
+      
+      // Transform structure if needed (handle OpenAI response variations)
+      console.log('Structure type:', request.structureType);
+      console.log('Has structure.course:', !!structure.course);
+      console.log('Has structure.courseOverview:', !!structure.courseOverview);
+      
+      if (request.structureType === 'course' && structure.course && !structure.courseOverview) {
+        console.log('Transforming course structure...');
+        // OpenAI returned wrapped structure, transform it
+        const courseData = structure.course;
+        structure = {
+          courseOverview: {
+            title: courseData.title || 'Untitled Course',
+            description: courseData.description || '',
+            duration: courseData.duration || '8 weeks',
+            prerequisites: courseData.prerequisites || [],
+            learningOutcomes: courseData.learningOutcomes || [],
+            targetAudience: courseData.target_audience || courseData.targetAudience || request.targetAudience || 'general audience'
+          },
+          modules: (courseData.modules || []).map((module: any, index: number) => ({
+            id: index + 1,
+            title: module.title || module.module_title || `Module ${index + 1}`,
+            sequenceOrder: index,
+            estimatedDuration: module.estimatedDuration || module.duration || '1 week',
+            learningObjectives: module.learningObjectives || [],
+            lessons: (module.lessons || []).map((lesson: any) => ({
+              title: lesson.title || lesson.lesson_title || 'Untitled Lesson',
+              learningObjectives: lesson.learningObjectives || lesson.learning_objectives || [],
+              contentOutline: lesson.contentOutline || lesson.content_outline || '',
+              assessmentPoints: lesson.assessmentPoints || lesson.assessment_points || [],
+              practicalExercises: lesson.practicalExercises || lesson.practical_exercises || []
+            })),
+            assessment: module.assessment ? {
+              type: module.assessment.type || 'quiz',
+              questions: module.assessment.questions || 10,
+              passingScore: module.assessment.passingScore || module.assessment.passing_score || 70
+            } : undefined
+          }))
+        };
+      }
       
       // Calculate quality score
       const qualityScore = this.calculateQualityScore(structure, request);
@@ -122,7 +171,7 @@ export class GranulatorService {
         processingTimeMs,
         costUsd,
         status: validationResult?.passed !== false ? 'completed' : 'validating',
-        completedAt: new Date().toISOString()
+        completed_at: new Date().toISOString()
       });
       
       // Generate summary
@@ -151,7 +200,7 @@ export class GranulatorService {
       // Update job status on failure
       await this.db.updateJob(jobId, {
         status: 'failed',
-        completedAt: new Date().toISOString()
+        completed_at: new Date().toISOString()
       });
       throw error;
     }
@@ -177,13 +226,21 @@ export class GranulatorService {
   }
 
   private async storeCourseElements(jobId: number, course: CourseStructure): Promise<void> {
+    console.log('Storing course elements, structure:', JSON.stringify(course).substring(0, 500));
+    
+    // Check if courseOverview exists
+    if (!course.courseOverview) {
+      console.error('Missing courseOverview in course structure');
+      throw new Error('Invalid course structure: missing courseOverview');
+    }
+    
     // Store course overview as root element
     const courseId = await this.db.createStructureElement({
       jobId,
       elementType: 'course',
       sequenceOrder: 0,
-      title: course.courseOverview.title,
-      description: `Duration: ${course.courseOverview.duration}`,
+      title: course.courseOverview.title || 'Untitled Course',
+      description: course.courseOverview.duration ? `Duration: ${course.courseOverview.duration}` : 'No duration specified',
       metadata: course.courseOverview
     });
     
