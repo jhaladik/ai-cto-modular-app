@@ -67,6 +67,10 @@ service = "bitware-key-account-manager"
 # binding = "OPTIMIZER"
 # service = "bitware-ai-factory-optimizer"
 
+[[services]]
+binding = "CONTENT_GRANULATOR"
+service = "bitware-content-granulator"
+
 # Staging environment
 [env.staging]
 name = "bitware-orchestrator-v2-staging"

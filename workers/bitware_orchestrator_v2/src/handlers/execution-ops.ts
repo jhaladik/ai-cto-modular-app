@@ -1,6 +1,7 @@
 import { Env, AuthenticatedRequest, PipelineExecution } from '../types';
 import { DatabaseService } from '../services/database';
 import { WorkerCoordinator } from '../services/worker-coordinator';
+import { QueueManager } from '../services/queue-manager';
 import { jsonResponse, badRequest, notFound, serverError, unauthorized } from '../helpers/http';
 import { requireAuth } from '../helpers/auth';
 
@@ -38,7 +39,9 @@ export async function handleExecute(
       priority
     });
 
-    await createExecutionQueue(env, executionId, priority);
+    // Use QueueManager to enqueue and process
+    const queueManager = new QueueManager(env);
+    await queueManager.enqueue(executionId, priority);
 
     const estimatedTime = template.estimated_time_ms || 180000;
     const estimatedCompletion = new Date(Date.now() + estimatedTime);
@@ -66,26 +69,6 @@ export async function handleExecute(
   }
 }
 
-async function createExecutionQueue(
-  env: Env,
-  executionId: string,
-  priority: string
-): Promise<void> {
-  const priorityScore = {
-    critical: 100,
-    high: 75,
-    normal: 50,
-    low: 25
-  }[priority] || 50;
-
-  const queueId = `queue_${executionId}`;
-
-  await env.DB.prepare(`
-    INSERT INTO execution_queue (
-      queue_id, execution_id, priority, status, created_at
-    ) VALUES (?, ?, ?, 'queued', datetime('now'))
-  `).bind(queueId, executionId, priorityScore).run();
-}
 
 export async function handleGetProgress(
   env: Env,

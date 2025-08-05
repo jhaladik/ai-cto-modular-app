@@ -18,6 +18,7 @@ export interface Env {
   REPORT_BUILDER?: Fetcher;
   UNIVERSAL_RESEARCHER?: Fetcher;
   OPTIMIZER?: Fetcher;
+  CONTENT_GRANULATOR?: Fetcher;
   
   ENVIRONMENT: string;
   VERSION: string;

@@ -1251,15 +1251,25 @@ export default {
           const requestId = pathname.split('/')[2];
           const body = await request.json();
           
+          // First check if request exists
+          const existingRequest = await db.getRequestById(requestId);
+          if (!existingRequest) {
+            return notFound('Request not found');
+          }
+          
+          // Update the request
           const success = await db.updateRequest(requestId, body);
           
-          if (success) {
+          // If no changes were made but request exists, it's still successful
+          // (e.g., assigning the same template again)
+          if (success || existingRequest) {
             return jsonResponse({
               success: true,
-              message: 'Request updated successfully'
+              message: 'Request updated successfully',
+              request_id: requestId
             });
           } else {
-            return notFound('Request not found or no changes made');
+            return notFound('Request not found');
           }
           
         } catch (error) {

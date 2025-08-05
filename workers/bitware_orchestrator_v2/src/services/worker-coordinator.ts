@@ -16,6 +16,7 @@ export class WorkerCoordinator {
     if (env.REPORT_BUILDER) this.workerBindings.set('bitware_report_builder', env.REPORT_BUILDER);
     if (env.UNIVERSAL_RESEARCHER) this.workerBindings.set('bitware_universal_researcher', env.UNIVERSAL_RESEARCHER);
     if (env.OPTIMIZER) this.workerBindings.set('bitware_ai_factory_optimizer', env.OPTIMIZER);
+    if (env.CONTENT_GRANULATOR) this.workerBindings.set('bitware-content-granulator', env.CONTENT_GRANULATOR);
   }
 
   async getWorkerStatus(workerName: string): Promise<WorkerHandshake | null> {
@@ -171,18 +172,52 @@ export class WorkerCoordinator {
       JSON.stringify(handshake)
     ).run();
 
-    const url = `https://worker.internal/api/${action}`;
-    const response = await binding.fetch(new Request(url, {
+    // First, send handshake
+    const handshakeUrl = `https://worker.internal/api/handshake`;
+    const handshakeResponse = await binding.fetch(new Request(handshakeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Orchestrator-ID': 'orchestrator-v2',
-        'X-Execution-ID': executionId,
-        'X-Stage-ID': stageId
+        'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+        'X-Worker-ID': 'bitware-orchestrator-v2'
       },
       body: JSON.stringify({
-        handshake: handshake,
-        data_reference: dataRef.storage_key
+        executionId,
+        stageId,
+        action,
+        inputData: data,
+        dataReference: dataRef,
+        resourceRequirements: {
+          estimatedTokens: 2000,
+          timeoutMs: 30000
+        },
+        validationConfig: {
+          enabled: data.validationEnabled || true,
+          level: data.validationLevel || 2
+        }
+      })
+    }));
+
+    if (!handshakeResponse.ok) {
+      throw new Error(`Worker handshake failed: ${handshakeResponse.status}`);
+    }
+
+    const handshakeResult = await handshakeResponse.json();
+    if (!handshakeResult.accepted) {
+      throw new Error(`Worker rejected handshake: ${handshakeResult.error}`);
+    }
+
+    // Then, trigger processing
+    const processUrl = `https://worker.internal/api/process`;
+    const response = await binding.fetch(new Request(processUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.env.WORKER_SHARED_SECRET}`,
+        'X-Worker-ID': 'bitware-orchestrator-v2'
+      },
+      body: JSON.stringify({
+        executionId
       })
     }));
 
