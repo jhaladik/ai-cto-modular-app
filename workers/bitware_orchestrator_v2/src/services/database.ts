@@ -82,6 +82,7 @@ export class DatabaseService {
     executionId: string, 
     updates: Partial<PipelineExecution>
   ): Promise<void> {
+    console.log('DatabaseService.updateExecution called:', { executionId, updates });
     const fields: string[] = [];
     const values: any[] = [];
     
@@ -117,11 +118,17 @@ export class DatabaseService {
     fields.push('updated_at = datetime("now")');
     values.push(executionId);
     
-    await this.db.prepare(`
-      UPDATE pipeline_executions 
-      SET ${fields.join(', ')}
-      WHERE execution_id = ?
-    `).bind(...values).run();
+    const query = `UPDATE pipeline_executions SET ${fields.join(', ')} WHERE execution_id = ?`;
+    console.log('Executing update query:', query);
+    console.log('With values:', values);
+    
+    try {
+      await this.db.prepare(query).bind(...values).run();
+      console.log('Update successful');
+    } catch (error) {
+      console.error('Update failed:', error);
+      throw error;
+    }
   }
 
   async getExecution(executionId: string): Promise<PipelineExecution | null> {

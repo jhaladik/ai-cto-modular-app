@@ -131,7 +131,7 @@ export async function handleGetProgress(
     await env.EXECUTION_CACHE.put(
       `progress:${executionId}`,
       JSON.stringify(progressData),
-      { expirationTtl: 30 }
+      { expirationTtl: 60 }
     );
 
     return jsonResponse(progressData);

@@ -165,9 +165,11 @@ export class QueueManager {
       }
       
       const masterTemplate = await kamResponse.json() as any;
+      console.log('Master template received:', JSON.stringify(masterTemplate));
       
       // Parse pipeline stages
       const pipelineStages = JSON.parse(masterTemplate.pipeline_stages || '[]');
+      console.log('Parsed pipeline stages:', JSON.stringify(pipelineStages));
       
       // Build pipeline template for executor
       const pipelineTemplate = {
@@ -194,8 +196,12 @@ export class QueueManager {
 
       const parameters = JSON.parse(queueItem.parameters || '{}');
       
+      console.log('Executing pipeline with template:', JSON.stringify(pipelineTemplate));
+      console.log('Parameters:', JSON.stringify(parameters));
+      
       await this.executor.execute(executionId, pipelineTemplate, parameters);
       
+      console.log('Pipeline execution completed for:', executionId);
       await this.updateQueueStatus(queueItem.queue_id, 'completed');
       
     } catch (error) {

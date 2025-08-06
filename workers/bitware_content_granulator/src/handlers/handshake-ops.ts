@@ -42,11 +42,16 @@ export async function handleHandshake(env: Env, request: AuthenticatedRequest): 
     
     // Store handshake info for later processing
     const storage = new StorageManager(env);
-    await storage.storeProgress(body.executionId, {
-      status: 'accepted',
-      handshakeData: body,
-      acceptedAt: new Date().toISOString()
-    });
+    try {
+      await storage.storeProgress(body.executionId, {
+        status: 'accepted',
+        handshakeData: body,
+        acceptedAt: new Date().toISOString()
+      });
+    } catch (kvError) {
+      console.warn('KV storage failed, continuing without caching:', kvError);
+      // Continue without storing progress - we can still process the handshake
+    }
     
     return jsonResponse(response);
   } catch (error) {

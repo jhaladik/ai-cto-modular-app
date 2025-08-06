@@ -41,6 +41,7 @@ service = "bitware-content-granulator"
 
 # Worker Configuration
 WORKER_VERSION = "1.0.0"
+WORKER_SECRET = "internal-worker-auth-token-2024"
 DEFAULT_COMMUNICATION_STYLE = "professional"
 MAX_CLIENT_SESSIONS = 1000
 

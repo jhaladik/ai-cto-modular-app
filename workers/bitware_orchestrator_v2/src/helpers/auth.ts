@@ -67,6 +67,7 @@ export function validateWorkerAuth(
 ): boolean {
   const validWorkers = [
     'bitware_key_account_manager',
+    'bitware-key-account-manager',  // Both formats supported
     'bitware_topic_researcher',
     'bitware_rss_source_finder', 
     'bitware_feed_fetcher',
@@ -74,7 +75,9 @@ export function validateWorkerAuth(
     'bitware_report_builder',
     'bitware_universal_researcher',
     'bitware_ai_factory_optimizer',
-    'bitware_pages_proxy'
+    'bitware_pages_proxy',
+    'bitware-content-granulator',  // Add new worker
+    'bitware_content_granulator'   // Both formats
   ];
   
   // Check if worker ID is valid

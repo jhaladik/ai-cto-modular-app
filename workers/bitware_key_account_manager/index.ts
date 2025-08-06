@@ -1329,7 +1329,7 @@ export default {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                  'Authorization': `Bearer ${env.WORKER_SECRET || env.WORKER_SHARED_SECRET || 'internal-worker-auth-token-2024'}`,
                   'X-Worker-ID': 'bitware_key_account_manager'
                 },
                 body: JSON.stringify({
@@ -1353,7 +1353,7 @@ export default {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                  'Authorization': `Bearer ${env.WORKER_SECRET || env.WORKER_SHARED_SECRET || 'internal-worker-auth-token-2024'}`,
                   'X-Worker-ID': 'bitware_key_account_manager'
                 },
                 body: JSON.stringify({
@@ -1440,7 +1440,7 @@ export default {
                 {
                   method: 'GET',
                   headers: {
-                    'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                    'Authorization': `Bearer ${env.WORKER_SECRET || env.WORKER_SHARED_SECRET || 'internal-worker-auth-token-2024'}`,
                     'X-Worker-ID': 'bitware_key_account_manager'
                   }
                 }
@@ -1537,7 +1537,7 @@ export default {
                     {
                       method: 'GET',
                       headers: {
-                        'Authorization': `Bearer ${env.WORKER_SHARED_SECRET}`,
+                        'Authorization': `Bearer ${env.WORKER_SECRET || env.WORKER_SHARED_SECRET || 'internal-worker-auth-token-2024'}`,
                         'X-Worker-ID': 'bitware_key_account_manager'
                       }
                     }
