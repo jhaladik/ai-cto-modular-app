@@ -1,4 +1,4 @@
-import { Env, AuthenticatedRequest } from './types';
+import { Env, AuthenticatedRequest, ExecutionQueueMessage } from './types';
 import { authenticateRequest } from './helpers/auth';
 import { corsHeaders, jsonResponse, notFound, methodNotAllowed } from './helpers/http';
 
@@ -90,6 +90,223 @@ export default {
         return handleSystemMetrics(env, authenticatedRequest);
       }
 
+      // ==================== TEST ENDPOINTS ====================
+      
+      if (method === 'POST' && path === '/api/test/stage-creation') {
+        if (!authenticatedRequest.isWorkerAuth) {
+          return jsonResponse({ error: 'Worker authentication required' }, 401);
+        }
+        
+        const data = await request.json() as any;
+        const { DatabaseService } = await import('./services/database');
+        const db = new DatabaseService(env.DB);
+        
+        try {
+          console.log('Test endpoint: Creating stage with data:', data);
+          const stageId = await db.createStageExecution({
+            execution_id: data.execution_id,
+            worker_name: data.worker_name,
+            stage_order: data.stage_order,
+            status: 'pending'
+          });
+          
+          return jsonResponse({ 
+            success: true, 
+            stage_id: stageId,
+            message: 'Stage created successfully'
+          });
+        } catch (error) {
+          console.error('Test endpoint: Stage creation failed:', error);
+          return jsonResponse({ 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          }, 500);
+        }
+      }
+      
+      if (method === 'POST' && path === '/api/test/direct-execution') {
+        if (!authenticatedRequest.isWorkerAuth) {
+          return jsonResponse({ error: 'Worker authentication required' }, 401);
+        }
+        
+        const data = await request.json() as any;
+        const { DatabaseService } = await import('./services/database');
+        const { PipelineExecutor } = await import('./services/pipeline-executor');
+        
+        const db = new DatabaseService(env.DB);
+        const executor = new PipelineExecutor(env);
+        
+        try {
+          console.log('Test endpoint: Direct execution with data:', data);
+          
+          // Create a test execution
+          const executionId = await db.createExecution({
+            client_id: data.client_id,
+            template_name: data.template_name,
+            parameters: {},
+            status: 'pending'
+          });
+          
+          console.log('Created execution:', executionId);
+          
+          // Create a simple test template
+          const template = {
+            template_name: data.template_name,
+            display_name: 'Test Template',
+            stages: [{
+              stage_order: 1,
+              worker_name: 'bitware-content-granulator',
+              action: 'granulate',
+              params: {
+                template_name: 'course'
+              }
+            }]
+          };
+          
+          console.log('Executing with template:', template);
+          
+          // Execute directly without queue
+          const result = await executor.execute(executionId, template, {});
+          
+          return jsonResponse({ 
+            success: true, 
+            execution_id: executionId,
+            result: result
+          });
+        } catch (error) {
+          console.error('Test endpoint: Direct execution failed:', error);
+          return jsonResponse({ 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          }, 500);
+        }
+      }
+      
+      if (method === 'POST' && path === '/api/test/queue-execution') {
+        if (!authenticatedRequest.isWorkerAuth) {
+          return jsonResponse({ error: 'Worker authentication required' }, 401);
+        }
+        
+        const data = await request.json() as any;
+        const { QueueManager } = await import('./services/queue-manager');
+        
+        const queueManager = new QueueManager(env);
+        
+        try {
+          console.log('Test endpoint: Queue execution with data:', data);
+          
+          // Create a test execution and enqueue it
+          const { DatabaseService } = await import('./services/database');
+          const db = new DatabaseService(env.DB);
+          
+          const executionId = await db.createExecution({
+            client_id: data.client_id || 'test_client',
+            template_name: 'course_creation',
+            parameters: {},
+            status: 'pending'
+          });
+          
+          console.log('Created execution for queue:', executionId);
+          
+          // Enqueue and process immediately
+          await queueManager.enqueue(executionId, 'high');
+          
+          // Ensure queue processing continues
+          ctx.waitUntil(
+            queueManager.processQueue().catch(error => {
+              console.error('Test endpoint: Background queue processing error:', error);
+            })
+          );
+          
+          // Wait a bit for processing
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Check the execution status
+          const execution = await db.getExecution(executionId);
+          const stages = await db.getStageExecutions(executionId);
+          
+          return jsonResponse({ 
+            success: true, 
+            execution_id: executionId,
+            execution_status: execution?.status,
+            stages_created: stages.length
+          });
+        } catch (error) {
+          console.error('Test endpoint: Queue execution failed:', error);
+          return jsonResponse({ 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          }, 500);
+        }
+      }
+      
+      if (method === 'POST' && path === '/api/test/process-queue') {
+        if (!authenticatedRequest.isWorkerAuth) {
+          return jsonResponse({ error: 'Worker authentication required' }, 401);
+        }
+        
+        const { QueueManager } = await import('./services/queue-manager');
+        const queueManager = new QueueManager(env);
+        
+        try {
+          console.log('Manually triggering queue processing...');
+          await queueManager.processQueue();
+          
+          const stats = await queueManager.getQueueStats();
+          
+          return jsonResponse({ 
+            success: true, 
+            message: 'Queue processing triggered',
+            stats
+          });
+        } catch (error) {
+          console.error('Manual queue processing failed:', error);
+          return jsonResponse({ 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          }, 500);
+        }
+      }
+      
+      if (method === 'POST' && path === '/api/test/worker-invoke') {
+        if (!authenticatedRequest.isWorkerAuth) {
+          return jsonResponse({ error: 'Worker authentication required' }, 401);
+        }
+        
+        const data = await request.json() as any;
+        const { WorkerCoordinator } = await import('./services/worker-coordinator');
+        
+        const coordinator = new WorkerCoordinator(env);
+        
+        try {
+          console.log('Test endpoint: Worker invocation with data:', data);
+          
+          const result = await coordinator.invokeWorker(
+            data.worker_name,
+            data.action,
+            data.data,
+            data.execution_id || `test_${Date.now()}`,
+            `stage_${Date.now()}`
+          );
+          
+          return jsonResponse({ 
+            success: true, 
+            result: result
+          });
+        } catch (error) {
+          console.error('Test endpoint: Worker invocation failed:', error);
+          return jsonResponse({ 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          }, 500);
+        }
+      }
+      
       // ==================== PIPELINE ENDPOINTS ====================
       
       if (method === 'GET' && path === '/templates') {
@@ -112,7 +329,7 @@ export default {
       // ==================== EXECUTION ENDPOINTS ====================
       
       if (method === 'POST' && path === '/execute') {
-        return handleExecute(env, authenticatedRequest);
+        return handleExecute(env, authenticatedRequest, ctx);
       }
 
       if (method === 'GET' && path.startsWith('/progress/')) {
@@ -191,6 +408,29 @@ export default {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
+    }
+  },
+
+  async queue(batch: MessageBatch<ExecutionQueueMessage>, env: Env, ctx: ExecutionContext): Promise<void> {
+    console.log(`Processing ${batch.messages.length} messages from queue`);
+    
+    const { QueueManager } = await import('./services/queue-manager');
+    const queueManager = new QueueManager(env);
+    
+    for (const message of batch.messages) {
+      try {
+        console.log(`Processing execution ${message.body.executionId} from queue`);
+        
+        // Process the execution directly
+        await queueManager.processSpecificExecution(message.body.executionId);
+        
+        // Acknowledge the message
+        message.ack();
+      } catch (error) {
+        console.error(`Failed to process execution ${message.body.executionId}:`, error);
+        // Retry the message
+        message.retry();
+      }
     }
   }
 };

@@ -1597,6 +1597,33 @@ export default {
       
       // ==================== TEMPLATE ENDPOINTS ====================
       
+      // Get specific master template
+      if (pathname.startsWith('/api/master-templates/') && method === 'GET') {
+        try {
+          const auth = await authenticateRequest(request, env, db, {
+            allowWorker: true
+          });
+          
+          if (!auth.authenticated) {
+            return unauthorized(auth.error || 'Worker authentication required');
+          }
+          
+          const templateName = pathname.split('/').pop();
+          const result = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(
+            'SELECT * FROM master_templates WHERE template_name = ?'
+          ).bind(templateName).first();
+          
+          if (!result) {
+            return notFound('Template not found');
+          }
+          
+          return jsonResponse(result);
+        } catch (error) {
+          console.error('Master template fetch error:', error);
+          return serverError('Failed to fetch master template');
+        }
+      }
+      
       if (pathname === '/templates' && method === 'GET') {
         try {
           const auth = await authenticateRequest(request, env, db, {

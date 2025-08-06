@@ -27,6 +27,7 @@ export async function authenticateRequest(
         workerId,
         permissions: ['all']
       };
+      authRequest.isWorkerAuth = true;
       return authRequest;
     }
   }
@@ -77,7 +78,9 @@ export function validateWorkerAuth(
     'bitware_ai_factory_optimizer',
     'bitware_pages_proxy',
     'bitware-content-granulator',  // Add new worker
-    'bitware_content_granulator'   // Both formats
+    'bitware_content_granulator',   // Both formats
+    'test-worker',                  // For testing
+    'test-client'                   // For testing
   ];
   
   // Check if worker ID is valid

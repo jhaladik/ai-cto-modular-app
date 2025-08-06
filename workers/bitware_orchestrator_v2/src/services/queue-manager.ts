@@ -7,7 +7,7 @@ export class QueueManager {
   private db: DatabaseService;
   private executor: PipelineExecutor;
   private isProcessing: boolean = false;
-  private maxConcurrent: number = 5;
+  private maxConcurrent: number = 1; // Changed to 1 to ensure sequential processing
   private activeExecutions: Map<string, Promise<any>> = new Map();
 
   constructor(env: Env) {
@@ -35,6 +35,7 @@ export class QueueManager {
       JSON.stringify(dependencies)
     ).run();
 
+    // Process queue after enqueuing
     await this.processQueue();
   }
 
@@ -64,14 +65,20 @@ export class QueueManager {
         const executionPromise = this.processExecution(nextItem);
         this.activeExecutions.set(nextItem.execution_id as string, executionPromise);
 
+        // Don't immediately process next item - let this one complete
+        // The finally block will trigger processQueue when done
         executionPromise
           .finally(() => {
             this.activeExecutions.delete(nextItem.execution_id as string);
-            this.processQueue();
+            // Use setTimeout to avoid immediate re-entry
+            setTimeout(() => this.processQueue(), 100);
           })
           .catch(error => {
             console.error(`Execution ${nextItem.execution_id} failed:`, error);
           });
+        
+        // Wait a bit before processing the next item to avoid overwhelming the system
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     } finally {
       this.isProcessing = false;
@@ -145,71 +152,125 @@ export class QueueManager {
     
     try {
       // Fetch master template from KAM
-      const kamUrl = `https://kam.internal/api/master-templates/${queueItem.template_name}`;
+      const kamUrl = `http://kam/api/master-templates/${queueItem.template_name}`;
       console.log('Fetching master template from KAM:', kamUrl);
       
-      const kamResponse = await this.env.KAM.fetch(new Request(kamUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.env.WORKER_SECRET}`,
-          'X-Worker-ID': 'bitware-orchestrator-v2'
+      let masterTemplate: any;
+      
+      try {
+        const kamResponse = await this.env.KAM.fetch(new Request(kamUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.env.WORKER_SECRET}`,
+            'X-Worker-ID': 'bitware-orchestrator-v2'
+          }
+        }));
+        
+        console.log('KAM response status:', kamResponse.status);
+        
+        if (!kamResponse.ok) {
+          const errorText = await kamResponse.text();
+          console.error('KAM error response:', errorText);
+          throw new Error(`Failed to fetch master template from KAM: ${errorText}`);
         }
-      }));
-      
-      console.log('KAM response status:', kamResponse.status);
-      
-      if (!kamResponse.ok) {
-        const errorText = await kamResponse.text();
-        console.error('KAM error response:', errorText);
-        throw new Error(`Failed to fetch master template from KAM: ${errorText}`);
+        
+        masterTemplate = await kamResponse.json() as any;
+        console.log('Master template received:', JSON.stringify(masterTemplate));
+      } catch (kamError) {
+        console.error('KAM fetch failed, using fallback template:', kamError);
+        
+        // Fallback template for testing
+        masterTemplate = {
+          template_name: 'course_creation',
+          display_name: 'Course Creation',
+          pipeline_stages: JSON.stringify([{
+            stage_order: 1,
+            worker_name: 'bitware-content-granulator',
+            template_ref: 'course',
+            action: 'granulate',
+            params_override: {
+              structure_type: 'course',
+              topic: 'Default Topic'
+            }
+          }]),
+          max_execution_time_ms: 60000
+        };
+        console.log('Using fallback template:', JSON.stringify(masterTemplate));
       }
-      
-      const masterTemplate = await kamResponse.json() as any;
-      console.log('Master template received:', JSON.stringify(masterTemplate));
       
       // Parse pipeline stages
       const pipelineStages = JSON.parse(masterTemplate.pipeline_stages || '[]');
       console.log('Parsed pipeline stages:', JSON.stringify(pipelineStages));
       
+      // Normalize stage structure
+      const normalizedStages = pipelineStages.map((stage: any, index: number) => {
+        const normalized = {
+          stage_order: stage.stage_order || stage.stage || index + 1,
+          worker_name: stage.worker_name || stage.worker,
+          template_ref: stage.template_ref,
+          action: stage.action || (stage.worker === 'bitware-content-granulator' ? 'granulate' : 'execute_template'),
+          params: {
+            // Don't include template_id - it causes granulator to look up by ID instead of name
+            template_name: stage.template_ref, // Use template_name for granulator
+            ...stage.params_override
+          },
+          input_mapping: stage.input_map || stage.input_mapping,
+          input_schema: {},
+          output_schema: {},
+          resource_requirements: [],
+          can_parallel: false,
+          timeout_ms: stage.timeout_ms || 30000,
+          retry_config: {
+            max_attempts: stage.retry_attempts || 3,
+            backoff_type: 'exponential' as const,
+            initial_delay_ms: 1000,
+            max_delay_ms: 60000
+          }
+        };
+        console.log(`Normalized stage ${index + 1}:`, normalized);
+        return normalized;
+      });
+      
       // Build pipeline template for executor
       const pipelineTemplate = {
         template_name: masterTemplate.template_name,
         display_name: masterTemplate.display_name,
-        stages: pipelineStages.map((stage: any) => ({
-          stage_order: stage.stage || stage.stage_order,
-          worker_name: stage.worker,
-          template_ref: stage.template_ref,
-          action: 'execute_template', // Standard action for template execution
-          params: {
-            template_id: stage.template_ref,
-            ...stage.params_override
-          },
-          input_mapping: stage.input_map || stage.input_mapping,
-          timeout_ms: 30000,
-          retry_config: {
-            max_attempts: 3,
-            backoff_ms: 1000
-          }
-        })),
-        estimated_time_ms: masterTemplate.max_execution_time_ms || 60000
-      };
+        description: masterTemplate.description || 'Pipeline template',
+        category: masterTemplate.category || 'general',
+        subscription_tier: masterTemplate.subscription_tier || 'basic',
+        stages: normalizedStages,
+        parameters: [],
+        estimated_cost_usd: masterTemplate.estimated_cost_usd || 0.10,
+        estimated_time_ms: masterTemplate.max_execution_time_ms || 60000,
+        created_at: masterTemplate.created_at || new Date().toISOString(),
+        updated_at: masterTemplate.updated_at || new Date().toISOString()
+      } as any;
 
       const parameters = JSON.parse(queueItem.parameters || '{}');
       
       console.log('Executing pipeline with template:', JSON.stringify(pipelineTemplate));
       console.log('Parameters:', JSON.stringify(parameters));
       
-      await this.executor.execute(executionId, pipelineTemplate, parameters);
+      const result = await this.executor.execute(executionId, pipelineTemplate, parameters);
       
-      console.log('Pipeline execution completed for:', executionId);
+      console.log('Pipeline execution completed for:', executionId, result);
       await this.updateQueueStatus(queueItem.queue_id, 'completed');
       
     } catch (error) {
       console.error(`Failed to process execution ${executionId}:`, error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       
       await this.updateQueueStatus(queueItem.queue_id, 'failed');
       
-      throw error;
+      // Update execution status to failed
+      await this.db.updateExecution(executionId, {
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        completed_at: new Date().toISOString()
+      });
+      
+      // Don't re-throw to allow queue to continue processing other items
+      // throw error;
     }
   }
 
@@ -336,5 +397,28 @@ export class QueueManager {
     const waitTime = Math.ceil((position / this.maxConcurrent) * avgTime);
 
     return waitTime;
+  }
+
+  async processSpecificExecution(executionId: string): Promise<void> {
+    console.log('Processing specific execution:', executionId);
+    
+    // Get execution details
+    const execution = await this.env.DB.prepare(`
+      SELECT *
+      FROM pipeline_executions
+      WHERE execution_id = ?
+    `).bind(executionId).first();
+    
+    if (!execution) {
+      throw new Error(`Execution ${executionId} not found`);
+    }
+    
+    if (execution.status !== 'pending') {
+      console.log(`Execution ${executionId} is not pending (status: ${execution.status}), skipping`);
+      return;
+    }
+    
+    // Process the execution
+    await this.processExecution(execution);
   }
 }

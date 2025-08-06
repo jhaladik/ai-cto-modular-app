@@ -7,7 +7,8 @@ import { requireAuth } from '../helpers/auth';
 
 export async function handleExecute(
   env: Env,
-  request: AuthenticatedRequest
+  request: AuthenticatedRequest,
+  ctx?: ExecutionContext
 ): Promise<Response> {
   if (!requireAuth(request.auth)) {
     return unauthorized();
@@ -37,9 +38,12 @@ export async function handleExecute(
       priority
     });
 
-    // Use QueueManager to enqueue and process
-    const queueManager = new QueueManager(env);
-    await queueManager.enqueue(executionId, priority);
+    // Send to Cloudflare Queue
+    await env.EXECUTION_QUEUE.send({
+      executionId,
+      priority,
+      timestamp: new Date().toISOString()
+    });
 
     const estimatedTime = 180000; // Default 3 minutes, will be updated when template is fetched
     const estimatedCompletion = new Date(Date.now() + estimatedTime);
@@ -316,7 +320,8 @@ export async function handleRetryExecution(
       priority: execution.priority
     });
 
-    await createExecutionQueue(env, newExecutionId, execution.priority);
+    const queueManager = new QueueManager(env);
+    await queueManager.enqueue(newExecutionId, execution.priority);
 
     return jsonResponse({
       success: true,

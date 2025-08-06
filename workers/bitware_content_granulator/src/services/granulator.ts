@@ -39,24 +39,35 @@ export class GranulatorService {
     const startTime = Date.now();
     
     // Get template
+    console.log('Looking for template:', request.templateName);
     const template = await this.db.getTemplate(request.templateName);
+    console.log('Template found:', template);
     if (!template) {
       throw new Error(`Template not found: ${request.templateName}`);
     }
+    if (!template.id) {
+      console.error('Template missing ID:', template);
+      throw new Error(`Template ${request.templateName} is missing ID field`);
+    }
     
-    // Create job
-    const jobId = await this.db.createJob({
-      topic: request.topic,
-      structureType: request.structureType,
+    // Validate all parameters before creating job
+    const jobParams = {
+      topic: request.topic || 'Unknown Topic',
+      structureType: request.structureType || 'course',
       templateId: template.id,
-      granularityLevel: request.granularityLevel,
-      targetElements: request.constraints?.maxElements,
+      granularityLevel: request.granularityLevel || 3,
+      targetElements: request.constraints?.maxElements || null,
       validationEnabled: request.validation?.enabled || false,
       validationLevel: request.validation?.level || 1,
       validationThreshold: request.validation?.threshold || 85,
-      clientId,
-      executionId
-    });
+      clientId: clientId || null,
+      executionId: executionId || null
+    };
+    
+    console.log('Creating job with params:', jobParams);
+    
+    // Create job
+    const jobId = await this.db.createJob(jobParams);
     
     try {
       // Generate prompt
@@ -86,42 +97,74 @@ export class GranulatorService {
       
       // Transform structure if needed (handle OpenAI response variations)
       console.log('Structure type:', request.structureType);
+      console.log('Structure keys:', Object.keys(structure || {}));
       console.log('Has structure.course:', !!structure.course);
       console.log('Has structure.courseOverview:', !!structure.courseOverview);
       
-      if (request.structureType === 'course' && structure.course && !structure.courseOverview) {
-        console.log('Transforming course structure...');
-        // OpenAI returned wrapped structure, transform it
-        const courseData = structure.course;
-        structure = {
-          courseOverview: {
-            title: courseData.title || 'Untitled Course',
-            description: courseData.description || '',
-            duration: courseData.duration || '8 weeks',
-            prerequisites: courseData.prerequisites || [],
-            learningOutcomes: courseData.learningOutcomes || [],
-            targetAudience: courseData.target_audience || courseData.targetAudience || request.targetAudience || 'general audience'
-          },
-          modules: (courseData.modules || []).map((module: any, index: number) => ({
-            id: index + 1,
-            title: module.title || module.module_title || `Module ${index + 1}`,
-            sequenceOrder: index,
-            estimatedDuration: module.estimatedDuration || module.duration || '1 week',
-            learningObjectives: module.learningObjectives || [],
-            lessons: (module.lessons || []).map((lesson: any) => ({
-              title: lesson.title || lesson.lesson_title || 'Untitled Lesson',
-              learningObjectives: lesson.learningObjectives || lesson.learning_objectives || [],
-              contentOutline: lesson.contentOutline || lesson.content_outline || '',
-              assessmentPoints: lesson.assessmentPoints || lesson.assessment_points || [],
-              practicalExercises: lesson.practicalExercises || lesson.practical_exercises || []
-            })),
-            assessment: module.assessment ? {
-              type: module.assessment.type || 'quiz',
-              questions: module.assessment.questions || 10,
-              passingScore: module.assessment.passingScore || module.assessment.passing_score || 70
-            } : undefined
-          }))
-        };
+      if (request.structureType === 'course') {
+        // Handle various response formats
+        if (structure.course && !structure.courseOverview) {
+          console.log('Transforming wrapped course structure...');
+          // OpenAI returned wrapped structure, transform it
+          const courseData = structure.course;
+          structure = {
+            courseOverview: {
+              title: courseData.title || courseData.courseOverview?.title || 'Untitled Course',
+              description: courseData.description || courseData.courseOverview?.description || '',
+              duration: courseData.duration || courseData.courseOverview?.duration || '8 weeks',
+              prerequisites: courseData.prerequisites || courseData.courseOverview?.prerequisites || [],
+              learningOutcomes: courseData.learningOutcomes || [],
+              targetAudience: courseData.target_audience || courseData.targetAudience || request.targetAudience || 'general audience'
+            },
+            modules: (courseData.modules || []).map((module: any, index: number) => ({
+              id: index + 1,
+              title: module.title || module.module_title || `Module ${index + 1}`,
+              sequenceOrder: index,
+              estimatedDuration: module.estimatedDuration || module.duration || '1 week',
+              learningObjectives: module.learningObjectives || [],
+              lessons: (module.lessons || []).map((lesson: any) => ({
+                title: lesson.title || lesson.lesson_title || 'Untitled Lesson',
+                learningObjectives: lesson.learningObjectives || lesson.learning_objectives || [],
+                contentOutline: lesson.contentOutline || lesson.content_outline || '',
+                assessmentPoints: lesson.assessmentPoints || lesson.assessment_points || [],
+                practicalExercises: lesson.practicalExercises || lesson.practical_exercises || []
+              })),
+              assessment: module.assessment ? {
+                type: module.assessment.type || 'quiz',
+                questions: module.assessment.questions || 10,
+                passingScore: module.assessment.passingScore || module.assessment.passing_score || 70
+              } : undefined
+            }))
+          };
+        } else if (!structure.courseOverview && structure.modules) {
+          console.log('Adding missing courseOverview to structure...');
+          // Structure has modules but no courseOverview
+          structure = {
+            courseOverview: {
+              title: structure.title || `Course on ${request.topic}`,
+              description: structure.description || `A comprehensive course on ${request.topic}`,
+              duration: structure.duration || '8 weeks',
+              prerequisites: structure.prerequisites || [],
+              learningOutcomes: structure.learningOutcomes || [],
+              targetAudience: request.targetAudience || 'general audience'
+            },
+            modules: structure.modules
+          };
+        } else if (!structure.courseOverview) {
+          console.log('Creating default course structure...');
+          // Fallback: create a minimal valid structure
+          structure = {
+            courseOverview: {
+              title: `Course on ${request.topic}`,
+              description: `A comprehensive course on ${request.topic}`,
+              duration: '8 weeks',
+              prerequisites: [],
+              learningOutcomes: [],
+              targetAudience: request.targetAudience || 'general audience'
+            },
+            modules: []
+          };
+        }
       }
       
       // Calculate quality score
@@ -166,10 +209,10 @@ export class GranulatorService {
       
       // Update job with results
       await this.db.updateJob(jobId, {
-        actualElements: this.countElements(structure),
-        qualityScore,
-        processingTimeMs,
-        costUsd,
+        actual_elements: this.countElements(structure),
+        quality_score: qualityScore,
+        processing_time_ms: processingTimeMs,
+        cost_usd: costUsd,
         status: validationResult?.passed !== false ? 'completed' : 'validating',
         completed_at: new Date().toISOString()
       });
@@ -226,11 +269,12 @@ export class GranulatorService {
   }
 
   private async storeCourseElements(jobId: number, course: CourseStructure): Promise<void> {
-    console.log('Storing course elements, structure:', JSON.stringify(course).substring(0, 500));
+    console.log('Storing course elements, full structure:', JSON.stringify(course));
     
     // Check if courseOverview exists
     if (!course.courseOverview) {
-      console.error('Missing courseOverview in course structure');
+      console.error('Missing courseOverview in course structure. Keys found:', Object.keys(course || {}));
+      console.error('Full structure received:', JSON.stringify(course));
       throw new Error('Invalid course structure: missing courseOverview');
     }
     

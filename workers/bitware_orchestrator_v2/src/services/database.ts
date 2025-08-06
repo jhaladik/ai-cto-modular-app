@@ -148,19 +148,51 @@ export class DatabaseService {
   async createStageExecution(stage: Partial<StageExecution>): Promise<string> {
     const stageId = `stage_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    await this.db.prepare(`
-      INSERT INTO stage_executions (
-        stage_id, execution_id, worker_name, stage_order, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `).bind(
-      stageId,
-      stage.execution_id!,
-      stage.worker_name!,
-      stage.stage_order!,
-      stage.status || 'pending'
-    ).run();
+    console.log('Creating stage execution in DB:', { stageId, stage });
     
-    return stageId;
+    try {
+      // Use a simpler approach - prepare and run in one step
+      console.log('Executing insert query...');
+      
+      const result = await this.db.prepare(`
+        INSERT INTO stage_executions (
+          stage_id, execution_id, worker_name, stage_order, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        stageId,
+        stage.execution_id!,
+        stage.worker_name!,
+        stage.stage_order!,
+        stage.status || 'pending'
+      ).run();
+      
+      console.log('Stage execution created successfully, result:', result);
+      
+      // Verify the insert worked
+      const verification = await this.db.prepare(
+        'SELECT stage_id FROM stage_executions WHERE stage_id = ?'
+      ).bind(stageId).first();
+      
+      console.log('Verification query result:', verification);
+      
+      if (!verification) {
+        throw new Error('Stage execution insert failed - record not found after insert');
+      }
+      
+      return stageId;
+    } catch (error) {
+      console.error('Failed to create stage execution:', error);
+      console.error('Error details:', {
+        stageId,
+        execution_id: stage.execution_id,
+        worker_name: stage.worker_name,
+        stage_order: stage.stage_order,
+        status: stage.status,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
+    }
   }
 
   async updateStageExecution(

@@ -9,6 +9,7 @@ export interface Env {
   RESOURCE_CACHE: KVNamespace;
   DATA_REFS: KVNamespace;
   DATA_STORAGE: R2Bucket;
+  EXECUTION_QUEUE: Queue<ExecutionQueueMessage>;
   
   KAM: Fetcher;
   TOPIC_RESEARCHER?: Fetcher;
@@ -22,7 +23,13 @@ export interface Env {
   
   ENVIRONMENT: string;
   VERSION: string;
-  WORKER_SHARED_SECRET?: string;
+  WORKER_SECRET?: string;
+}
+
+export interface ExecutionQueueMessage {
+  executionId: string;
+  priority: 'low' | 'normal' | 'high' | 'critical';
+  timestamp: string;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -33,4 +40,5 @@ export interface AuthenticatedRequest extends Request {
     userId?: string;
     permissions?: string[];
   };
+  isWorkerAuth?: boolean;
 }

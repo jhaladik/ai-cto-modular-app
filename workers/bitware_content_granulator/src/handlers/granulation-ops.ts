@@ -21,7 +21,7 @@ export async function handleGranulate(env: Env, request: AuthenticatedRequest): 
     const storage = new StorageManager(env);
     
     // Extract client ID from auth
-    const clientId = request.auth.clientId;
+    const clientId = request.auth?.clientId || 'direct-api';
     
     // Perform granulation
     const result = await granulator.granulate(body, clientId);

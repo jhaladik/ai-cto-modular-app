@@ -4,6 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🔄 Latest Updates
 
+### 2025-08-06 - Backend Integration Complete! 🎉
+
+#### Orchestrator v2 & Content Granulator Integration Fixed
+- **✅ D1 Database Issues Resolved**: Fixed async execution flow preventing stage creation
+- **✅ Worker Registry Populated**: Added bitware-content-granulator and bitware-topic-researcher
+- **✅ Handshake Protocol Working**: Packets created and sent successfully
+- **✅ Template Matching Fixed**: Granulator now uses flexible template lookup
+- **✅ KAM Integration Restored**: Orchestrator fetches templates from KAM with fallback
+
+#### Key Fixes Applied
+- **Queue Manager**: Restored KAM template fetching with error handling
+- **Pipeline Executor**: Fixed async context issues with stage creation
+- **Database Service**: Simplified D1 operations to prevent hanging
+- **Worker Coordinator**: Proper handshake packet creation
+- **Content Granulator**: Added defaults for undefined fields, flexible template matching
+
+#### Documentation Created
+- **[Backend Integration Guide](docs/BACKEND_INTEGRATION.md)**: Complete integration documentation
+- **[Frontend Implementation Plan](docs/FRONTEND_IMPLEMENTATION_PLAN.md)**: 4-week rollout plan
+
+#### Current System State
+- ✅ Orchestrator v2 creates stages and handshake packets
+- ✅ Worker registry validates worker availability
+- ✅ Content Granulator accepts handshakes
+- ✅ Template fetching works with fallback
+- ⚠️ Worker invocation needs service binding URL fixes
+- ⚠️ Progress tracking needs real-time updates
+
 ### 2025-08-05 - Content Granulator DEPLOYED WITH FULL FRONTEND! 🧱
 
 #### Content Granulator Worker & Frontend Complete

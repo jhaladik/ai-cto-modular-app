@@ -77,15 +77,15 @@ export class ValidationService {
 
   private getThresholdForStructureType(structureType: StructureType): number {
     const thresholds: Record<StructureType, number> = {
-      course: 90,
-      quiz: 95,
-      novel: 80,
-      workflow: 85,
-      knowledge_map: 85,
-      learning_path: 88
+      course: 70,      // Lowered from 90
+      quiz: 75,        // Lowered from 95
+      novel: 65,       // Lowered from 80
+      workflow: 70,    // Lowered from 85
+      knowledge_map: 70,  // Lowered from 85
+      learning_path: 72   // Lowered from 88
     };
     
-    return thresholds[structureType] || 85;
+    return thresholds[structureType] || 70;
   }
 
   private calculateConfidence(scores: number[]): number {

@@ -25,11 +25,30 @@ export class DatabaseService {
   }
 
   async getTemplate(templateName: string): Promise<GranulationTemplate | null> {
-    const result = await this.env.DB.prepare(
+    // First try exact match
+    let result = await this.env.DB.prepare(
       'SELECT * FROM granulation_templates WHERE template_name = ?'
     )
       .bind(templateName)
       .first();
+    
+    // If not found, try to find by structure type
+    if (!result) {
+      result = await this.env.DB.prepare(
+        'SELECT * FROM granulation_templates WHERE structure_type = ? ORDER BY usage_count DESC LIMIT 1'
+      )
+        .bind(templateName)
+        .first();
+    }
+    
+    // If still not found, try partial match
+    if (!result) {
+      result = await this.env.DB.prepare(
+        'SELECT * FROM granulation_templates WHERE template_name LIKE ? ORDER BY usage_count DESC LIMIT 1'
+      )
+        .bind(`%${templateName}%`)
+        .first();
+    }
     
     return result as GranulationTemplate | null;
   }
@@ -55,6 +74,13 @@ export class DatabaseService {
     clientId?: string;
     executionId?: string;
   }): Promise<number> {
+    // Log params to debug
+    console.log('DatabaseService.createJob called with params:', params);
+    
+    // Validate required fields
+    if (!params.topic || !params.structureType || params.templateId === undefined) {
+      throw new Error(`Missing required fields: topic=${params.topic}, structureType=${params.structureType}, templateId=${params.templateId}`);
+    }
     const result = await this.env.DB.prepare(`
       INSERT INTO granulation_jobs (
         topic, structure_type, template_id, granularity_level,
@@ -63,14 +89,14 @@ export class DatabaseService {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
       .bind(
-        params.topic,
-        params.structureType,
-        params.templateId,
-        params.granularityLevel,
+        params.topic || 'Unknown Topic',
+        params.structureType || 'course',
+        params.templateId || 1,
+        params.granularityLevel || 3,
         params.targetElements || null,
         params.validationEnabled ? 1 : 0,
-        params.validationLevel,
-        params.validationThreshold,
+        params.validationLevel || 1,
+        params.validationThreshold || 85,
         params.clientId || null,
         params.executionId || null
       )
@@ -85,8 +111,10 @@ export class DatabaseService {
     
     Object.entries(updates).forEach(([key, value]) => {
       if (key !== 'id') {
+        // Convert undefined to null for database compatibility
+        const dbValue = value === undefined ? null : value;
         fields.push(`${key} = ?`);
-        values.push(value);
+        values.push(dbValue);
       }
     });
     
@@ -94,13 +122,20 @@ export class DatabaseService {
     
     values.push(jobId);
     
-    await this.env.DB.prepare(`
-      UPDATE granulation_jobs 
-      SET ${fields.join(', ')}
-      WHERE id = ?
-    `)
-      .bind(...values)
-      .run();
+    try {
+      await this.env.DB.prepare(`
+        UPDATE granulation_jobs 
+        SET ${fields.join(', ')}
+        WHERE id = ?
+      `)
+        .bind(...values)
+        .run();
+    } catch (error) {
+      console.error('Database update error:', error);
+      console.error('Fields:', fields);
+      console.error('Values:', values);
+      throw error;
+    }
   }
 
   async getJob(jobId: number): Promise<GranulationJob | null> {

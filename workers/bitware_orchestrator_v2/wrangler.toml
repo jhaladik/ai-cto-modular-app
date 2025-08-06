@@ -33,6 +33,16 @@ id = "3c37d910634b473cbd4ed0801da7484e"
 binding = "DATA_STORAGE"
 bucket_name = "orchestrator-v2-data"
 
+# Cloudflare Queue for execution processing
+[[queues.producers]]
+queue = "orchestrator-v2-execution-queue"
+binding = "EXECUTION_QUEUE"
+
+[[queues.consumers]]
+queue = "orchestrator-v2-execution-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+
 # Service Bindings to other workers
 [[services]]
 binding = "KAM"

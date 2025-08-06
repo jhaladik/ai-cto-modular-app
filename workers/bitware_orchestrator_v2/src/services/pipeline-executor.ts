@@ -79,15 +79,53 @@ export class PipelineExecutor {
       // Skip activation for dummy allocation
       // await this.resourceManager.activate(resourceAllocation.allocations);
 
+      console.log('Creating stages for execution:', executionId);
+      console.log('Template stages:', JSON.stringify(template.stages, null, 2));
+
+      // Validate stages exist
+      if (!template.stages || !Array.isArray(template.stages) || template.stages.length === 0) {
+        throw new Error(`No stages defined in template ${template.template_name}`);
+      }
+
+      // Create all stages first before executing them
+      const stageIds: string[] = [];
+      console.log(`Creating ${template.stages.length} stages...`);
+      
       for (const [index, stage] of template.stages.entries()) {
-        const stageId = await this.db.createStageExecution({
-          execution_id: executionId,
-          worker_name: stage.worker_name,
-          stage_order: stage.stage_order,
-          status: 'pending'
-        });
+        console.log(`Creating stage ${index + 1}:`, stage);
+        
+        try {
+          const stageId = await this.db.createStageExecution({
+            execution_id: executionId,
+            worker_name: stage.worker_name,
+            stage_order: stage.stage_order,
+            status: 'pending'
+          });
+          
+          stageIds.push(stageId);
+          console.log(`Stage ${index + 1} created with ID: ${stageId}`);
+        } catch (error) {
+          console.error(`Failed to create stage ${index + 1}:`, error);
+          // Clean up any stages that were created
+          for (const id of stageIds) {
+            try {
+              await this.db.updateStageExecution(id, { status: 'failed' });
+            } catch (e) {
+              console.error(`Failed to clean up stage ${id}:`, e);
+            }
+          }
+          throw error;
+        }
+      }
+      
+      console.log(`All ${stageIds.length} stages created successfully`);
+      
+      // Now execute the stages
+      for (const [index, stage] of template.stages.entries()) {
+        const stageId = stageIds[index];
 
         try {
+          console.log(`Updating progress for stage ${index + 1}...`);
           await this.updateProgress(executionId, {
             current_stage: stage.worker_name,
             stages_completed: index,
@@ -95,6 +133,7 @@ export class PipelineExecutor {
             progress_percentage: Math.round((index / template.stages.length) * 100)
           });
 
+          console.log(`Executing stage ${stageId}...`);
           const stageResult = await this.executeStage(
             executionId,
             stageId,
@@ -102,6 +141,7 @@ export class PipelineExecutor {
             currentStageOutput,
             index === template.stages.length - 1
           );
+          console.log(`Stage ${stageId} completed:`, stageResult);
 
           stageResults.push(stageResult);
           currentStageOutput = stageResult.output_data;
@@ -235,6 +275,7 @@ export class PipelineExecutor {
     inputData: any,
     isFinalStage: boolean
   ): Promise<any> {
+    console.log('executeStage called with:', { executionId, stageId, stage, inputData, isFinalStage });
     const startTime = Date.now();
 
     await this.db.updateStageExecution(stageId, {
@@ -261,12 +302,22 @@ export class PipelineExecutor {
       isFinalStage
     );
 
+    // Merge stage params with input data
+    const stageInputData = {
+      ...inputData,
+      ...stage.params // This includes template_id and template_name from queue-manager
+    };
+    
+    // Get timeout from stage config or use default
+    const timeoutMs = stage.timeout_ms || 30000;
+    
     const result = await this.workerCoordinator.invokeWorker(
       stage.worker_name,
       stage.action,
-      inputData,
+      stageInputData,
       executionId,
-      stageId
+      stageId,
+      timeoutMs
     );
 
     const outputRef = await this.storageManager.storeData(
@@ -433,15 +484,20 @@ export class PipelineExecutor {
   }
 
   private async updateProgress(executionId: string, progress: any): Promise<void> {
-    await this.env.EXECUTION_CACHE.put(
-      `progress:${executionId}`,
-      JSON.stringify({
-        execution_id: executionId,
-        ...progress,
-        timestamp: new Date().toISOString()
-      }),
-      { expirationTtl: 300 }
-    );
+    try {
+      await this.env.EXECUTION_CACHE.put(
+        `progress:${executionId}`,
+        JSON.stringify({
+          execution_id: executionId,
+          ...progress,
+          timestamp: new Date().toISOString()
+        }),
+        { expirationTtl: 300 }
+      );
+    } catch (error) {
+      console.warn('Failed to update progress cache:', error);
+      // Continue execution even if cache update fails
+    }
   }
 
   async createCheckpoint(

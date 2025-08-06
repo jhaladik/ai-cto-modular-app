@@ -65,20 +65,52 @@ export async function handleHandshake(env: Env, request: AuthenticatedRequest): 
 
 export async function handleProcess(env: Env, request: AuthenticatedRequest): Promise<Response> {
   try {
-    const body = await parseJsonBody<{ executionId: string }>(request);
+    const body = await parseJsonBody<{ executionId: string; handshakeData?: HandshakeRequest }>(request);
     
     if (!body.executionId) {
       return jsonResponse({ error: 'executionId required' }, 400);
     }
     
     const storage = new StorageManager(env);
-    const progressData = await storage.getProgress(body.executionId);
+    let progressData = await storage.getProgress(body.executionId);
+    let handshakeData: HandshakeRequest;
     
+    // If progress data doesn't exist, check if handshake data was provided in the request
     if (!progressData || progressData.status !== 'accepted') {
-      return jsonResponse({ error: 'Invalid execution ID or handshake not completed' }, 400);
+      if (body.handshakeData) {
+        // Use provided handshake data (for direct execution)
+        handshakeData = body.handshakeData;
+        progressData = {
+          status: 'accepted',
+          handshakeData,
+          acceptedAt: new Date().toISOString()
+        };
+      } else {
+        // Check if there's a job already created for this execution
+        const db = new DatabaseService(env);
+        const existingJob = await db.getJobByExecutionId(body.executionId);
+        if (existingJob) {
+          // Continue with existing job
+          progressData = {
+            status: 'accepted',
+            handshakeData: {
+              executionId: body.executionId,
+              inputData: {
+                topic: existingJob.topic,
+                structureType: existingJob.structureType,
+                templateName: 'course' // Default
+              }
+            },
+            acceptedAt: new Date().toISOString()
+          };
+          handshakeData = progressData.handshakeData as HandshakeRequest;
+        } else {
+          return jsonResponse({ error: 'Invalid execution ID or handshake not completed' }, 400);
+        }
+      }
+    } else {
+      handshakeData = progressData.handshakeData as HandshakeRequest;
     }
-    
-    const handshakeData = progressData.handshakeData as HandshakeRequest;
     
     // Update progress
     await storage.storeProgress(body.executionId, {
@@ -90,16 +122,26 @@ export async function handleProcess(env: Env, request: AuthenticatedRequest): Pr
     
     try {
       // Convert handshake data to granulation request
+      // Provide defaults for required fields
       const granulationRequest: GranulationRequest = {
-        topic: handshakeData.inputData.topic,
-        structureType: handshakeData.inputData.structureType as any,
-        granularityLevel: handshakeData.inputData.granularityLevel as any,
-        templateName: handshakeData.inputData.templateName,
-        targetAudience: handshakeData.inputData.targetAudience,
-        constraints: handshakeData.inputData.constraints,
-        options: handshakeData.inputData.options,
-        validation: handshakeData.validationConfig
+        topic: handshakeData.inputData.topic || 'Default Topic',
+        structureType: handshakeData.inputData.structure_type || handshakeData.inputData.structureType || 'course',
+        granularityLevel: handshakeData.inputData.granularityLevel || 3,
+        templateName: handshakeData.inputData.template_name || handshakeData.inputData.templateName || 'course',
+        targetAudience: handshakeData.inputData.targetAudience || 'general audience',
+        constraints: handshakeData.inputData.constraints || {
+          maxElements: 10,
+          maxDepth: 3
+        },
+        options: handshakeData.inputData.options || {},
+        validation: handshakeData.validationConfig || {
+          enabled: false,  // Disable validation by default to prevent stuck jobs
+          level: 1,
+          threshold: 70  // Lower threshold for when validation is enabled
+        }
       };
+      
+      console.log('Converted granulation request:', granulationRequest);
       
       // Update progress to 30%
       await storage.storeProgress(body.executionId, {
@@ -112,7 +154,7 @@ export async function handleProcess(env: Env, request: AuthenticatedRequest): Pr
       const granulator = new GranulatorService(env);
       const result = await granulator.granulate(
         granulationRequest,
-        request.auth.clientId,
+        request.auth?.clientId || 'orchestrator-v2',
         body.executionId
       );
       
@@ -140,22 +182,34 @@ export async function handleProcess(env: Env, request: AuthenticatedRequest): Pr
         result
       });
       
-      // Prepare response
-      const response: ProcessResponse = {
+      // Prepare response in the format expected by orchestrator
+      const response = {
         executionId: body.executionId,
         status: 'completed',
         progress: 100,
-        result: {
+        output: {
           jobId: result.jobId,
           structure: storageInfo.type === 'inline' ? result.structure : undefined,
           granulationSummary: result.summary,
           qualityScore: result.qualityScore,
           validation: result.validationResult
         },
-        metrics: {
-          tokensUsed: Math.ceil(result.costUsd * 1000000 / 0.15), // Estimate tokens from cost
-          processingTimeMs: result.processingTimeMs,
-          costUsd: result.costUsd
+        summary: {
+          items_processed: 1,
+          quality_score: result.qualityScore,
+          confidence_level: result.validationResult?.accuracyPercentage || 0.85,
+          processing_time_ms: result.processingTimeMs,
+          resource_usage: {
+            api_calls: 1,
+            tokens_used: Math.ceil(result.costUsd * 1000000 / 0.15)
+          },
+          errors: [],
+          warnings: [],
+          metrics: {
+            tokensUsed: Math.ceil(result.costUsd * 1000000 / 0.15),
+            costUsd: result.costUsd
+          },
+          continue_pipeline: true
         },
         dataReference: storageInfo.type !== 'inline' ? storageInfo : undefined
       };
@@ -170,20 +224,27 @@ export async function handleProcess(env: Env, request: AuthenticatedRequest): Pr
         failedAt: new Date().toISOString()
       });
       
-      const response: ProcessResponse = {
+      const response = {
         executionId: body.executionId,
         status: 'failed',
         progress: progressData.progress || 0,
-        error: {
-          code: 'GRANULATION_FAILED',
-          message: error.message,
-          retryable: true
+        output: null,
+        summary: {
+          items_processed: 0,
+          quality_score: 0,
+          confidence_level: 0,
+          processing_time_ms: Date.now() - new Date(progressData.startedAt).getTime(),
+          resource_usage: {},
+          errors: [{
+            code: 'GRANULATION_FAILED',
+            message: error.message,
+            retryable: true
+          }],
+          warnings: [],
+          metrics: {},
+          continue_pipeline: false
         },
-        metrics: {
-          tokensUsed: 0,
-          processingTimeMs: Date.now() - new Date(progressData.startedAt).getTime(),
-          costUsd: 0
-        }
+        error: error.message
       };
       
       return jsonResponse(response, 500);

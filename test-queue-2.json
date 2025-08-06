@@ -1,0 +1,9 @@
+{
+  "template_name": "course_creation",
+  "client_id": "cloudflare_queue_test_2",
+  "parameters": {
+    "topic": "Cloudflare Queue Working!",
+    "structure_type": "course",
+    "targetAudience": "developers"
+  }
+}
