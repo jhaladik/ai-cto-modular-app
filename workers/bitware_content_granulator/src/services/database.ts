@@ -1,4 +1,4 @@
-import { Env } from '../types';
+import { Env, StructureType, GranularityLevel } from '../types';
 import { GranulationJob, StructureElement, GranulationTemplate } from '../types/granulation';
 import { ValidationResult } from '../types';
 
@@ -21,7 +21,19 @@ export class DatabaseService {
       .bind(...params)
       .all();
     
-    return result.results as GranulationTemplate[];
+    // Map snake_case database columns to camelCase TypeScript properties
+    return result.results.map((row: any) => ({
+      id: row.id,
+      templateName: row.template_name,
+      structureType: row.structure_type as StructureType,
+      templateSchema: row.template_schema,
+      complexityLevel: row.complexity_level as GranularityLevel,
+      targetAudience: row.target_audience,
+      aiPromptTemplate: row.ai_prompt_template,
+      validationRules: row.validation_rules,
+      createdAt: row.created_at,
+      usageCount: row.usage_count
+    }));
   }
 
   async getTemplate(templateName: string): Promise<GranulationTemplate | null> {
@@ -50,7 +62,24 @@ export class DatabaseService {
         .first();
     }
     
-    return result as GranulationTemplate | null;
+    // Map snake_case database columns to camelCase TypeScript properties
+    if (result) {
+      const mapped: GranulationTemplate = {
+        id: result.id as number,
+        templateName: result.template_name as string || result.templateName as string,
+        structureType: result.structure_type as StructureType || result.structureType as StructureType,
+        templateSchema: result.template_schema || result.templateSchema || '{}',
+        complexityLevel: result.complexity_level as GranularityLevel || result.complexityLevel as GranularityLevel || 3,
+        targetAudience: result.target_audience as string || result.targetAudience as string || 'general',
+        aiPromptTemplate: result.ai_prompt_template as string || result.aiPromptTemplate as string,
+        validationRules: result.validation_rules || result.validationRules || null,
+        createdAt: result.created_at as string || result.createdAt as string || new Date().toISOString(),
+        usageCount: result.usage_count as number || result.usageCount as number || 0
+      };
+      return mapped;
+    }
+    
+    return null;
   }
 
   async incrementTemplateUsage(templateId: number): Promise<void> {
@@ -109,11 +138,32 @@ export class DatabaseService {
     const fields: string[] = [];
     const values: any[] = [];
     
+    // Map camelCase to snake_case for database columns
+    const columnMap: Record<string, string> = {
+      actualElements: 'actual_elements',
+      qualityScore: 'quality_score',
+      processingTimeMs: 'processing_time_ms',
+      costUsd: 'cost_usd',
+      completedAt: 'completed_at',
+      validationEnabled: 'validation_enabled',
+      validationLevel: 'validation_level',
+      validationThreshold: 'validation_threshold',
+      startedAt: 'started_at',
+      clientId: 'client_id',
+      executionId: 'execution_id',
+      templateId: 'template_id',
+      structureType: 'structure_type',
+      granularityLevel: 'granularity_level',
+      targetElements: 'target_elements'
+    };
+    
     Object.entries(updates).forEach(([key, value]) => {
       if (key !== 'id') {
         // Convert undefined to null for database compatibility
         const dbValue = value === undefined ? null : value;
-        fields.push(`${key} = ?`);
+        // Use snake_case column name if mapped, otherwise use as-is
+        const columnName = columnMap[key] || key;
+        fields.push(`${columnName} = ?`);
         values.push(dbValue);
       }
     });
@@ -285,9 +335,9 @@ export class DatabaseService {
       `)
         .bind(
           metrics.success ? 1 : 0,
-          metrics.qualityScore,
-          metrics.processingTime,
-          metrics.validationAccuracy,
+          metrics.qualityScore || 0,
+          metrics.processingTime || 0,
+          metrics.validationAccuracy !== undefined ? metrics.validationAccuracy : null,
           metrics.validationAccuracy || 0,
           metrics.validationFailed !== undefined ? 1 : null,
           metrics.validationFailed ? 1 : 0,
@@ -300,17 +350,19 @@ export class DatabaseService {
         INSERT INTO template_analytics (
           template_id, usage_date, success_rate,
           avg_quality_score, avg_processing_time,
-          avg_validation_accuracy, validation_failure_rate
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          avg_validation_accuracy, validation_failure_rate,
+          usage_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `)
         .bind(
           templateId,
           today,
           metrics.success ? 1 : 0,
-          metrics.qualityScore,
-          metrics.processingTime,
-          metrics.validationAccuracy || null,
-          metrics.validationFailed ? 1 : 0
+          metrics.qualityScore || 0,
+          metrics.processingTime || 0,
+          metrics.validationAccuracy !== undefined ? metrics.validationAccuracy : null,
+          metrics.validationFailed ? 1 : 0,
+          1  // Initial usage count
         )
         .run();
     }
