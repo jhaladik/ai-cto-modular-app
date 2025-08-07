@@ -164,12 +164,7 @@ class DashboardPage {
     async checkWorkerHealth() {
         const workers = [
             { name: 'Key Account Manager', endpoint: '/health', binding: 'KEY_ACCOUNT_MANAGER' },
-            { name: 'Orchestrator', endpoint: '/health', binding: 'ORCHESTRATOR' },
-            { name: 'Universal Researcher', endpoint: '/health', binding: 'UNIVERSAL_RESEARCHER' },
-            { name: 'RSS Finder', endpoint: '/health', binding: 'RSS_FINDER' },
-            { name: 'Feed Fetcher', endpoint: '/health', binding: 'FEED_FETCHER' },
-            { name: 'Content Classifier', endpoint: '/health', binding: 'CONTENT_CLASSIFIER' },
-            { name: 'Report Builder', endpoint: '/health', binding: 'REPORT_BUILDER' }
+            { name: 'Content Granulator', endpoint: '/health', binding: 'CONTENT_GRANULATOR' }
         ];
 
         const healthGrid = document.getElementById('health-grid');

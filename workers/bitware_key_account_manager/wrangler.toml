@@ -21,25 +21,28 @@ binding = "KAM_CACHE"
 id = "008410af8af042f7a7551a6164119924" # Set during deployment: wrangler kv:namespace create "KAM_CACHE"
 preview_id = "fcf99a13f93840a4acdb70e5473de7da" # Set during deployment: wrangler kv:namespace create "KAM_CACHE" --preview
 
-# Service binding for orchestrator integration
-[[services]]
-binding = "ORCHESTRATOR"
-service = "bitware-orchestrator"
-
-# Service binding for Resource Manager (replaces Orchestrator v2)
-[[services]]
-binding = "RESOURCE_MANAGER"
-service = "bitware-resource-manager"
-
-# Legacy orchestrator v2 binding (to be removed after migration)
-# [[services]]
-# binding = "ORCHESTRATOR_V2"
-# service = "bitware-orchestrator-v2"
+# Service bindings - Only active workers
 
 # Service binding for content granulator
 [[services]]
 binding = "CONTENT_GRANULATOR"
 service = "bitware-content-granulator"
+
+# Cloudflare Queues configuration
+[[queues.producers]]
+queue = "kam-execution-queue"
+binding = "EXECUTION_QUEUE"
+
+[[queues.consumers]]
+queue = "kam-execution-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "kam-dlq"
+
+[[queues.producers]]
+queue = "kam-dlq"
+binding = "DEAD_LETTER_QUEUE"
 
 # Environment variables
 [vars]

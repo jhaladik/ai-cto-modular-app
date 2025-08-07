@@ -373,10 +373,10 @@ class RequestsPage {
                                 <span>Status:</span>
                                 <span class="status-value status-${request.request_status}">${request.request_status}</span>
                             </div>
-                            ${request.orchestrator_pipeline_id ? `
+                            ${request.execution_id ? `
                                 <div class="status-line">
-                                    <span>Pipeline ID:</span>
-                                    <span class="pipeline-id">${request.orchestrator_pipeline_id}</span>
+                                    <span>Execution ID:</span>
+                                    <span class="pipeline-id">${request.execution_id}</span>
                                 </div>
                             ` : ''}
                             ${request.started_processing_at ? `
@@ -629,7 +629,7 @@ class RequestsPage {
                 // Update local status to processing
                 request.request_status = 'processing';
                 request.started_processing_at = new Date().toISOString();
-                request.orchestrator_pipeline_id = result.pipeline_id || 'pipeline_' + Date.now();
+                request.execution_id = result.execution_id || 'exec_' + Date.now();
                 
                 this.updateContent();
                 this.showSuccess('Template execution started!');
@@ -938,7 +938,7 @@ class RequestsPage {
                 communication_type: 'email_inbound',
                 sentiment_score: 0.8,
                 intent_detected: 'request_report',
-                orchestrator_pipeline_id: 'pipeline_12345',
+                execution_id: 'exec_12345',
                 estimated_duration_ms: 300000,
                 worker_sessions: [
                     {
@@ -988,7 +988,7 @@ class RequestsPage {
                 communication_type: 'email_inbound',
                 sentiment_score: 0.6,
                 intent_detected: 'request_report',
-                orchestrator_pipeline_id: 'pipeline_12346',
+                execution_id: 'exec_12346',
                 estimated_duration_ms: 240000
             },
             {

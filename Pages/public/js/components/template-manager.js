@@ -41,7 +41,7 @@ class TemplateManager {
                     <h1 class="page-title">🎯 Template Manager</h1>
                     <div class="page-actions">
                         <button class="btn btn-secondary" onclick="templateManager.showImportDialog()">
-                            📥 Import from Orchestrator
+                            📥 Import from KAM
                         </button>
                         <button class="btn btn-primary" onclick="templateManager.createNewTemplate()">
                             ➕ Create Template
@@ -93,7 +93,7 @@ class TemplateManager {
     }
 
     async loadWorkers() {
-        // TODO: Load available workers from orchestrator
+        // TODO: Load available workers from KAM
         this.workers = [
             { name: 'topic_researcher', display_name: 'Topic Researcher', base_cost: 0.05 },
             { name: 'content_analyzer', display_name: 'Content Analyzer', base_cost: 0.08 },
@@ -772,7 +772,7 @@ class TemplateManager {
 
     // Stub methods for UI actions
     showImportDialog() {
-        this.showMessage('Import from Orchestrator coming soon!', 'info');
+        this.showMessage('Import from KAM coming soon!', 'info');
     }
 
     createNewTemplate() {

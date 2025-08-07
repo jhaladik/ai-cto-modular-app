@@ -1,5 +1,4 @@
-// public/js/shared/api.js - FIXED FOR ENHANCED ORCHESTRATOR COMPATIBILITY
-// Compatible with both existing orchestrator API and enhanced dashboard
+// public/js/shared/api.js - API Client for Pages Functions
 
 class APIClient {
   constructor() {
@@ -109,42 +108,17 @@ class APIClient {
       return this.callWorker(workerName, endpoint, 'DELETE');
   }
 
-  // Specific orchestrator methods for enhanced dashboard
-  async getCapabilities() {
-      return this.get('orchestrator', '/capabilities');
+  // KAM-specific methods for client portal
+  async getClientInfo() {
+      return this.get('kam', '/client');
   }
 
-  async getPipelineHealth() {
-      return this.get('orchestrator', '/pipeline-health');
+  async getClientRequests() {
+      return this.get('kam', '/requests');
   }
 
-  async getPerformanceInsights(timeRange = '24h') {
-      return this.get('orchestrator', `/performance-insights?time_range=${timeRange}`);
-  }
-
-  async executePipeline(pipelineConfig) {
-      return this.post('orchestrator', '/orchestrate', pipelineConfig);
-  }
-
-  async getPipelineStatus(pipelineId) {
-      return this.get('orchestrator', `/pipeline/${pipelineId}`);
-  }
-
-  // Admin methods (require admin privileges)
-  async getAdminStats() {
-      return this.get('orchestrator', '/admin/stats');
-  }
-
-  async getAdminPerformance() {
-      return this.get('orchestrator', '/admin/performance');
-  }
-
-  async getAdminCosts() {
-      return this.get('orchestrator', '/admin/costs');
-  }
-
-  async getAdminTemplates() {
-      return this.get('orchestrator', '/admin/templates');
+  async createRequest(requestData) {
+      return this.post('kam', '/requests', requestData);
   }
 
   // Session management
@@ -162,7 +136,7 @@ class APIClient {
   // Health check method
   async healthCheck() {
       try {
-          const response = await this.get('orchestrator', '/health');
+          const response = await this.get('kam', '/health');
           return { healthy: true, data: response };
       } catch (error) {
           return { healthy: false, error: error.message };

@@ -175,15 +175,125 @@ export class Scheduler {
       // Update status in database
       await this.updateRequestStatus(request.requestId, 'executing');
       
-      // Get worker for template
-      const worker = await this.getWorkerForTemplate(request.templateName, request);
+      // Check if this is a multi-stage pipeline
+      const workerFlow = await this.getWorkerFlow(request);
       
-      if (!worker) {
-        throw new Error(`No worker found for template: ${request.templateName}`);
+      if (!workerFlow || workerFlow.length === 0) {
+        throw new Error(`No worker flow found for template: ${request.templateName}`);
       }
-
-      // Execute on worker
-      const result = await this.invokeWorker(worker, request);
+      
+      // Execute pipeline stages sequentially
+      let stageOutput = request.data || {};
+      let totalUsage = {};
+      const stageResults = [];
+      
+      for (let i = 0; i < workerFlow.length; i++) {
+        const stage = workerFlow[i];
+        console.log(`Executing stage ${i + 1}/${workerFlow.length}: ${stage.worker}`);
+        
+        try {
+          // Get worker binding for this stage
+          const worker = await this.getWorkerBinding(stage.worker);
+          
+          if (!worker) {
+            // Log warning but try to continue if not critical
+            if (stage.required !== false) {
+              throw new Error(`Required worker not found: ${stage.worker}`);
+            }
+            console.warn(`Optional worker not found: ${stage.worker}, skipping stage`);
+            continue;
+          }
+          
+          // Prepare stage request with output from previous stage
+          const stageRequest = {
+            ...request,
+            data: stageOutput,
+            action: stage.action,
+            params: { ...stage.params, ...request.params }
+          };
+          
+          // Execute stage with retry logic
+          let stageResult;
+          let retries = stage.retries || 2;
+          let lastError;
+          
+          while (retries >= 0) {
+            try {
+              stageResult = await this.invokeWorker(
+                { 
+                  binding: worker, 
+                  name: stage.worker,
+                  action: stage.action,
+                  params: stage.params
+                }, 
+                stageRequest
+              );
+              break; // Success, exit retry loop
+            } catch (error) {
+              lastError = error;
+              retries--;
+              if (retries >= 0) {
+                console.warn(`Stage ${stage.worker} failed, retrying... (${retries} retries left)`);
+                await this.sleep(1000); // Wait 1 second before retry
+              }
+            }
+          }
+          
+          if (!stageResult && lastError) {
+            if (stage.required !== false) {
+              throw lastError;
+            }
+            console.warn(`Optional stage ${stage.worker} failed after retries, continuing pipeline`);
+            continue;
+          }
+          
+          // Store stage result for debugging
+          stageResults.push({
+            stage: stage.worker,
+            success: true,
+            output: stageResult.output
+          });
+          
+          // Accumulate usage
+          if (stageResult.usage) {
+            totalUsage = this.mergeUsage(totalUsage, stageResult.usage);
+          }
+          
+          // Use stage output as input for next stage
+          stageOutput = stageResult.output || stageResult;
+          
+        } catch (stageError) {
+          console.error(`Stage ${i + 1} (${stage.worker}) failed:`, stageError);
+          
+          // Store failure for debugging
+          stageResults.push({
+            stage: stage.worker,
+            success: false,
+            error: stageError.message
+          });
+          
+          // Check if stage is critical
+          if (stage.required !== false) {
+            throw new Error(`Pipeline failed at stage ${i + 1} (${stage.worker}): ${stageError.message}`);
+          }
+          
+          // Non-critical stage, continue with previous output
+          console.warn(`Non-critical stage ${stage.worker} failed, continuing pipeline`);
+        }
+      }
+      
+      // Prepare final result
+      const result = {
+        success: true,
+        output: stageOutput,
+        usage: totalUsage,
+        metadata: {
+          stages: workerFlow.length,
+          stageResults: stageResults,
+          duration: Date.now() - startTime,
+          requestId: request.requestId
+        }
+      };
       
       // Calculate actual cost
       const actualCost = await this.costTracker.calculateRequestCost(request, result.usage);
@@ -206,6 +316,130 @@ export class Scheduler {
       console.error(`Execution error for ${request.requestId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Get worker flow for request
+   */
+  async getWorkerFlow(request) {
+    // First check if request already has worker_flow
+    if (request.workerFlow && Array.isArray(request.workerFlow)) {
+      return request.workerFlow;
+    }
+    
+    // Try to fetch template from KAM
+    if (this.env.KAM) {
+      try {
+        const templateRequest = new Request(`https://kam/api/templates/${request.templateName}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.env.WORKER_SECRET || 'internal-worker-auth-token-2024'}`,
+            'X-Worker-ID': 'resource_manager'
+          }
+        });
+        
+        const response = await this.env.KAM.fetch(templateRequest);
+        if (response.ok) {
+          const template = await response.json();
+          
+          if (template.worker_flow) {
+            const workerFlow = typeof template.worker_flow === 'string' 
+              ? JSON.parse(template.worker_flow) 
+              : template.worker_flow;
+            return workerFlow;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch template from KAM:', error);
+      }
+    }
+    
+    // Fallback: single worker based on template name
+    const worker = await this.getDefaultWorkerForTemplate(request.templateName);
+    if (worker) {
+      return [{
+        worker: worker,
+        action: 'process',
+        params: {}
+      }];
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Get worker binding by name
+   */
+  async getWorkerBinding(workerName) {
+    // Convert worker name to binding (bitware-content-granulator -> CONTENT_GRANULATOR)
+    const bindingName = workerName.replace('bitware-', '').replace(/-/g, '_').toUpperCase();
+    
+    if (this.env[bindingName]) {
+      return this.env[bindingName];
+    }
+    
+    // Try alternative naming patterns
+    const altBindingName = workerName.toUpperCase().replace(/-/g, '_');
+    if (this.env[altBindingName]) {
+      return this.env[altBindingName];
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Get default worker for template
+   */
+  async getDefaultWorkerForTemplate(templateName) {
+    // Map template names to default workers
+    const templateWorkerMap = {
+      'content_granulation': 'bitware-content-granulator',
+      'topic_research': 'bitware-topic-researcher',
+      'rss_discovery': 'bitware-rss-source-finder',
+      'feed_fetching': 'bitware-feed-fetcher',
+      'content_classification': 'bitware-content-classifier',
+      'report_generation': 'bitware-report-builder',
+      'universal_research': 'bitware-universal-researcher'
+    };
+    
+    return templateWorkerMap[templateName] || null;
+  }
+  
+  /**
+   * Merge usage data from multiple stages
+   */
+  mergeUsage(existing, newUsage) {
+    const merged = { ...existing };
+    
+    // Merge API usage
+    if (newUsage.api) {
+      merged.api = merged.api || {};
+      for (const [provider, models] of Object.entries(newUsage.api)) {
+        merged.api[provider] = merged.api[provider] || {};
+        for (const [model, usage] of Object.entries(models)) {
+          merged.api[provider][model] = merged.api[provider][model] || { input: 0, output: 0 };
+          merged.api[provider][model].input += usage.input || 0;
+          merged.api[provider][model].output += usage.output || 0;
+        }
+      }
+    }
+    
+    // Merge compute usage
+    if (newUsage.compute) {
+      merged.compute = merged.compute || { cpu_ms: 0, invocations: 0 };
+      merged.compute.cpu_ms += newUsage.compute.cpu_ms || 0;
+      merged.compute.invocations += newUsage.compute.invocations || 0;
+    }
+    
+    // Merge storage usage
+    if (newUsage.storage) {
+      merged.storage = merged.storage || { reads: 0, writes: 0, bytes: 0 };
+      merged.storage.reads += newUsage.storage.reads || 0;
+      merged.storage.writes += newUsage.storage.writes || 0;
+      merged.storage.bytes += newUsage.storage.bytes || 0;
+    }
+    
+    return merged;
   }
 
   /**

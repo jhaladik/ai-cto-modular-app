@@ -162,12 +162,7 @@ class AIFactoryLayout {
                 {
                     title: 'AI Workers',
                     items: [
-                        { path: '/orchestrator', icon: '🎛️', label: 'Orchestrator 2.0' },
-                        { path: '/granulation', icon: '🧱', label: 'Content Granulator' },
-                        { path: '/workers/topic-researcher', icon: '🔎', label: 'Topic Researcher' },
-                        { path: '/workers/universal-researcher', icon: '🔍', label: 'Universal Researcher', disabled: true },
-                        { path: '/workers/content-classifier', icon: '🏷️', label: 'Content Classifier', disabled: true },
-                        { path: '/workers/report-builder', icon: '📑', label: 'Report Builder', disabled: true }
+                        { path: '/granulation', icon: '🧱', label: 'Content Granulator' }
                     ]
                 },
                 {
@@ -676,14 +671,6 @@ class AIFactoryLayout {
                     }
                     await this.loadTemplateManager(contentArea);
                     break;
-                case '/orchestrator':
-                    // ADMIN ONLY - orchestrator control center
-                    if (this.config.userType !== 'admin') {
-                        await this.navigate('/my-account');
-                        return;
-                    }
-                    await this.loadOrchestrator(contentArea);
-                    break;
                 case '/granulation':
                     // ADMIN ONLY - content granulator
                     if (this.config.userType !== 'admin') {
@@ -995,43 +982,6 @@ class AIFactoryLayout {
     /**
      * Load orchestrator page - ADMIN ONLY
      */
-    async loadOrchestrator(contentArea) {
-        console.log('🎛️ Loading Orchestrator 2.0...');
-        
-        if (window.OrchestratorPage) {
-            try {
-                // Create and mount orchestrator page
-                if (!window.orchestratorPage) {
-                    window.orchestratorPage = new OrchestratorPage(window.apiClient);
-                }
-                contentArea.innerHTML = window.orchestratorPage.render();
-                await window.orchestratorPage.mount();
-                console.log('✅ Orchestrator loaded successfully');
-            } catch (error) {
-                console.error('❌ Failed to load Orchestrator:', error);
-                contentArea.innerHTML = `
-                    <div class="error-state">
-                        <h3>Failed to load Orchestrator</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            }
-        } else {
-            console.error('❌ OrchestratorPage component not loaded');
-            contentArea.innerHTML = `
-                <div class="error-state">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-                    <h3>Component Not Loaded</h3>
-                    <p>OrchestratorPage component is not available.</p>
-                    <div class="error-actions">
-                        <button class="btn btn-primary" onclick="window.location.reload()">
-                            🔄 Reload Page
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-    }
 
     /**
      * Load worker page - ADMIN ONLY
@@ -1055,8 +1005,8 @@ class AIFactoryLayout {
                     <h3>Worker Interface Coming Soon</h3>
                     <p>The dedicated interface for ${this.formatWorkerName(workerName)} is under development.</p>
                     <div style="margin-top: 2rem;">
-                        <button class="btn btn-primary" onclick="aiFactoryLayout.navigate('/orchestrator')">
-                            🎛️ View in Orchestrator
+                        <button class="btn btn-primary" onclick="aiFactoryLayout.navigate('/granulation')">
+                            🧱 View in Content Granulator
                         </button>
                     </div>
                 </div>

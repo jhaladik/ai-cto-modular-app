@@ -11,49 +11,10 @@ binding = "KEY_ACCOUNT_MANAGER"
 service = "bitware-key-account-manager"
 
 [[services]]
-binding = "ORCHESTRATOR"
-service = "bitware-orchestrator"
-
-[[services]]
-binding = "TOPIC_RESEARCHER"
-service = "bitware-topic-researcher"
-
-[[services]]
-binding = "RSS_LIBRARIAN"
-service = "bitware-rss-source-finder"
-
-[[services]]
-binding = "FEED_FETCHER"
-service = "bitware-feed-fetcher"
-
-[[services]]
-binding = "CONTENT_CLASSIFIER"
-service = "bitware-content-classifier"
-
-[[services]]
-binding = "REPORT_BUILDER"
-service = "bitware-report-builder"
-
-[[services]]
-binding = "UNIVERSAL_RESEARCHER"
-service = "bitware-universal-researcher"
-
-[[services]]
 binding = "CONTENT_GRANULATOR"
 service = "bitware-content-granulator"
 
-[[services]]
-binding = "RESOURCE_MANAGER"
-service = "bitware-resource-manager"
-
 [vars]
 KEY_ACCOUNT_MANAGER_URL = "https://bitware-key-account-manager.jhaladik.workers.dev"
-ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"
-TOPIC_RESEARCHER_URL = "https://bitware-topic-researcher.jhaladik.workers.dev"
-RSS_LIBRARIAN_URL = "https://bitware-rss-source-finder.jhaladik.workers.dev"
-FEED_FETCHER_URL = "https://bitware-feed-fetcher.jhaladik.workers.dev"
-CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier.jhaladik.workers.dev"
-REPORT_BUILDER_URL = "https://bitware-report-builder.jhaladik.workers.dev"
 GRANULATOR_URL = "https://bitware-content-granulator.jhaladik.workers.dev"
-RESOURCE_MANAGER_URL = "https://bitware-resource-manager.jhaladik.workers.dev"
 WORKER_SECRET = "internal-worker-auth-token-2024"

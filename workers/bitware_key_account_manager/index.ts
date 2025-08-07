@@ -10,11 +10,24 @@ import { corsHeaders, jsonResponse, unauthorized, notFound, badRequest, serverEr
 interface Env {
   KEY_ACCOUNT_MANAGEMENT_DB: D1Database;
   KAM_CACHE: KVNamespace;
-  ORCHESTRATOR?: Service;
-  RESOURCE_MANAGER?: Service;
+  EXECUTION_QUEUE: Queue;
+  DEAD_LETTER_QUEUE: Queue;
+  CONTENT_GRANULATOR?: Service;
   CLIENT_API_KEY: string;
   WORKER_SHARED_SECRET: string;
+  WORKER_SECRET?: string;
   OPENAI_API_KEY: string;
+}
+
+interface QueueMessage {
+  ack(): void;
+  retry(): void;
+  body: any;
+}
+
+interface MessageBatch<T> {
+  queue: string;
+  messages: QueueMessage[];
 }
 
 interface User {
@@ -1337,80 +1350,45 @@ export default {
           const workerParams = { ...parameters };
           
           try {
-            // Call Orchestrator v2 to execute pipeline
-            let orchestratorResponse;
+            // Generate unique execution ID
+            const executionId = `exec_${requestId}_${Date.now()}`;
             
-            if (env.RESOURCE_MANAGER) {
-              // Use Resource Manager service binding
-              const orchestratorRequest = new Request('https://resource-manager/api/execute', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${env.WORKER_SECRET || env.WORKER_SHARED_SECRET || 'internal-worker-auth-token-2024'}`,
-                  'X-Worker-ID': 'bitware_key_account_manager'
-                },
-                body: JSON.stringify({
-                  requestId: requestId,
-                  templateName: request_detail.selected_template,
-                  workerFlow: workerFlow,
-                  data: workerParams,
-                  priority: request_detail.urgency_override === 'medium' ? 'normal' : (request_detail.urgency_override || 'normal'),
-                  clientId: request_detail.client_id,
-                  metadata: {
-                    original_message: request_detail.original_message,
-                    processed_request: request_detail.processed_request,
-                    confidence_score: request_detail.template_confidence_score
-                  }
-                })
-              });
-              
-              orchestratorResponse = await env.RESOURCE_MANAGER.fetch(orchestratorRequest);
-            } else {
-              // Fallback to HTTP if service binding not available
-              orchestratorResponse = await fetch('https://bitware-resource-manager.jhaladik.workers.dev/api/execute', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${env.WORKER_SECRET || env.WORKER_SHARED_SECRET || 'internal-worker-auth-token-2024'}`,
-                  'X-Worker-ID': 'bitware_key_account_manager'
-                },
-                body: JSON.stringify({
-                  requestId: requestId,
-                  templateName: request_detail.selected_template,
-                  workerFlow: workerFlow,
-                  data: workerParams,
-                  priority: request_detail.urgency_override === 'medium' ? 'normal' : (request_detail.urgency_override || 'normal'),
-                  clientId: request_detail.client_id,
-                  metadata: {
-                    original_message: request_detail.original_message,
-                    processed_request: request_detail.processed_request,
-                    confidence_score: request_detail.template_confidence_score
-                  }
-                })
-              });
-            }
+            // Prepare job data for queue
+            const jobData = {
+              executionId,
+              requestId,
+              clientId: request_detail.client_id,
+              templateName: request_detail.selected_template,
+              workerFlow: workerFlow,
+              data: workerParams,
+              parameters: parameters,
+              priority: request_detail.urgency_override || 'normal',
+              metadata: {
+                original_message: request_detail.original_message,
+                processed_request: request_detail.processed_request,
+                confidence_score: request_detail.template_confidence_score
+              },
+              createdAt: new Date().toISOString()
+            };
             
-            if (!orchestratorResponse.ok) {
-              const error = await orchestratorResponse.text();
-              throw new Error(`Orchestrator error: ${error}`);
-            }
+            // Send job to Cloudflare Queue
+            await env.EXECUTION_QUEUE.send(jobData, {
+              contentType: 'json'
+            });
             
-            const orchestratorResult = await orchestratorResponse.json();
-            
-            // Update request status to processing
+            // Update request status to queued
             await db.updateRequest(requestId, {
-              request_status: 'processing',
-              started_processing_at: new Date().toISOString(),
-              orchestrator_pipeline_id: orchestratorResult.execution_id
+              request_status: 'queued',
+              queued_at: new Date().toISOString(),
+              execution_id: executionId
             });
             
             return jsonResponse({
               success: true,
-              message: 'Pipeline execution started',
-              execution_id: orchestratorResult.execution_id,
-              pipeline_id: orchestratorResult.execution_id,
-              estimated_completion: orchestratorResult.estimated_completion,
-              progress_url: orchestratorResult.progress_url
+              message: 'Request queued for execution',
+              execution_id: executionId,
+              request_id: requestId,
+              status: 'queued'
             });
             
           } catch (error) {
@@ -1782,6 +1760,143 @@ export default {
     } catch (error) {
       console.error('Unexpected error:', error);
       return serverError('An unexpected error occurred');
+    }
+  },
+
+  /**
+   * Queue consumer handler for processing pipeline execution jobs
+   */
+  async queue(batch: MessageBatch<any>, env: Env, ctx: ExecutionContext): Promise<void> {
+    const db = new DatabaseService(env.KEY_ACCOUNT_MANAGEMENT_DB);
+    
+    for (const message of batch.messages) {
+      try {
+        const jobData = message.body;
+        console.log(`Processing job ${jobData.executionId} for request ${jobData.requestId}`);
+        
+        // Update request status to processing
+        await db.updateRequest(jobData.requestId, {
+          request_status: 'processing',
+          started_processing_at: new Date().toISOString()
+        });
+        
+        // Process the pipeline stages
+        let currentOutput = jobData.data || {};
+        let totalCost = 0;
+        let allResults = [];
+        
+        for (const stage of jobData.workerFlow) {
+          console.log(`Executing stage: ${stage.worker}`);
+          
+          try {
+            // Determine which worker to call
+            if (stage.worker === 'bitware-content-granulator' && env.CONTENT_GRANULATOR) {
+              // Call Content Granulator via service binding
+              const granulatorRequest = new Request(
+                `https://granulator${stage.endpoint || '/api/granulate'}`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${env.WORKER_SECRET || 'internal-worker-auth-token-2024'}`,
+                    'X-Worker-ID': 'bitware_key_account_manager'
+                  },
+                  body: JSON.stringify({
+                    ...currentOutput,
+                    ...stage.params,
+                    templateName: stage.templateName || jobData.templateName
+                  })
+                }
+              );
+              
+              const response = await env.CONTENT_GRANULATOR.fetch(granulatorRequest);
+              const result = await response.json();
+              
+              if (!response.ok) {
+                throw new Error(`Granulator failed: ${result.error || 'Unknown error'}`);
+              }
+              
+              // Update output for next stage
+              currentOutput = result.output || result;
+              allResults.push({
+                stage: stage.worker,
+                result: result
+              });
+              
+              // Track costs if provided
+              if (result.cost) {
+                totalCost += result.cost;
+              }
+            } else {
+              // For other workers, we'd add their handling here
+              console.warn(`Worker ${stage.worker} not yet implemented in queue handler`);
+            }
+            
+          } catch (stageError) {
+            console.error(`Stage ${stage.worker} failed:`, stageError);
+            
+            // Check retry logic
+            if (stage.retries && stage.retries > 0) {
+              // Requeue with decremented retry count
+              const retryJob = {
+                ...jobData,
+                workerFlow: jobData.workerFlow.map((s: any) => 
+                  s.worker === stage.worker 
+                    ? { ...s, retries: s.retries - 1 }
+                    : s
+                )
+              };
+              
+              await env.EXECUTION_QUEUE.send(retryJob, {
+                contentType: 'json',
+                delaySeconds: 30 // Retry after 30 seconds
+              });
+              
+              console.log(`Requeued stage ${stage.worker} with ${stage.retries - 1} retries remaining`);
+              message.ack(); // Acknowledge this message
+              return; // Exit early for this job
+            }
+            
+            // No retries left, mark as failed
+            throw stageError;
+          }
+        }
+        
+        // All stages completed successfully
+        await db.updateRequest(jobData.requestId, {
+          request_status: 'completed',
+          completed_at: new Date().toISOString(),
+          total_cost_usd: totalCost,
+          deliverables: JSON.stringify(allResults)
+        });
+        
+        console.log(`Successfully completed job ${jobData.executionId}`);
+        
+        // Acknowledge the message
+        message.ack();
+        
+      } catch (error) {
+        console.error(`Failed to process job:`, error);
+        
+        // Update request status to failed
+        await db.updateRequest(message.body.requestId, {
+          request_status: 'failed',
+          completed_at: new Date().toISOString(),
+          error_message: error.message
+        });
+        
+        // Send to dead letter queue if available
+        if (env.DEAD_LETTER_QUEUE) {
+          await env.DEAD_LETTER_QUEUE.send({
+            ...message.body,
+            error: error.message,
+            failedAt: new Date().toISOString()
+          });
+        }
+        
+        // Acknowledge the message (it failed, don't retry)
+        message.ack();
+      }
     }
   }
 };
