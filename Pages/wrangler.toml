@@ -42,6 +42,10 @@ service = "bitware-universal-researcher"
 binding = "CONTENT_GRANULATOR"
 service = "bitware-content-granulator"
 
+[[services]]
+binding = "RESOURCE_MANAGER"
+service = "bitware-resource-manager"
+
 [vars]
 KEY_ACCOUNT_MANAGER_URL = "https://bitware-key-account-manager.jhaladik.workers.dev"
 ORCHESTRATOR_URL = "https://bitware-orchestrator.jhaladik.workers.dev"
@@ -51,4 +55,5 @@ FEED_FETCHER_URL = "https://bitware-feed-fetcher.jhaladik.workers.dev"
 CONTENT_CLASSIFIER_URL = "https://bitware-content-classifier.jhaladik.workers.dev"
 REPORT_BUILDER_URL = "https://bitware-report-builder.jhaladik.workers.dev"
 GRANULATOR_URL = "https://bitware-content-granulator.jhaladik.workers.dev"
+RESOURCE_MANAGER_URL = "https://bitware-resource-manager.jhaladik.workers.dev"
 WORKER_SECRET = "internal-worker-auth-token-2024"

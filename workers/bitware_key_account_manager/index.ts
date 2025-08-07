@@ -11,6 +11,7 @@ interface Env {
   KEY_ACCOUNT_MANAGEMENT_DB: D1Database;
   KAM_CACHE: KVNamespace;
   ORCHESTRATOR?: Service;
+  RESOURCE_MANAGER?: Service;
   CLIENT_API_KEY: string;
   WORKER_SHARED_SECRET: string;
   OPENAI_API_KEY: string;
@@ -1323,9 +1324,9 @@ export default {
             // Call Orchestrator v2 to execute pipeline
             let orchestratorResponse;
             
-            if (env.ORCHESTRATOR_V2) {
-              // Use service binding if available
-              const orchestratorRequest = new Request('https://orchestrator/execute', {
+            if (env.RESOURCE_MANAGER) {
+              // Use Resource Manager service binding
+              const orchestratorRequest = new Request('https://resource-manager/api/execute', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1346,10 +1347,10 @@ export default {
                 })
               });
               
-              orchestratorResponse = await env.ORCHESTRATOR_V2.fetch(orchestratorRequest);
+              orchestratorResponse = await env.RESOURCE_MANAGER.fetch(orchestratorRequest);
             } else {
               // Fallback to HTTP if service binding not available
-              orchestratorResponse = await fetch('https://bitware-orchestrator-v2.jhaladik.workers.dev/execute', {
+              orchestratorResponse = await fetch('https://bitware-resource-manager.jhaladik.workers.dev/api/execute', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1432,11 +1433,11 @@ export default {
             return notFound('Request not found');
           }
           
-          // Get execution status from Orchestrator v2
-          if (request_detail.orchestrator_pipeline_id && env.ORCHESTRATOR_V2) {
+          // Get execution status from Resource Manager
+          if (request_detail.orchestrator_pipeline_id && env.RESOURCE_MANAGER) {
             try {
               const statusRequest = new Request(
-                `https://orchestrator/execution/${request_detail.orchestrator_pipeline_id}`,
+                `https://resource-manager/api/execution/${request_detail.orchestrator_pipeline_id}`,
                 {
                   method: 'GET',
                   headers: {
@@ -1446,7 +1447,7 @@ export default {
                 }
               );
               
-              const statusResponse = await env.ORCHESTRATOR_V2.fetch(statusRequest);
+              const statusResponse = await env.RESOURCE_MANAGER.fetch(statusRequest);
               
               if (statusResponse.ok) {
                 const executionData = await statusResponse.json();

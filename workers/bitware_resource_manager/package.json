@@ -1,0 +1,23 @@
+{
+  "name": "bitware-resource-manager",
+  "version": "1.0.0",
+  "description": "Central resource management and execution coordination for AI Factory",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "tail": "wrangler tail",
+    "db:init": "wrangler d1 execute resource-manager-db --file=schema.sql",
+    "db:seed": "wrangler d1 execute resource-manager-db --file=seed.sql",
+    "db:reset": "npm run db:init && npm run db:seed",
+    "test": "bash test.sh"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

@@ -1,0 +1,68 @@
+name = "bitware-resource-manager"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "orchestrator-v2-db"
+database_id = "99a86f8e-35f8-42b7-b016-99c58f62531d"
+
+[[kv_namespaces]]
+binding = "RESOURCE_CACHE"
+id = "abb3f6e72a2e477bb7da787f5cb36e49"
+
+[[kv_namespaces]]
+binding = "EXECUTION_QUEUE"
+id = "08d9a6b9902241f797f17f38c0b33e42"
+
+[[kv_namespaces]]
+binding = "COST_TRACKING"
+id = "192f5800664048949d39a0acc3a0afa4"
+
+[[r2_buckets]]
+binding = "DATA_STORAGE"
+bucket_name = "orchestrator-v2-data"
+
+# Service bindings for worker communication
+[[services]]
+binding = "KAM"
+service = "bitware-key-account-manager"
+
+[[services]]
+binding = "TOPIC_RESEARCHER"
+service = "bitware-topic-researcher"
+
+[[services]]
+binding = "CONTENT_GRANULATOR"
+service = "bitware-content-granulator"
+
+[[services]]
+binding = "RSS_FINDER"
+service = "bitware-rss-source-finder"
+
+[[services]]
+binding = "FEED_FETCHER"
+service = "bitware-feed-fetcher"
+
+[[services]]
+binding = "CONTENT_CLASSIFIER"
+service = "bitware-content-classifier"
+
+[[services]]
+binding = "REPORT_BUILDER"
+service = "bitware-report-builder"
+
+[[services]]
+binding = "UNIVERSAL_RESEARCHER"
+service = "bitware-universal-researcher"
+
+[env.staging]
+vars = { ENVIRONMENT = "staging" }
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "resource-manager-db-staging"
+database_id = "resource-manager-db-staging-id-placeholder"
