@@ -10,6 +10,8 @@ import {
   handleGetTemplate
 } from './handlers/monitoring-ops';
 
+import { handleExecute } from './handlers/execute-handler';
+
 import {
   handleGranulate,
   handleGranulateQuiz,
@@ -81,6 +83,11 @@ export default {
       if (method === 'GET' && path.startsWith('/api/templates/')) {
         const templateName = path.split('/')[3];
         return handleGetTemplate(env, templateName, authenticatedRequest!);
+      }
+
+      // Execute endpoint for Resource Manager
+      if (method === 'POST' && path === '/api/execute') {
+        return handleExecute(env, authenticatedRequest!);
       }
 
       // Main granulation endpoints

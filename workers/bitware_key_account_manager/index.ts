@@ -1306,6 +1306,22 @@ export default {
           const body = await request.json();
           const { parameters = {} } = body;
           
+          // Get template details including worker_flow
+          const templateResult = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
+            SELECT template_name, worker_flow 
+            FROM pipeline_template_cache 
+            WHERE template_name = ?
+          `).bind(request_detail.selected_template).first();
+          
+          let workerFlow = null;
+          if (templateResult && templateResult.worker_flow) {
+            try {
+              workerFlow = JSON.parse(templateResult.worker_flow);
+            } catch (e) {
+              console.error('Failed to parse worker_flow:', e);
+            }
+          }
+          
           // Get master template details
           const masterTemplate = await env.KEY_ACCOUNT_MANAGEMENT_DB.prepare(`
             SELECT * FROM master_templates 
@@ -1334,11 +1350,12 @@ export default {
                   'X-Worker-ID': 'bitware_key_account_manager'
                 },
                 body: JSON.stringify({
-                  request_id: requestId,
-                  template_name: request_detail.selected_template,
-                  parameters: workerParams,
+                  requestId: requestId,
+                  templateName: request_detail.selected_template,
+                  workerFlow: workerFlow,
+                  data: workerParams,
                   priority: request_detail.urgency_override === 'medium' ? 'normal' : (request_detail.urgency_override || 'normal'),
-                  client_id: request_detail.client_id,
+                  clientId: request_detail.client_id,
                   metadata: {
                     original_message: request_detail.original_message,
                     processed_request: request_detail.processed_request,
@@ -1358,11 +1375,12 @@ export default {
                   'X-Worker-ID': 'bitware_key_account_manager'
                 },
                 body: JSON.stringify({
-                  request_id: requestId,
-                  template_name: request_detail.selected_template,
-                  parameters: workerParams,
+                  requestId: requestId,
+                  templateName: request_detail.selected_template,
+                  workerFlow: workerFlow,
+                  data: workerParams,
                   priority: request_detail.urgency_override === 'medium' ? 'normal' : (request_detail.urgency_override || 'normal'),
-                  client_id: request_detail.client_id,
+                  clientId: request_detail.client_id,
                   metadata: {
                     original_message: request_detail.original_message,
                     processed_request: request_detail.processed_request,

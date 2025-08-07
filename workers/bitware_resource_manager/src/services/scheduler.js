@@ -176,7 +176,7 @@ export class Scheduler {
       await this.updateRequestStatus(request.requestId, 'executing');
       
       // Get worker for template
-      const worker = await this.getWorkerForTemplate(request.templateName);
+      const worker = await this.getWorkerForTemplate(request.templateName, request);
       
       if (!worker) {
         throw new Error(`No worker found for template: ${request.templateName}`);
@@ -211,40 +211,77 @@ export class Scheduler {
   /**
    * Get worker for template
    */
-  async getWorkerForTemplate(templateName) {
-    // Map templates to workers
-    const templateWorkerMap = {
-      'market_research_pipeline': 'TOPIC_RESEARCHER',
-      'content_monitoring_pipeline': 'UNIVERSAL_RESEARCHER',
-      'competitor_analysis_pipeline': 'TOPIC_RESEARCHER',
-      'trend_detection_pipeline': 'CONTENT_CLASSIFIER',
-      'news_aggregation_pipeline': 'FEED_FETCHER',
-      'content_granulation': 'CONTENT_GRANULATOR',
-      'report_generation': 'REPORT_BUILDER'
-    };
-
-    const workerBinding = templateWorkerMap[templateName];
-    
-    if (!workerBinding || !this.env[workerBinding]) {
-      // Try to find worker from registry
-      const worker = await this.env.DB.prepare(
-        'SELECT * FROM worker_registry WHERE status = "active" AND capabilities LIKE ?'
-      ).bind(`%${templateName}%`).first();
+  async getWorkerForTemplate(templateName, request) {
+    // First, check if the request already has worker_flow information
+    if (request.workerFlow && request.workerFlow.length > 0) {
+      const workerInfo = request.workerFlow[0];
+      const workerName = workerInfo.worker;
       
-      if (worker) {
+      // Convert worker name to binding (bitware-content-granulator -> CONTENT_GRANULATOR)
+      const bindingName = workerName.replace('bitware-', '').replace(/-/g, '_').toUpperCase();
+      
+      if (this.env[bindingName]) {
         return {
-          name: worker.name,
-          binding: this.env[worker.name.toUpperCase()]
+          name: workerName,
+          binding: this.env[bindingName],
+          action: workerInfo.action,
+          params: workerInfo.params
         };
       }
-      
-      return null;
     }
-
-    return {
-      name: workerBinding,
-      binding: this.env[workerBinding]
-    };
+    
+    // If no worker_flow, try to fetch template from KAM
+    if (this.env.KAM) {
+      try {
+        const templateRequest = new Request(`https://kam/api/templates/${templateName}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.env.WORKER_SECRET || 'internal-worker-auth-token-2024'}`,
+            'X-Worker-ID': 'resource_manager'
+          }
+        });
+        
+        const response = await this.env.KAM.fetch(templateRequest);
+        if (response.ok) {
+          const template = await response.json();
+          
+          if (template.worker_flow && typeof template.worker_flow === 'string') {
+            const workerFlow = JSON.parse(template.worker_flow);
+            if (workerFlow[0]) {
+              const workerInfo = workerFlow[0];
+              const workerName = workerInfo.worker;
+              const bindingName = workerName.replace('bitware-', '').replace(/-/g, '_').toUpperCase();
+              
+              if (this.env[bindingName]) {
+                return {
+                  name: workerName,
+                  binding: this.env[bindingName],
+                  action: workerInfo.action,
+                  params: workerInfo.params
+                };
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch template from KAM:', error);
+      }
+    }
+    
+    // Fallback: Try to find worker from registry
+    const worker = await this.env.DB.prepare(
+      'SELECT * FROM worker_registry WHERE status = "active" AND capabilities LIKE ?'
+    ).bind(`%${templateName}%`).first();
+    
+    if (worker) {
+      const bindingName = worker.name.replace('bitware-', '').replace(/-/g, '_').toUpperCase();
+      return {
+        name: worker.name,
+        binding: this.env[bindingName]
+      };
+    }
+    
+    return null;
   }
 
   /**
@@ -265,8 +302,9 @@ export class Scheduler {
         'X-Priority': request.priority
       },
       body: JSON.stringify({
-        action: request.action || 'process',
+        action: worker.action || request.action || 'process',
         input: request.data,
+        params: worker.params || {},
         config: request.config || {},
         timeout: request.timeout || 30000
       })
