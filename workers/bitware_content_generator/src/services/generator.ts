@@ -177,7 +177,7 @@ export class ContentGeneratorService {
     generatedContent.metadata = {
       totalWords: this.countTotalWords(generatedContent),
       readingTime: this.estimateReadingTime(generatedContent),
-      difficulty: this.assessDifficulty(context.audience),
+      difficulty: this.assessDifficulty(context.globalContext.audience),
       keywords: this.extractKeywords(generatedContent),
       summary: await this.generateSummary(generatedContent, context),
     };
@@ -632,6 +632,8 @@ export class ContentGeneratorService {
   }
 
   private assessDifficulty(audience: string): string {
+    if (!audience) return 'intermediate';
+    
     const audienceLevels: Record<string, string> = {
       'beginners': 'beginner',
       'intermediate': 'intermediate',
