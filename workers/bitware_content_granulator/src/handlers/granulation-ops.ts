@@ -66,152 +66,12 @@ export async function handleGranulate(env: Env, request: AuthenticatedRequest): 
   } catch (error) {
     console.error('Granulation error:', error);
     return jsonResponse({ 
-      error: error.message || 'Granulation failed',
+      error: error instanceof Error ? error.message : 'Granulation failed',
       status: 'failed'
     }, 500);
   }
 }
 
-export async function handleGranulateQuiz(env: Env, request: AuthenticatedRequest): Promise<Response> {
-  try {
-    const body = await parseJsonBody<any>(request);
-    
-    // Convert quiz-specific request to standard granulation request
-    const granulationRequest: GranulationRequest = {
-      topic: body.topic,
-      structureType: 'quiz',
-      templateName: body.templateName || 'quiz_assessment_standard',
-      granularityLevel: body.granularityLevel || 2,
-      targetAudience: body.targetAudience || 'students',
-      constraints: {
-        maxElements: body.questionCount || 25
-      },
-      options: {
-        includeAssessments: true
-      },
-      validation: body.validation || {
-        enabled: true,
-        level: 2,
-        threshold: 95 // Higher threshold for quizzes
-      }
-    };
-    
-    // Add quiz-specific metadata
-    if (body.quizType) {
-      granulationRequest.constraints!.quizType = body.quizType;
-    }
-    if (body.difficultyDistribution) {
-      granulationRequest.constraints!.difficultyDistribution = body.difficultyDistribution;
-    }
-    if (body.questionTypes) {
-      granulationRequest.constraints!.questionTypes = body.questionTypes;
-    }
-    
-    const granulator = new GranulatorService(env);
-    const result = await granulator.granulate(granulationRequest, request.auth.clientId);
-    
-    return jsonResponse({
-      status: 'completed',
-      jobId: result.jobId,
-      topic: body.topic,
-      quizStructure: result.structure,
-      summary: result.summary,
-      qualityScore: result.qualityScore,
-      validation: result.validationResult,
-      processingTimeMs: result.processingTimeMs
-    });
-  } catch (error) {
-    console.error('Quiz granulation error:', error);
-    return jsonResponse({ error: error.message || 'Quiz generation failed' }, 500);
-  }
-}
-
-export async function handleGranulateNovel(env: Env, request: AuthenticatedRequest): Promise<Response> {
-  try {
-    const body = await parseJsonBody<any>(request);
-    
-    const granulationRequest: GranulationRequest = {
-      topic: body.novelConcept,
-      structureType: 'novel',
-      templateName: body.templateName || 'three_act_novel',
-      granularityLevel: body.granularityLevel || 4,
-      targetAudience: body.targetAudience || 'fiction_writers',
-      constraints: {
-        maxElements: body.structurePreferences?.chapterCount || 24
-      },
-      validation: body.validation || {
-        enabled: true,
-        level: 2,
-        threshold: 80 // Lower threshold for creative content
-      }
-    };
-    
-    // Add novel-specific metadata
-    if (body.genre) {
-      granulationRequest.constraints!.genre = body.genre;
-    }
-    if (body.targetLength) {
-      granulationRequest.constraints!.targetLength = body.targetLength;
-    }
-    if (body.characterRequirements) {
-      granulationRequest.constraints!.characterRequirements = body.characterRequirements;
-    }
-    
-    const granulator = new GranulatorService(env);
-    const result = await granulator.granulate(granulationRequest, request.auth.clientId);
-    
-    return jsonResponse({
-      status: 'completed',
-      jobId: result.jobId,
-      novelConcept: body.novelConcept,
-      novelStructure: result.structure,
-      summary: result.summary,
-      qualityScore: result.qualityScore,
-      validation: result.validationResult,
-      processingTimeMs: result.processingTimeMs
-    });
-  } catch (error) {
-    console.error('Novel granulation error:', error);
-    return jsonResponse({ error: error.message || 'Novel outline generation failed' }, 500);
-  }
-}
-
-export async function handleGranulateWorkflow(env: Env, request: AuthenticatedRequest): Promise<Response> {
-  try {
-    const body = await parseJsonBody<any>(request);
-    
-    const granulationRequest: GranulationRequest = {
-      topic: body.workflowName || body.topic,
-      structureType: 'workflow',
-      templateName: body.templateName || 'business_process_standard',
-      granularityLevel: body.granularityLevel || 3,
-      targetAudience: body.targetAudience || 'business_users',
-      constraints: body.constraints,
-      validation: body.validation || {
-        enabled: true,
-        level: 2,
-        threshold: 85
-      }
-    };
-    
-    const granulator = new GranulatorService(env);
-    const result = await granulator.granulate(granulationRequest, request.auth.clientId);
-    
-    return jsonResponse({
-      status: 'completed',
-      jobId: result.jobId,
-      workflowName: body.workflowName || body.topic,
-      workflowStructure: result.structure,
-      summary: result.summary,
-      qualityScore: result.qualityScore,
-      validation: result.validationResult,
-      processingTimeMs: result.processingTimeMs
-    });
-  } catch (error) {
-    console.error('Workflow granulation error:', error);
-    return jsonResponse({ error: error.message || 'Workflow generation failed' }, 500);
-  }
-}
 
 export async function handleGetJob(env: Env, jobId: number, request: AuthenticatedRequest): Promise<Response> {
   try {
@@ -384,7 +244,7 @@ export async function handleGetValidationHistory(env: Env, jobId: number, reques
 // Helper function to build hierarchical structure from flat elements
 function buildHierarchicalStructure(elements: any[]): any {
   const elementMap = new Map();
-  const rootElements = [];
+  const rootElements: any[] = [];
   
   // First pass: create map
   elements.forEach(el => {
@@ -556,12 +416,12 @@ export async function handleRetryJob(env: Env, jobId: number, request: Authentic
     // Create new granulation request
     const granulator = new GranulatorService(env);
     const result = await granulator.granulate({
-      topic: jobResult.topic,
+      topic: jobResult.topic as string,
       structureType: jobResult.structure_type as any,
-      templateName: jobResult.template_name || 'default',
-      targetAudience: 'general audience',
-      parameters: {}
-    }, jobResult.client_id);
+      templateName: jobResult.template_name as string || 'default',
+      granularityLevel: 3,
+      targetAudience: 'general audience'
+    }, jobResult.client_id as string);
     
     return jsonResponse({
       status: 'success',

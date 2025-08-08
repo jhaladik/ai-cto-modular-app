@@ -1,4 +1,34 @@
-import { StructureType, GranularityLevel, ValidationConfig } from './index';
+import { StructureType, GranularityLevel, ValidationConfig, ValidationLevel } from './index';
+
+export interface GranulationTemplate {
+  id: number;
+  templateName: string;
+  structureType: string;
+  templateSchema: any;
+  complexityLevel: number;
+  targetAudience?: string;
+  aiPromptTemplate: string;
+  validationRules?: any;
+  createdAt: string;
+  usageCount: number;
+  aiProviderConfig?: {
+    preferredProvider?: 'openai' | 'claude' | 'cloudflare';
+    fallbackProviders?: Array<'openai' | 'claude' | 'cloudflare'>;
+    modelPreferences?: {
+      openai?: string;
+      claude?: string;
+      cloudflare?: string;
+    };
+    temperature?: number;
+    maxTokens?: number;
+    systemPrompt?: string;
+  };
+  costOptimization?: {
+    maxCostPerJob?: number;
+    preferLowCostProviders?: boolean;
+    fallbackOnCostExceed?: boolean;
+  };
+}
 
 export interface GranulationRequest {
   topic: string;
@@ -19,6 +49,13 @@ export interface GranulationRequest {
     includeExamples?: boolean;
   };
   validation?: ValidationConfig;
+  aiConfig?: {
+    provider?: 'openai' | 'claude' | 'cloudflare';
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    systemPrompt?: string;
+  };
 }
 
 export interface GranulationJob {
@@ -38,6 +75,10 @@ export interface GranulationJob {
   validationThreshold: number;
   startedAt: string;
   completedAt?: string;
+  clientId?: string;
+  templateName?: string;
+  validationPassed?: boolean;
+  createdAt?: string;
 }
 
 export interface StructureElement {

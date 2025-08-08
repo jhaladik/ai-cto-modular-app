@@ -13,10 +13,6 @@ import {
 import { handleExecute } from './handlers/execute-handler';
 
 import {
-  handleGranulate,
-  handleGranulateQuiz,
-  handleGranulateNovel,
-  handleGranulateWorkflow,
   handleGetJob,
   handleGetJobs,
   handleGetJobStatus,
@@ -26,19 +22,20 @@ import {
   handleGetValidationHistory
 } from './handlers/granulation-ops';
 
-import {
-  handleHandshake,
-  handleProcess,
-  handleAcknowledge,
-  handleGetProgress
-} from './handlers/handshake-ops';
 
 import {
   handleGetStats,
-  handleGetPublicStats,
+  handleGetAdminStats,
   handleManageTemplates,
-  handleGetAnalytics
+  handleGetAnalytics,
+  handleGetAIProviders
 } from './handlers/admin-ops';
+
+import {
+  handleGetResourceStats,
+  handleGetCostEstimate,
+  handleGetPricingInfo
+} from './handlers/economy-ops';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -71,7 +68,7 @@ export default {
         try {
           authenticatedRequest = await authenticateRequest(request, env);
         } catch (error) {
-          return errorResponse(error.message, 401);
+          return errorResponse(error instanceof Error ? error.message : 'Authentication failed', 401);
         }
       }
 
@@ -88,23 +85,6 @@ export default {
       // Execute endpoint for Resource Manager
       if (method === 'POST' && path === '/api/execute') {
         return handleExecute(env, authenticatedRequest!);
-      }
-
-      // Main granulation endpoints
-      if (method === 'POST' && path === '/api/granulate') {
-        return handleGranulate(env, authenticatedRequest!);
-      }
-
-      if (method === 'POST' && path === '/api/granulate/quiz') {
-        return handleGranulateQuiz(env, authenticatedRequest!);
-      }
-
-      if (method === 'POST' && path === '/api/granulate/novel') {
-        return handleGranulateNovel(env, authenticatedRequest!);
-      }
-
-      if (method === 'POST' && path === '/api/granulate/workflow') {
-        return handleGranulateWorkflow(env, authenticatedRequest!);
       }
 
       // Job management endpoints
@@ -145,33 +125,34 @@ export default {
         return handleGetValidationHistory(env, jobId, authenticatedRequest!);
       }
 
-      // Orchestrator 2.0 handshake endpoints
-      if (method === 'POST' && path === '/api/handshake') {
-        return handleHandshake(env, authenticatedRequest!);
-      }
 
-      if (method === 'POST' && path === '/api/process') {
-        return handleProcess(env, authenticatedRequest!);
-      }
-
-      if (method === 'POST' && path === '/api/acknowledge') {
-        return handleAcknowledge(env, authenticatedRequest!);
-      }
-
-      if (method === 'GET' && path.match(/^\/api\/progress\/[\w-]+$/)) {
-        const executionId = path.split('/')[3];
-        return handleGetProgress(env, executionId, authenticatedRequest!);
-      }
-
-      // Public stats endpoint
+      // Stats endpoint (authenticated)
       if (method === 'GET' && path === '/api/stats') {
-        return handleGetPublicStats(env);
+        return handleGetStats(env);
+      }
+      
+      // AI providers endpoint
+      if (method === 'GET' && path === '/api/ai-providers') {
+        return handleGetAIProviders(env);
+      }
+      
+      // Economy endpoints
+      if (method === 'GET' && path === '/api/economy/stats') {
+        return handleGetResourceStats(env, authenticatedRequest!);
+      }
+      
+      if (method === 'POST' && path === '/api/economy/estimate') {
+        return handleGetCostEstimate(env, authenticatedRequest!);
+      }
+      
+      if (method === 'GET' && path === '/api/economy/pricing') {
+        return handleGetPricingInfo(env);
       }
 
       // Admin endpoints (worker auth required)
       if (authenticatedRequest?.auth.type === 'worker') {
         if (method === 'GET' && path === '/api/admin/stats') {
-          return handleGetStats(env);
+          return handleGetAdminStats(env);
         }
 
         if (method === 'POST' && path === '/api/admin/templates') {
@@ -186,7 +167,7 @@ export default {
       return notFound();
     } catch (error) {
       console.error('Request error:', error);
-      return errorResponse(error.message || 'Internal server error', 500);
+      return errorResponse(error instanceof Error ? error.message : 'Internal server error', 500);
     }
-  },
+  }
 };

@@ -22,7 +22,7 @@ export async function handleExecute(env: Env, request: AuthenticatedRequest): Pr
     // Handle different actions
     switch (body.action) {
       case 'granulate':
-        return handleGranulateAction(env, body, clientId, requestId);
+        return handleGranulateAction(env, body, clientId || undefined, requestId || undefined);
       
       case 'validate':
         return handleValidateAction(env, body);
@@ -30,23 +30,26 @@ export async function handleExecute(env: Env, request: AuthenticatedRequest): Pr
       case 'process':
       default:
         // Default to granulate for backward compatibility
-        return handleGranulateAction(env, body, clientId, requestId);
+        return handleGranulateAction(env, body, clientId || undefined, requestId || undefined);
     }
   } catch (error) {
     console.error('Execute error:', error);
     return jsonResponse({ 
-      error: error.message || 'Execution failed',
+      error: error instanceof Error ? error.message : 'Execution failed',
       status: 'failed'
     }, 500);
   }
 }
 
 async function handleGranulateAction(env: Env, request: ExecuteRequest, clientId?: string, executionId?: string): Promise<Response> {
-  const granulator = new GranulatorService(env);
-  const storage = new StorageManager(env);
-  
-  // Map input and params to granulation request format
-  const granulationRequest = {
+  try {
+    console.log('Starting granulation with request:', JSON.stringify(request));
+    
+    const granulator = new GranulatorService(env);
+    const storage = new StorageManager(env);
+    
+    // Map input and params to granulation request format
+    const granulationRequest = {
     topic: request.input?.topic || request.input?.description || 'Unknown Topic',
     structureType: request.params?.structureType || request.input?.structureType || 'course',
     templateName: request.input?.templateName || determineTemplateName(request.params?.structureType),
@@ -59,11 +62,19 @@ async function handleGranulateAction(env: Env, request: ExecuteRequest, clientId
       enabled: request.config?.validation !== false,
       level: request.config?.validationLevel || 2,
       threshold: request.config?.validationThreshold || 85
-    }
+    },
+    // AI configuration from config or params
+    aiConfig: request.config?.aiProvider ? {
+      provider: request.config.aiProvider,
+      model: request.config.aiModel,
+      temperature: request.config.temperature,
+      maxTokens: request.config.maxTokens,
+      systemPrompt: request.config.systemPrompt
+    } : request.params?.aiConfig
   };
   
-  // Perform granulation (ensure null instead of undefined)
-  const result = await granulator.granulate(granulationRequest, clientId || null, executionId || null);
+  // Perform granulation
+  const result = await granulator.granulate(granulationRequest, clientId, executionId);
   
   // Store structure if large
   const structureSize = storage.getStructureSize(result.structure);
@@ -111,6 +122,14 @@ async function handleGranulateAction(env: Env, request: ExecuteRequest, clientId
   }
   
   return jsonResponse(response);
+  } catch (error) {
+    console.error('Granulation error:', error);
+    return jsonResponse({
+      success: false,
+      error: error instanceof Error ? error.message : 'Granulation failed',
+      status: 'failed'
+    }, 500);
+  }
 }
 
 async function handleValidateAction(env: Env, request: ExecuteRequest): Promise<Response> {
@@ -125,15 +144,15 @@ async function handleValidateAction(env: Env, request: ExecuteRequest): Promise<
 }
 
 function determineTemplateName(structureType?: string): string {
-  // Map structure types to default template names
-  const templateMap = {
+  // Map structure types to default template names (matching database)
+  const templateMap: Record<string, string> = {
     'course': 'educational_course_basic',
     'quiz': 'quiz_assessment_standard',
-    'novel': 'creative_novel_standard',
-    'workflow': 'business_workflow_standard',
-    'knowledge_map': 'knowledge_mapping_standard',
-    'learning_path': 'learning_path_standard'
+    'novel': 'three_act_novel',
+    'workflow': 'business_process_standard',
+    'knowledge_map': 'concept_map_hierarchical',
+    'learning_path': 'skill_development_path'
   };
   
-  return templateMap[structureType] || 'educational_course_basic';
+  return templateMap[structureType || ''] || 'educational_course_basic';
 }

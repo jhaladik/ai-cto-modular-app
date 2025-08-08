@@ -91,15 +91,21 @@ export class OpenAIService {
       }
 
       const data = await response.json() as any;
-      const score = parseFloat(data.choices[0].message.content.trim());
+      const rawResponse = data.choices[0].message.content.trim();
+      console.log(`[OPENAI] Raw validation response: "${rawResponse}"`);
+      
+      const score = parseFloat(rawResponse);
       
       if (isNaN(score) || score < 0 || score > 100) {
+        console.error(`[OPENAI] Invalid score returned: ${rawResponse}, using default 75`);
         throw new Error('Invalid validation score returned');
       }
       
+      console.log(`[OPENAI] Parsed score: ${score}`);
       return score;
     } catch (error) {
-      console.error('Validation failed:', error);
+      console.error('[OPENAI] Validation failed:', error);
+      console.error('[OPENAI] Returning default score: 75');
       // Return a default mid-range score if validation fails
       return 75;
     }

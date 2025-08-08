@@ -1376,9 +1376,9 @@ export default {
               contentType: 'json'
             });
             
-            // Update request status to queued
+            // Update request status to processing (queued for processing)
             await db.updateRequest(requestId, {
-              request_status: 'queued',
+              request_status: 'processing',
               queued_at: new Date().toISOString(),
               execution_id: executionId
             });
@@ -1804,7 +1804,8 @@ export default {
                   body: JSON.stringify({
                     ...currentOutput,
                     ...stage.params,
-                    templateName: stage.templateName || jobData.templateName
+                    ...jobData.parameters,  // Include user-provided parameters which has the correct templateName
+                    templateName: jobData.parameters?.templateName || stage.params?.templateName || 'educational_course_basic'
                   })
                 }
               );

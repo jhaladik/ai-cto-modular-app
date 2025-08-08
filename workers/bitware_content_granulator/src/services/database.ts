@@ -154,7 +154,10 @@ export class DatabaseService {
       templateId: 'template_id',
       structureType: 'structure_type',
       granularityLevel: 'granularity_level',
-      targetElements: 'target_elements'
+      targetElements: 'target_elements',
+      estimatedTotalWords: 'estimated_total_words',
+      contentGenerationMetadata: 'content_generation_metadata',
+      deliverableSpecs: 'deliverable_specs'
     };
     
     Object.entries(updates).forEach(([key, value]) => {
@@ -209,13 +212,15 @@ export class DatabaseService {
   }
 
   // Structure element operations
-  async createStructureElement(element: Omit<StructureElement, 'id' | 'createdAt'>): Promise<number> {
+  async createStructureElement(element: any): Promise<number> {
     const result = await this.env.DB.prepare(`
       INSERT INTO structure_elements (
         job_id, element_type, parent_id, sequence_order,
         title, description, content_outline, metadata,
-        ai_reasoning, validation_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ai_reasoning, validation_status,
+        target_word_count, content_type, generation_priority,
+        content_tone, key_points
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
       .bind(
         element.jobId,
@@ -227,7 +232,12 @@ export class DatabaseService {
         element.contentOutline || null,
         element.metadata ? JSON.stringify(element.metadata) : null,
         element.aiReasoning || null,
-        element.validationStatus || 'pending'
+        element.validationStatus || 'pending',
+        element.target_word_count || null,
+        element.content_type || null,
+        element.generation_priority || 1,
+        element.content_tone || null,
+        element.key_points || null
       )
       .run();
     
@@ -405,6 +415,79 @@ export class DatabaseService {
       avgProcessingTime: avgScores?.avg_processing_time || 0,
       validationAccuracy: validationStats?.avg_accuracy || 0,
       validationFailureRate: validationStats?.failure_rate || 0
+    };
+  }
+
+  async recordResourceConsumption(data: {
+    jobId: number;
+    aiProvider: string;
+    aiModel: string;
+    tokensPrompt: number;
+    tokensCompletion: number;
+    tokensTotal: number;
+    costPrompt: number;
+    costCompletion: number;
+    costTotal: number;
+    costPer1kTokens: number;
+    processingTimeMs: number;
+    tokensPerSecond: number;
+    efficiencyRating: string;
+    requestType: string;
+    clientId?: string | null;
+    executionId?: string | null;
+  }): Promise<void> {
+    await this.env.DB.prepare(`
+      INSERT INTO resource_consumption (
+        job_id, ai_provider, ai_model,
+        tokens_prompt, tokens_completion, tokens_total,
+        cost_prompt, cost_completion, cost_total, cost_per_1k_tokens,
+        processing_time_ms, tokens_per_second,
+        efficiency_rating, request_type,
+        client_id, execution_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      data.jobId,
+      data.aiProvider,
+      data.aiModel,
+      data.tokensPrompt,
+      data.tokensCompletion,
+      data.tokensTotal,
+      data.costPrompt,
+      data.costCompletion,
+      data.costTotal,
+      data.costPer1kTokens,
+      data.processingTimeMs,
+      data.tokensPerSecond,
+      data.efficiencyRating,
+      data.requestType,
+      data.clientId || null,
+      data.executionId || null
+    ).run();
+  }
+
+  async getResourceConsumptionStats(days: number = 7): Promise<any> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const dailyUsage = await this.env.DB.prepare(`
+      SELECT * FROM daily_resource_usage
+      WHERE date >= date(?)
+      ORDER BY date DESC
+    `).bind(startDate.toISOString()).all();
+    
+    const providerComparison = await this.env.DB.prepare(`
+      SELECT * FROM provider_comparison
+    `).all();
+    
+    const modelPerformance = await this.env.DB.prepare(`
+      SELECT * FROM model_performance
+      LIMIT 10
+    `).all();
+    
+    return {
+      dailyUsage: dailyUsage.results,
+      providerComparison: providerComparison.results,
+      modelPerformance: modelPerformance.results
     };
   }
 }

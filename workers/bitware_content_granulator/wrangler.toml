@@ -33,10 +33,14 @@ bucket_name = "granulator-structures"
 binding = "KEY_ACCOUNT_MANAGER"
 service = "bitware-key-account-manager"
 
-[[services]]
-binding = "ORCHESTRATOR"
-service = "bitware-orchestrator-v2"
+# AI bindings
+[ai]
+binding = "AI"
+
+# Note: Content Granulator is called via service binding from KAM
+# KAM handles the queue consumption and calls this worker directly
 
 # Secrets (add via wrangler secret put)
 # OPENAI_API_KEY - OpenAI API key for AI operations
+# CLAUDE_API_KEY - Claude (Anthropic) API key for AI operations
 # SHARED_SECRET - Shared secret for worker authentication

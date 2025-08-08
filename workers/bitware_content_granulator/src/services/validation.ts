@@ -29,13 +29,20 @@ export class ValidationService {
     
     // Get scores for each question
     const scores: number[] = [];
-    for (const question of questions) {
-      const score = await this.openai.validateStructure(question);
+    console.log(`[VALIDATION] Starting validation with ${questions.length} questions for level ${level}`);
+    
+    for (let i = 0; i < questions.length; i++) {
+      console.log(`[VALIDATION] Sending question ${i + 1}: ${questions[i].substring(0, 100)}...`);
+      const score = await this.openai.validateStructure(questions[i]);
+      console.log(`[VALIDATION] Question ${i + 1} score: ${score}`);
       scores.push(score);
     }
     
+    console.log(`[VALIDATION] All scores:`, scores);
+    
     // Calculate weighted average based on level
     const weightedAverage = this.calculateWeightedAverage(scores, level);
+    console.log(`[VALIDATION] Weighted average: ${weightedAverage}`);
     
     // Determine if validation passed
     const threshold = this.getThresholdForStructureType(structureType);

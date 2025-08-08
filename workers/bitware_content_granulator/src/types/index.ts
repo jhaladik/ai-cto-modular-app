@@ -4,8 +4,9 @@ export interface Env {
   JOB_CACHE: KVNamespace;
   STRUCTURE_STORAGE: R2Bucket;
   KEY_ACCOUNT_MANAGER: Fetcher;
-  ORCHESTRATOR: Fetcher;
   OPENAI_API_KEY: string;
+  CLAUDE_API_KEY?: string;
+  AI?: any; // Cloudflare AI binding
   SHARED_SECRET: string;
   ENVIRONMENT?: string;
   VERSION?: string;

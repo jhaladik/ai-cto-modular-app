@@ -80,33 +80,67 @@ export async function handleHelp(env: Env): Promise<Response> {
   return jsonResponse({
     worker: 'bitware-content-granulator',
     version: env.VERSION || '1.0.0',
-    description: 'AI-powered content granulation into structured knowledge components',
+    description: 'AI-powered content granulation with multi-provider support (OpenAI, Claude, Cloudflare AI)',
     endpoints: {
-      public: ['/', '/health', '/help'],
+      public: ['/', '/health', '/help', '/api/ai-providers'],
+      execute: ['/api/execute'],
       templates: ['/api/templates', '/api/templates/{name}'],
-      granulation: [
-        '/api/granulate',
-        '/api/granulate/quiz',
-        '/api/granulate/novel',
-        '/api/granulate/workflow'
+      jobs: [
+        '/api/jobs',
+        '/api/jobs/{id}',
+        '/api/jobs/{id}/status',
+        '/api/jobs/{id}/structure',
+        '/api/jobs/{id}/retry'
       ],
-      jobs: ['/api/jobs/{id}', '/api/jobs/{id}/status'],
       validation: ['/api/validate', '/api/validation/history'],
-      handshake: ['/api/handshake', '/api/process', '/api/acknowledge', '/api/progress/{id}'],
+      stats: ['/api/stats'],
+      economy: [
+        '/api/economy/stats',
+        '/api/economy/estimate',
+        '/api/economy/pricing'
+      ],
       admin: ['/api/admin/stats', '/api/admin/templates', '/api/admin/analytics']
+    },
+    usage: {
+      primary: 'POST /api/execute',
+      format: {
+        action: 'granulate',
+        input: {
+          topic: 'string',
+          structureType: 'course|quiz|novel|workflow|knowledge_map|learning_path',
+          templateName: 'string',
+          granularityLevel: '1-5',
+          targetAudience: 'string'
+        },
+        config: {
+          aiProvider: 'openai|claude|cloudflare',
+          aiModel: 'model-name',
+          temperature: '0.0-1.0',
+          maxTokens: 'number',
+          validation: 'boolean'
+        }
+      }
     },
     authentication: {
       client: 'X-API-Key header',
       worker: 'Bearer token + X-Worker-ID header',
       session: 'x-bitware-session-token header'
     },
+    aiProviders: {
+      openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+      claude: ['claude-3-haiku', 'claude-3-sonnet', 'claude-3-opus', 'claude-3.5-sonnet'],
+      cloudflare: ['llama-3-8b', 'llama-2-7b', 'mistral-7b', 'phi-2']
+    },
     structureTypes: ['course', 'quiz', 'novel', 'workflow', 'knowledge_map', 'learning_path'],
     features: {
-      aiPowered: true,
+      multiAiProvider: true,
+      automaticFallback: true,
+      templateBasedConfig: true,
       validation: true,
-      templateBased: true,
       progressTracking: true,
-      orchestratorV2Compatible: true
+      costOptimization: true,
+      resourceTracking: true,
+      economyReporting: true
     }
   });
 }

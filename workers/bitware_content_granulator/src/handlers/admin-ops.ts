@@ -1,11 +1,11 @@
 import { Env, AuthenticatedRequest } from '../types';
 import { jsonResponse, parseJsonBody } from '../helpers/http';
 import { DatabaseService } from '../services/database';
+import { AIProviderFactory } from '../services/ai-provider';
 
-// Public stats endpoint (non-admin)
-export async function handleGetPublicStats(env: Env): Promise<Response> {
+export async function handleGetStats(env: Env): Promise<Response> {
   try {
-    // Get basic stats
+    // Get basic stats for frontend display
     const stats = await env.DB.prepare(`
       SELECT 
         COUNT(*) as total_jobs,
@@ -29,12 +29,12 @@ export async function handleGetPublicStats(env: Env): Promise<Response> {
       }
     });
   } catch (error) {
-    console.error('Error getting public stats:', error);
-    return jsonResponse({ error: 'Failed to get stats' }, 500);
+    console.error('Error fetching stats:', error);
+    return jsonResponse({ error: 'Failed to fetch statistics' }, 500);
   }
 }
 
-export async function handleGetStats(env: Env): Promise<Response> {
+export async function handleGetAdminStats(env: Env): Promise<Response> {
   try {
     const db = new DatabaseService(env);
     const stats = await db.getStats();
@@ -64,7 +64,7 @@ export async function handleGetStats(env: Env): Promise<Response> {
       }
     });
   } catch (error) {
-    console.error('Error fetching stats:', error);
+    console.error('Error fetching admin stats:', error);
     return jsonResponse({ error: 'Failed to fetch statistics' }, 500);
   }
 }
@@ -307,4 +307,34 @@ function generateRecommendations(analyticsData: any[]): string[] {
   }
   
   return recommendations;
+}
+
+export async function handleGetAIProviders(env: Env): Promise<Response> {
+  try {
+    const availableProviders = await AIProviderFactory.getAvailableProviders(env);
+    
+    // Get details for each provider
+    const providerDetails = await Promise.all(
+      availableProviders.map(async (providerName) => {
+        const provider = AIProviderFactory.create(providerName, env);
+        return {
+          name: providerName,
+          available: await provider.isAvailable(),
+          defaultModel: provider.getDefaultModel(),
+          supportedModels: provider.getSupportedModels()
+        };
+      })
+    );
+    
+    return jsonResponse({
+      providers: providerDetails,
+      defaultProvider: availableProviders[0] || null,
+      totalAvailable: availableProviders.length
+    });
+  } catch (error) {
+    return jsonResponse({
+      error: 'Failed to fetch AI providers',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
 }

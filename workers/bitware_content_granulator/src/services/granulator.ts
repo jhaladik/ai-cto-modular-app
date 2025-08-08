@@ -2,7 +2,9 @@ import { Env } from '../types';
 import { DatabaseService } from './database';
 import { OpenAIService } from './openai';
 import { ValidationService } from './validation';
+import { AIProviderFactory, AIProviderInterface, AIProvider } from './ai-provider';
 import { generateGranulationPrompt, getStructurePromptTemplate } from '../helpers/prompts';
+import { calculateResourceEfficiency, getCostTier } from '../helpers/economy';
 import { 
   GranulationRequest, 
   GranulationJob, 
@@ -14,12 +16,14 @@ import {
 
 export class GranulatorService {
   private db: DatabaseService;
-  private openai: OpenAIService;
+  private openai: OpenAIService; // Keep for backward compatibility
   private validation: ValidationService;
+  private env: Env;
   
   constructor(env: Env) {
+    this.env = env;
     this.db = new DatabaseService(env);
-    this.openai = new OpenAIService(env);
+    this.openai = new OpenAIService(env); // Keep for backward compatibility
     this.validation = new ValidationService(env);
   }
 
@@ -56,12 +60,12 @@ export class GranulatorService {
       structureType: request.structureType || 'course',
       templateId: template.id,
       granularityLevel: request.granularityLevel || 3,
-      targetElements: request.constraints?.maxElements || null,
+      targetElements: request.constraints?.maxElements || undefined,
       validationEnabled: request.validation?.enabled || false,
       validationLevel: request.validation?.level || 1,
       validationThreshold: request.validation?.threshold || 85,
-      clientId: clientId || null,
-      executionId: executionId || null
+      clientId: clientId || undefined,
+      executionId: executionId || undefined
     };
     
     console.log('Creating job with params:', jobParams);
@@ -82,17 +86,60 @@ export class GranulatorService {
         request.options
       );
       
-      // Call OpenAI
-      const aiResponse = await this.openai.generateStructure(prompt);
-      console.log('OpenAI raw response:', aiResponse.content);
+      // Merge template AI config with request AI config (request overrides template)
+      const aiConfig = {
+        ...template.aiProviderConfig,
+        ...request.aiConfig,
+        modelPreferences: {
+          ...(template.aiProviderConfig as any)?.modelPreferences,
+          ...(request.aiConfig as any)?.modelPreferences
+        }
+      };
+      
+      // Select AI provider based on merged configuration
+      const preferredProvider = aiConfig.provider || aiConfig.preferredProvider;
+      const fallbackProviders = aiConfig.fallbackProviders || ['openai', 'claude', 'cloudflare'];
+      const aiProvider = await this.getAIProvider(preferredProvider, fallbackProviders);
+      console.log(`Using AI provider: ${preferredProvider || 'default'}`);
+      
+      // Get the model for the selected provider
+      const providerName = preferredProvider || 'openai';
+      const model = aiConfig.model || 
+                   aiConfig.modelPreferences?.[providerName as keyof typeof aiConfig.modelPreferences] ||
+                   aiProvider.getDefaultModel();
+      
+      // Call AI provider with merged configuration
+      const aiResponse = await aiProvider.generateCompletion(prompt, {
+        model,
+        temperature: aiConfig.temperature || 0.7,
+        maxTokens: aiConfig.maxTokens || 4000,
+        systemPrompt: aiConfig.systemPrompt || 
+                     template.aiProviderConfig?.systemPrompt || 
+                     'You are an expert educational content structure designer. Generate well-structured JSON responses.'
+      });
+      console.log(`AI response from ${aiResponse.provider}:`, aiResponse.content ? aiResponse.content.substring(0, 500) : 'NO CONTENT');
       
       let structure;
       try {
-        structure = JSON.parse(aiResponse.content);
+        if (!aiResponse.content) {
+          throw new Error('AI provider returned empty content');
+        }
+        
+        // Clean the response - remove markdown code blocks if present
+        let cleanContent = aiResponse.content;
+        if (cleanContent.includes('```json')) {
+          cleanContent = cleanContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        } else if (cleanContent.includes('```')) {
+          cleanContent = cleanContent.replace(/```\n?/g, '');
+        }
+        cleanContent = cleanContent.trim();
+        
+        structure = JSON.parse(cleanContent);
         console.log('Parsed structure:', JSON.stringify(structure).substring(0, 200));
       } catch (parseError) {
-        console.error('Failed to parse OpenAI response:', parseError);
-        throw new Error('Invalid JSON response from OpenAI');
+        console.error(`Failed to parse ${aiResponse.provider} response:`, parseError);
+        console.error('Raw content:', aiResponse.content);
+        throw new Error(`Invalid JSON response from ${aiResponse.provider}: ${parseError.message}`);
       }
       
       // Transform structure if needed (handle OpenAI response variations)
@@ -197,28 +244,84 @@ export class GranulatorService {
           aiFeedback: validationResult.aiFeedback
         });
         
-        // Update job status based on validation
-        if (!validationResult.passed) {
-          await this.db.updateJob(jobId, { status: 'validating' });
-        }
+        // Status will be updated later based on validation result
       }
       
-      // Calculate cost
-      const costUsd = this.openai.calculateCost(aiResponse.tokensUsed);
+      // Calculate cost using the AI provider with model info
+      const costUsd = aiProvider.calculateCost(aiResponse.tokensUsed, aiResponse.model);
       const processingTimeMs = Date.now() - startTime;
       
-      // Update job with results
+      // Track resource consumption
+      const resourceUsage = {
+        provider: aiResponse.provider,
+        model: aiResponse.model,
+        tokensUsed: aiResponse.tokensUsed,
+        processingTimeMs,
+        requestCount: 1
+      };
+      
+      const efficiency = calculateResourceEfficiency(resourceUsage);
+      const costTier = getCostTier(costUsd);
+      
+      // Record resource consumption in database
+      await this.db.recordResourceConsumption({
+        jobId,
+        aiProvider: aiResponse.provider,
+        aiModel: aiResponse.model,
+        tokensPrompt: aiResponse.tokensUsed.prompt,
+        tokensCompletion: aiResponse.tokensUsed.completion,
+        tokensTotal: aiResponse.tokensUsed.total,
+        costPrompt: (aiResponse.tokensUsed.prompt / 1000) * 0.001, // Will be calculated properly
+        costCompletion: (aiResponse.tokensUsed.completion / 1000) * 0.002,
+        costTotal: costUsd,
+        costPer1kTokens: efficiency.tokensPerSecond > 0 ? (costUsd / aiResponse.tokensUsed.total) * 1000 : 0,
+        processingTimeMs,
+        tokensPerSecond: efficiency.tokensPerSecond,
+        efficiencyRating: efficiency.efficiency,
+        requestType: 'granulation',
+        clientId: clientId || undefined,
+        executionId: executionId || undefined
+      });
+      
+      // Generate summary with word counts and metadata
+      const summary = this.generateSummary(structure, request.structureType);
+      
+      // Calculate total estimated words
+      const estimatedTotalWords = summary.wordCountEstimates?.total || 0;
+      
+      // Prepare content generation metadata
+      const contentGenerationMetadata = {
+        wordCountEstimates: summary.wordCountEstimates,
+        contentMetadata: summary.contentMetadata,
+        templateSpecs: {
+          contentGenerationSpecs: template.contentGenerationSpecs,
+          wordCountTargets: template.wordCountTargets,
+          contentToneGuidelines: template.contentToneGuidelines,
+          outputFormatSpecs: template.outputFormatSpecs,
+          qualityMetrics: template.qualityMetrics
+        }
+      };
+      
+      // Prepare deliverable specs
+      const deliverableSpecs = {
+        formats: summary.contentMetadata?.formatOptions || ['markdown'],
+        estimatedPages: Math.ceil(estimatedTotalWords / 250), // ~250 words per page
+        sections: summary.wordCountEstimates?.bySection || {},
+        qualityRequirements: summary.contentMetadata?.qualityTargets || {}
+      };
+      
+      // Update job with results - using existing database columns
       await this.db.updateJob(jobId, {
         actual_elements: this.countElements(structure),
         quality_score: qualityScore,
         processing_time_ms: processingTimeMs,
         cost_usd: costUsd,
-        status: validationResult?.passed !== false ? 'completed' : 'validating',
-        completed_at: new Date().toISOString()
+        estimated_total_words: estimatedTotalWords,
+        content_generation_metadata: JSON.stringify(contentGenerationMetadata),
+        deliverable_specs: JSON.stringify(deliverableSpecs),
+        status: validationResult ? (validationResult.passed ? 'completed' : 'failed') : 'completed',
+        completedAt: new Date().toISOString()
       });
-      
-      // Generate summary
-      const summary = this.generateSummary(structure, request.structureType);
       
       // Update template usage and analytics
       await this.db.incrementTemplateUsage(template.id);
@@ -243,7 +346,7 @@ export class GranulatorService {
       // Update job status on failure
       await this.db.updateJob(jobId, {
         status: 'failed',
-        completed_at: new Date().toISOString()
+        completedAt: new Date().toISOString()
       });
       throw error;
     }
@@ -285,7 +388,11 @@ export class GranulatorService {
       sequenceOrder: 0,
       title: course.courseOverview.title || 'Untitled Course',
       description: course.courseOverview.duration ? `Duration: ${course.courseOverview.duration}` : 'No duration specified',
-      metadata: course.courseOverview
+      metadata: course.courseOverview,
+      target_word_count: 500, // Course overview word count
+      content_type: 'overview',
+      generation_priority: 1,
+      content_tone: 'professional_educational'
     });
     
     // Store modules
@@ -297,6 +404,10 @@ export class GranulatorService {
         parentId: courseId,
         sequenceOrder: i,
         title: module.title,
+        target_word_count: 400, // Module introduction
+        content_type: 'module_introduction',
+        generation_priority: 1,
+        content_tone: 'engaging_educational',
         description: `Duration: ${module.estimatedDuration}`,
         metadata: {
           learningObjectives: module.learningObjectives,
@@ -314,10 +425,20 @@ export class GranulatorService {
           sequenceOrder: j,
           title: lesson.title,
           contentOutline: lesson.contentOutline,
+          target_word_count: 1200, // Main lesson content
+          content_type: 'lesson_content',
+          generation_priority: 1,
+          content_tone: 'informative_clear',
+          key_points: JSON.stringify(lesson.learningObjectives || []),
           metadata: {
             learningObjectives: lesson.learningObjectives,
             assessmentPoints: lesson.assessmentPoints,
-            practicalExercises: lesson.practicalExercises
+            practicalExercises: lesson.practicalExercises,
+            wordDistribution: {
+              mainContent: 800,
+              examples: 300,
+              exercises: 100
+            }
           }
         });
       }
@@ -437,6 +558,9 @@ export class GranulatorService {
   }
 
   private generateSummary(structure: any, structureType: string): any {
+    const wordCountEstimates = this.calculateWordCountEstimates(structure, structureType);
+    const contentMetadata = this.generateContentMetadata(structure, structureType);
+    
     switch (structureType) {
       case 'course':
         const course = structure as CourseStructure;
@@ -447,7 +571,9 @@ export class GranulatorService {
           assessments: course.modules?.filter(m => m.assessment).length || 0,
           exercises: course.modules?.reduce((acc, m) => 
             acc + m.lessons.filter(l => l.practicalExercises?.length > 0).length, 0
-          ) || 0
+          ) || 0,
+          wordCountEstimates,
+          contentMetadata
         };
       
       case 'quiz':
@@ -455,13 +581,322 @@ export class GranulatorService {
         return {
           totalQuestions: quiz.quizOverview?.totalQuestions || 0,
           categories: quiz.categories?.length || 0,
-          difficultyDistribution: quiz.quizOverview?.difficultyDistribution
+          difficultyDistribution: quiz.quizOverview?.difficultyDistribution,
+          wordCountEstimates,
+          contentMetadata
         };
       
       default:
         return {
-          totalElements: this.countElements(structure)
+          totalElements: this.countElements(structure),
+          wordCountEstimates,
+          contentMetadata
         };
     }
+  }
+  
+  private calculateWordCountEstimates(structure: any, structureType: string): any {
+    const estimates: any = {
+      total: 0,
+      bySection: {},
+      byPriority: {
+        high: 0,
+        medium: 0,
+        low: 0
+      }
+    };
+    
+    switch (structureType) {
+      case 'course':
+        const course = structure as CourseStructure;
+        let totalWords = 0;
+        
+        // Module introductions
+        estimates.bySection.moduleIntroductions = course.modules?.length * 400 || 0;
+        totalWords += estimates.bySection.moduleIntroductions;
+        
+        // Lesson content
+        const totalLessons = course.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0;
+        estimates.bySection.lessonContent = totalLessons * 1200;
+        totalWords += estimates.bySection.lessonContent;
+        
+        // Examples
+        estimates.bySection.examples = totalLessons * 300;
+        totalWords += estimates.bySection.examples;
+        
+        // Exercises
+        const totalExercises = course.modules?.reduce((acc, m) => 
+          acc + m.lessons.reduce((lacc, l) => lacc + (l.practicalExercises?.length || 0), 0), 0
+        ) || 0;
+        estimates.bySection.exercises = totalExercises * 200;
+        totalWords += estimates.bySection.exercises;
+        
+        // Assessments
+        estimates.bySection.assessments = course.modules?.filter(m => m.assessment).length * 500 || 0;
+        totalWords += estimates.bySection.assessments;
+        
+        // Module summaries
+        estimates.bySection.summaries = course.modules?.length * 250 || 0;
+        totalWords += estimates.bySection.summaries;
+        
+        estimates.total = totalWords;
+        
+        // Priority distribution (example logic)
+        estimates.byPriority.high = Math.round(totalWords * 0.5); // Core content
+        estimates.byPriority.medium = Math.round(totalWords * 0.3); // Supporting content
+        estimates.byPriority.low = Math.round(totalWords * 0.2); // Optional content
+        break;
+        
+      case 'quiz':
+        const quiz = structure as QuizStructure;
+        const questionCount = quiz.quizOverview?.totalQuestions || 0;
+        
+        estimates.bySection.questions = questionCount * 35;
+        estimates.bySection.options = questionCount * 4 * 10; // 4 options average
+        estimates.bySection.explanations = questionCount * 100;
+        estimates.bySection.hints = questionCount * 25;
+        
+        estimates.total = estimates.bySection.questions + 
+                         estimates.bySection.options + 
+                         estimates.bySection.explanations + 
+                         estimates.bySection.hints;
+        
+        estimates.byPriority.high = estimates.bySection.questions + estimates.bySection.options;
+        estimates.byPriority.medium = estimates.bySection.explanations;
+        estimates.byPriority.low = estimates.bySection.hints;
+        break;
+        
+      case 'novel':
+        const chapterCount = 24; // Three-act structure default
+        estimates.bySection.chapterContent = chapterCount * 4000;
+        estimates.bySection.sceneDescriptions = chapterCount * 3 * 350; // 3 scenes per chapter
+        estimates.bySection.dialogue = chapterCount * 5 * 150; // 5 dialogue sections per chapter
+        
+        estimates.total = estimates.bySection.chapterContent + 
+                         estimates.bySection.sceneDescriptions + 
+                         estimates.bySection.dialogue;
+        
+        estimates.byPriority.high = estimates.bySection.chapterContent;
+        estimates.byPriority.medium = estimates.bySection.dialogue;
+        estimates.byPriority.low = estimates.bySection.sceneDescriptions;
+        break;
+        
+      default:
+        estimates.total = this.countElements(structure) * 200; // Default estimate
+        estimates.byPriority.high = Math.round(estimates.total * 0.6);
+        estimates.byPriority.medium = Math.round(estimates.total * 0.25);
+        estimates.byPriority.low = Math.round(estimates.total * 0.15);
+    }
+    
+    return estimates;
+  }
+  
+  private generateContentMetadata(structure: any, structureType: string): any {
+    // Generate standardized metadata for next workers in the chain
+    return {
+      // Standard metadata for worker chain
+      workerChain: {
+        currentWorker: 'bitware-content-granulator',
+        nextWorkers: ['content-generator', 'quality-validator'],
+        outputFormat: 'structured_json',
+        version: '2.0'
+      },
+      // Standard parameters for content generation
+      standardParameters: {
+        topic: structure.courseOverview?.title || structure.quizOverview?.title || structure.novelOverview?.title || 'Unknown',
+        structureType,
+        granularityLevel: this.countElements(structure) > 50 ? 5 : 3,
+        targetAudience: structure.courseOverview?.targetAudience || 'general',
+        language: 'en',
+        tone: this.getPrimaryTone(structureType),
+        style: 'educational'
+      },
+      // Generation strategy
+      generationStrategy: {
+        approach: 'hierarchical',
+        parallelizable: true,
+        dependencies: this.identifyDependencies(structure, structureType),
+        batchSize: 10,
+        maxConcurrent: 5
+      },
+      // Content specifications
+      contentSpecs: {
+        contentTypes: this.identifyContentTypes(structure, structureType),
+        requiredSections: this.getRequiredSections(structureType),
+        optionalSections: this.getOptionalSections(structureType)
+      },
+      // Quality requirements
+      qualityRequirements: {
+        minQualityScore: 0.7,
+        readabilityTarget: 8.5,
+        coherenceTarget: 0.9,
+        completenessTarget: 0.95,
+        validationRequired: true
+      },
+      // Output format specifications
+      outputSpecs: {
+        formats: ['markdown', 'json'],
+        encoding: 'utf-8',
+        includeMetadata: true,
+        structurePreserved: true
+      },
+      // Resource estimates for next workers
+      resourceEstimates: {
+        estimatedTokens: this.countElements(structure) * 500,
+        estimatedTimeMs: this.estimateGenerationTime(structure, structureType, true),
+        estimatedCostUsd: this.countElements(structure) * 0.001,
+        storageRequired: this.countElements(structure) > 100 ? 'large' : 'medium'
+      },
+      // Tone and style guidelines (backward compatibility)
+      toneGuidelines: {
+        primary: this.getPrimaryTone(structureType),
+        variations: this.getToneVariations(structureType)
+      },
+      qualityTargets: {
+        readability: 8.5,
+        coherence: 0.9,
+        completeness: 0.95,
+        engagement: 0.85
+      },
+      formatOptions: {
+        primary: 'markdown',
+        alternatives: ['html', 'json', 'docx'],
+        includeMetadata: true
+      },
+      estimatedGenerationTime: {
+        sequential: this.estimateGenerationTime(structure, structureType, false),
+        parallel: this.estimateGenerationTime(structure, structureType, true)
+      }
+    };
+  }
+
+  private getRequiredSections(structureType: string): string[] {
+    const sectionMap: Record<string, string[]> = {
+      'course': ['title', 'objectives', 'content', 'summary'],
+      'quiz': ['questions', 'answers', 'explanations'],
+      'novel': ['chapters', 'scenes', 'characters'],
+      'workflow': ['steps', 'decisions', 'outcomes'],
+      'knowledge_map': ['concepts', 'relationships', 'hierarchy'],
+      'learning_path': ['milestones', 'skills', 'assessments']
+    };
+    return sectionMap[structureType] || ['content'];
+  }
+
+  private getOptionalSections(structureType: string): string[] {
+    const sectionMap: Record<string, string[]> = {
+      'course': ['exercises', 'resources', 'discussions'],
+      'quiz': ['hints', 'feedback', 'scoring'],
+      'novel': ['worldbuilding', 'themes', 'symbolism'],
+      'workflow': ['exceptions', 'alternatives', 'optimizations'],
+      'knowledge_map': ['examples', 'applications', 'prerequisites'],
+      'learning_path': ['certifications', 'projects', 'mentorship']
+    };
+    return sectionMap[structureType] || [];
+  }
+  
+  private identifyDependencies(structure: any, structureType: string): any[] {
+    const dependencies = [];
+    
+    if (structureType === 'course') {
+      const course = structure as CourseStructure;
+      course.modules?.forEach((module, idx) => {
+        if (idx > 0) {
+          dependencies.push({
+            dependent: `module_${idx + 1}`,
+            requires: `module_${idx}`,
+            type: 'sequential_learning'
+          });
+        }
+      });
+    }
+    
+    return dependencies;
+  }
+  
+  private identifyContentTypes(structure: any, structureType: string): string[] {
+    switch (structureType) {
+      case 'course':
+        return ['instructional', 'examples', 'exercises', 'assessments', 'summaries'];
+      case 'quiz':
+        return ['questions', 'options', 'explanations', 'hints'];
+      case 'novel':
+        return ['narrative', 'dialogue', 'description', 'action'];
+      case 'workflow':
+        return ['procedures', 'decisions', 'specifications', 'checkpoints'];
+      default:
+        return ['general'];
+    }
+  }
+  
+  private getPrimaryTone(structureType: string): string {
+    const toneMap: Record<string, string> = {
+      course: 'educational_engaging',
+      quiz: 'assessment_formal',
+      novel: 'narrative_immersive',
+      workflow: 'business_professional',
+      knowledge_map: 'academic_informative',
+      learning_path: 'motivational_practical'
+    };
+    return toneMap[structureType] || 'professional';
+  }
+  
+  private getToneVariations(structureType: string): string[] {
+    const variationsMap: Record<string, string[]> = {
+      course: ['encouraging', 'clear', 'practical'],
+      quiz: ['precise', 'unambiguous', 'fair'],
+      novel: ['descriptive', 'emotional', 'dynamic'],
+      workflow: ['instructional', 'measurable', 'actionable'],
+      knowledge_map: ['systematic', 'comprehensive', 'interconnected'],
+      learning_path: ['progressive', 'achievement_oriented', 'supportive']
+    };
+    return variationsMap[structureType] || ['clear', 'concise'];
+  }
+  
+  private estimateGenerationTime(structure: any, structureType: string, parallel: boolean): number {
+    const wordEstimates = this.calculateWordCountEstimates(structure, structureType);
+    const baseTimePerWord = 0.01; // seconds per word
+    const totalTime = wordEstimates.total * baseTimePerWord;
+    
+    if (parallel) {
+      // Assume 4x speedup with parallel processing
+      return Math.round(totalTime / 4);
+    }
+    
+    return Math.round(totalTime);
+  }
+  
+  private async getAIProvider(preferredProvider?: AIProvider | string, fallbackProviders?: string[]): Promise<AIProviderInterface> {
+    // Convert string to AIProvider type
+    const provider = preferredProvider as AIProvider | undefined;
+    
+    // Try preferred provider first
+    if (provider) {
+      try {
+        const aiProvider = AIProviderFactory.create(provider, this.env);
+        if (await aiProvider.isAvailable()) {
+          return aiProvider;
+        }
+      } catch (error) {
+        console.warn(`Preferred provider ${provider} not available:`, error);
+      }
+    }
+    
+    // Try fallback providers
+    if (fallbackProviders && fallbackProviders.length > 0) {
+      for (const fallback of fallbackProviders) {
+        try {
+          const aiProvider = AIProviderFactory.create(fallback as AIProvider, this.env);
+          if (await aiProvider.isAvailable()) {
+            console.log(`Using fallback provider: ${fallback}`);
+            return aiProvider;
+          }
+        } catch (error) {
+          console.warn(`Fallback provider ${fallback} not available:`, error);
+        }
+      }
+    }
+    
+    // Get best available provider as last resort
+    return await AIProviderFactory.getBestAvailableProvider(this.env, provider);
   }
 }

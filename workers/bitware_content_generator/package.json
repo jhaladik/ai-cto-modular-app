@@ -1,0 +1,35 @@
+{
+  "name": "bitware-content-generator",
+  "version": "1.0.0",
+  "description": "AI-powered content generation worker for structured content",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "tail": "wrangler tail",
+    "test": "./test.sh",
+    "db:init": "wrangler d1 execute content-generator-db --file=schema/schema.sql",
+    "db:seed": "wrangler d1 execute content-generator-db --file=schema/seed.sql",
+    "db:reset": "npm run db:init && npm run db:seed"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "ai",
+    "content-generation",
+    "openai",
+    "claude"
+  ],
+  "author": "AI Factory",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241004.0",
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.2",
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "openai": "^4.20.0"
+  }
+}
