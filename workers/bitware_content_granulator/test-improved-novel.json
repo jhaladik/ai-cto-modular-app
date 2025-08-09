@@ -1,0 +1,47 @@
+{
+  "action": "granulate",
+  "input": {
+    "topic": "A cyberpunk detective story in Tokyo where detective Kai Nakamura investigates AI crimes",
+    "structureType": "novel",
+    "templateName": "three_act_novel",
+    "granularityLevel": 3,
+    "targetAudience": "adult sci-fi thriller readers",
+    "maxElements": 35,
+    "userObjects": {
+      "mandatory": [
+        {
+          "id": "detective_kai",
+          "type": "character",
+          "name": "Kai Nakamura",
+          "properties": {
+            "role": "Cybernetic detective protagonist",
+            "skills": ["neural hacking", "martial arts", "deduction"],
+            "augmentations": ["neural interface", "enhanced vision"]
+          },
+          "usage_requirements": {
+            "min_appearances": 15,
+            "placement": ["1.1", "2.1", "3.1"]
+          }
+        },
+        {
+          "id": "tokyo_2087",
+          "type": "location",
+          "name": "Neo-Tokyo 2087",
+          "properties": {
+            "description": "Neon-lit megacity with vertical slums and AI-controlled zones"
+          },
+          "usage_requirements": {
+            "min_appearances": 10
+          }
+        }
+      ]
+    }
+  },
+  "config": {
+    "aiProvider": "openai",
+    "aiModel": "gpt-4o-mini",
+    "temperature": 0.8,
+    "maxTokens": 15000,
+    "validation": false
+  }
+}

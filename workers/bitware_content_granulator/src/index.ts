@@ -11,6 +11,7 @@ import {
 } from './handlers/monitoring-ops';
 
 import { handleExecute } from './handlers/execute-handler';
+import { handleExecuteV2 } from './handlers/execute-handler-v2';
 
 import {
   handleGetJob,
@@ -36,6 +37,9 @@ import {
   handleGetCostEstimate,
   handleGetPricingInfo
 } from './handlers/economy-ops';
+
+import { MultiStageHandler } from './handlers/multi-stage-handler';
+import { MultiStageHandlerUAOL } from './handlers/multi-stage-handler-uaol';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -84,7 +88,12 @@ export default {
 
       // Execute endpoint for Resource Manager
       if (method === 'POST' && path === '/api/execute') {
-        return handleExecute(env, authenticatedRequest!);
+        // Use v2 handler for new generic structure approach
+        // Check if request wants v2 explicitly or use it by default
+        const useV2 = true; // Always use v2 for now
+        return useV2 
+          ? handleExecuteV2(env, authenticatedRequest!)
+          : handleExecute(env, authenticatedRequest!);
       }
 
       // Job management endpoints
@@ -147,6 +156,35 @@ export default {
       
       if (method === 'GET' && path === '/api/economy/pricing') {
         return handleGetPricingInfo(env);
+      }
+
+      // Multi-stage generation endpoints
+      const multiStageHandler = new MultiStageHandler(env);
+      
+      // UAOL-enhanced endpoints (use /api/v2/ prefix)
+      const uaolHandler = new MultiStageHandlerUAOL(env);
+      const isUAOL = path.startsWith('/api/v2/');
+      
+      if (method === 'GET' && (path === '/api/projects' || path === '/api/v2/projects')) {
+        return multiStageHandler.listProjects(authenticatedRequest!);
+      }
+      
+      if (method === 'POST' && (path === '/api/projects/create' || path === '/api/v2/projects/create')) {
+        return multiStageHandler.createProject(authenticatedRequest!);
+      }
+      
+      if (method === 'POST' && path === '/api/stages/execute') {
+        return multiStageHandler.executeStage(authenticatedRequest!);
+      }
+      
+      // UAOL-optimized stage execution
+      if (method === 'POST' && path === '/api/v2/stages/execute') {
+        return uaolHandler.executeStage(authenticatedRequest!);
+      }
+      
+      if (method === 'GET' && path.match(/^\/api\/projects\/\d+$/)) {
+        const projectId = path.split('/')[3];
+        return multiStageHandler.getProjectStatus(authenticatedRequest!, projectId);
       }
 
       // Admin endpoints (worker auth required)

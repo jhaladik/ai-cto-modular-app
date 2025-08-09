@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Big Picture Parsing</title>
+</head>
+<body>
+    <h1>Test Big Picture Data Parsing</h1>
+    <div id="output"></div>
+    
+    <script>
+        // Simulate the actual data structure from the database
+        const rawStageData = {
+            output_data: JSON.stringify({
+                content: `\`\`\`json
+{
+  "BIG_PICTURE": {
+    "CORE_CONCEPT": {
+      "central_premise": "In a world where memories can be purchased and traded, a memory thief discovers a conspiracy that could alter the fabric of reality itself.",
+      "genre": "Science Fiction",
+      "sub_genre": "Dystopian",
+      "unique_selling_proposition": "A gripping exploration of identity and memory that melds high-stakes action with profound philosophical questions."
+    },
+    "THEMATIC_FRAMEWORK": {
+      "primary_theme": "The nature of identity and self",
+      "secondary_themes": ["Memory as currency", "Reality vs perception", "Corporate control"],
+      "philosophical_questions": ["What makes us who we are?", "Can memories be owned?"],
+      "emotional_journey": "From confusion to revelation to empowerment"
+    },
+    "NARRATIVE_ARC": {
+      "beginning": "Discovery of the memory theft",
+      "middle": "Uncovering the conspiracy",
+      "end": "Confronting the truth about reality",
+      "key_turning_points": ["First memory theft", "Discovery of the corporation", "Reality revelation"]
+    },
+    "WORLD_VISION": {
+      "setting_overview": "Tokyo, 2087",
+      "time_period": "Near future dystopia",
+      "atmosphere_and_tone": "Dark, cyberpunk, philosophical",
+      "rules_of_the_world": "Memories can be extracted, stored, and traded"
+    },
+    "CORE_CONFLICTS": {
+      "external_conflict": "Memory thief vs the corporation",
+      "internal_conflict": "Identity crisis and moral dilemmas",
+      "societal_philosophical_conflict": "Individual freedom vs corporate control",
+      "stakes_and_consequences": "The nature of reality itself"
+    }
+  }
+}
+\`\`\``
+            })
+        };
+        
+        // Parse function from granulation-page-v4.js
+        function parseBigPictureData(data) {
+            let parsedData = data;
+            
+            // Handle nested content field with markdown
+            if (data.content && typeof data.content === 'string') {
+                try {
+                    // Remove markdown code blocks if present
+                    let jsonStr = data.content;
+                    if (jsonStr.includes('```json')) {
+                        jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                    }
+                    parsedData = JSON.parse(jsonStr);
+                    
+                    // Extract BIG_PICTURE if it exists
+                    if (parsedData.BIG_PICTURE) {
+                        parsedData = parsedData.BIG_PICTURE;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse stage content:', e);
+                    parsedData = data;
+                }
+            }
+            
+            return parsedData;
+        }
+        
+        // Test the parsing
+        const output = JSON.parse(rawStageData.output_data);
+        const parsed = parseBigPictureData(output);
+        
+        // Display results
+        const outputDiv = document.getElementById('output');
+        outputDiv.innerHTML = `
+            <h2>Raw Data Structure:</h2>
+            <pre>${JSON.stringify(output, null, 2).substring(0, 500)}...</pre>
+            
+            <h2>Parsed Data:</h2>
+            <pre>${JSON.stringify(parsed, null, 2)}</pre>
+            
+            <h2>Extracted Values:</h2>
+            <ul>
+                <li><strong>Central Premise:</strong> ${parsed.CORE_CONCEPT?.central_premise || 'NOT FOUND'}</li>
+                <li><strong>Genre:</strong> ${parsed.CORE_CONCEPT?.genre || 'NOT FOUND'}</li>
+                <li><strong>Primary Theme:</strong> ${parsed.THEMATIC_FRAMEWORK?.primary_theme || 'NOT FOUND'}</li>
+                <li><strong>Setting:</strong> ${parsed.WORLD_VISION?.setting_overview || 'NOT FOUND'}</li>
+                <li><strong>External Conflict:</strong> ${parsed.CORE_CONFLICTS?.external_conflict || 'NOT FOUND'}</li>
+            </ul>
+        `;
+    </script>
+</body>
+</html>

@@ -1,4 +1,21 @@
-# Content Granulator API Documentation
+# Content Granulator API Documentation v4.0
+
+## Overview
+
+The Content Granulator is a professional content development platform that uses a **4-stage progressive refinement system** to generate ANY type of content - novels, courses, documentaries, games, podcasts, research papers, and more. Based on proven creative methodologies, it transforms ideas into production-ready content structures.
+
+### Key Features
+- **Universal Multi-Stage System**: 4-stage progressive refinement for any content type
+- **Professional Methodology**: Based on real-world creative processes
+- **Object-Centric Design**: Define once, reference throughout
+- **200-Word Descriptions**: Rich, detailed descriptions at every level
+- **Universal Content Support**: Works with novels, courses, documentaries, podcasts, papers, games, etc.
+- **Progressive Refinement**: Each stage builds on the previous
+- **Research Identification**: Know what needs research before writing
+- **Template-Driven**: Pre-configured templates for different content types
+- **Multiple AI Providers**: OpenAI, Claude, Cloudflare AI
+- **Smart Storage**: Automatic KV/R2 tiering for large structures
+- **Cost Tracking**: Monitor token usage and costs per stage
 
 ## Base URL
 ```
@@ -7,133 +24,448 @@ https://bitware-content-granulator.jhaladik.workers.dev
 
 ## Authentication
 
-The Content Granulator supports three authentication methods:
+All API endpoints (except health checks) require authentication using bearer token and worker ID:
 
-### 1. Worker-to-Worker Authentication
 ```http
-Authorization: Bearer internal-worker-auth-token-2024
-X-Worker-ID: your-worker-id
+Authorization: Bearer {WORKER_SECRET}
+X-Worker-ID: {WORKER_ID}
 ```
 
-### 2. Client API Key Authentication
-```http
-X-API-Key: your-api-key
+## Universal Content Structure Format
+
+All content structures follow this universal, object-centric format:
+
+```typescript
+{
+  "type": "novel|course|podcast|paper|documentary|game|etc",
+  "version": "2.0",
+  "metadata": {
+    "title": "Content title",
+    "description": "Comprehensive description",
+    "targetAudience": "Target audience description",
+    "purpose": "entertain|educate|inform|persuade",
+    "estimatedDuration": "Time/length estimate",
+    "tags": ["tag1", "tag2"],
+    "typeSpecific": {
+      // Properties specific to content type
+      // For novel: genre, setting, themes
+      // For podcast: format, frequency, hosts
+      // For course: level, prerequisites, outcomes
+    }
+  },
+  
+  "objects": {
+    "provided": {
+      // User-supplied objects that MUST be included
+      "mandatory": [
+        {
+          "id": "user_obj_1",
+          "type": "character|location|concept|resource",
+          "name": "Object name",
+          "properties": { /* Custom properties */ },
+          "usage_requirements": {
+            "min_appearances": 5,
+            "placement": ["1.1", "2.3"]
+          }
+        }
+      ],
+      "optional": [ /* Optional user objects */ ]
+    },
+    
+    "generated": {
+      // AI-generated objects
+      "actors": [
+        {
+          "id": "actor_1",
+          "type": "character|host|author|instructor",
+          "name": "Full name",
+          "role": "Role in content",
+          "description": "Detailed description",
+          "attributes": { /* Type-specific attributes */ },
+          "appearances": ["1.1", "1.2", "2.1"]
+        }
+      ],
+      "locations": [
+        {
+          "id": "loc_1",
+          "type": "physical|virtual|conceptual",
+          "name": "Location name",
+          "description": "Detailed description",
+          "atmosphere": "Mood/feeling",
+          "usage": ["1.1", "2.3"]
+        }
+      ],
+      "concepts": [
+        {
+          "id": "concept_1",
+          "type": "theme|topic|skill|theory",
+          "name": "Concept name",
+          "description": "What it represents",
+          "importance": "core|supporting|background"
+        }
+      ],
+      "resources": [
+        {
+          "id": "resource_1",
+          "type": "document|tool|reference|media",
+          "name": "Resource name",
+          "description": "What it is",
+          "format": "Type of resource"
+        }
+      ]
+    }
+  },
+  
+  "elements": [
+    {
+      "id": "1",
+      "type": "act|module|season|section",
+      "name": "Descriptive name",
+      "level": 1,  // ALWAYS 3 levels: 1, 2, 3
+      "sequenceOrder": 0,
+      "metadata": {
+        "summary": "Detailed summary",
+        "duration": "Estimated time/length",
+        "objects": {
+          "featured": ["actor_1", "loc_1"],
+          "introduced": ["concept_1"],
+          "referenced": ["resource_1"]
+        },
+        "contentGuidance": {
+          "tone": "serious|casual|academic",
+          "style": "narrative|expository|instructional",
+          "techniques": ["technique1", "technique2"]
+        }
+      },
+      "elements": [
+        {
+          "id": "1.1",
+          "type": "chapter|episode|lesson",
+          "name": "Level 2 name",
+          "level": 2,
+          "sequenceOrder": 0,
+          "metadata": { /* ... */ },
+          "elements": [
+            {
+              "id": "1.1.1",
+              "type": "scene|segment|activity",
+              "name": "Level 3 name",
+              "level": 3,
+              "sequenceOrder": 0,
+              "metadata": {
+                "description": "Detailed description",
+                "objects": {
+                  "actors": ["actor_1"],
+                  "location": "loc_1",
+                  "concepts": ["concept_1"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
 ```
 
-### 3. Session Token Authentication
-```http
-x-bitware-session-token: your-session-token
+## Multi-Stage Generation System (NEW! v4.0)
+
+The 4-stage progressive refinement system for professional content generation.
+
+### The 4 Stages
+
+1. **Stage 1: Big Picture** - Vision, framework, and overall concept
+2. **Stage 2: Objects & Relations** - Characters, locations, concepts, timeline
+3. **Stage 3: Structure** - Hierarchical units with 200-word descriptions
+4. **Stage 4: Granular Units** - Atomic units ready for content generation
+
+### Multi-Stage Endpoints
+
+#### 1. Create Project
+**POST** `/api/projects/create`
+
+Creates a new multi-stage content project.
+
+##### Request Body
+```json
+{
+  "project_name": "The Quantum Detective",
+  "content_type": "novel",  // novel, course, documentary, podcast, research_paper, game
+  "topic": "A detective story in cyberpunk Tokyo",
+  "target_audience": "Adult sci-fi readers",
+  "genre": "Cyberpunk Mystery",  // optional
+  "metadata": {  // optional, content-type specific
+    "setting": "Tokyo 2087",
+    "tone": "Dark and philosophical"
+  }
+}
 ```
 
----
+##### Response
+```json
+{
+  "success": true,
+  "project": {
+    "id": 1,
+    "project_name": "The Quantum Detective",
+    "content_type": "novel",
+    "topic": "A detective story in cyberpunk Tokyo",
+    "current_stage": 1,
+    "total_stages": 4,
+    "status": "in_progress",
+    "created_at": "2025-08-08T15:31:39Z"
+  }
+}
+```
 
-## Endpoints Overview
+#### 2. Execute Stage
+**POST** `/api/stages/execute`
 
-| Endpoint | Method | Auth Required | Description |
-|----------|--------|--------------|-------------|
-| `/` | GET | No | Health check |
-| `/health` | GET | No | Detailed health status |
-| `/help` | GET | No | API documentation |
-| `/api/execute` | POST | Yes | Main execution endpoint |
-| `/api/templates` | GET | Yes | List available templates |
-| `/api/templates/{name}` | GET | Yes | Get template details |
-| `/api/jobs` | GET | Yes | List granulation jobs |
-| `/api/jobs/{id}` | GET | Yes | Get job details |
-| `/api/jobs/{id}/status` | GET | Yes | Get job status |
-| `/api/jobs/{id}/structure` | GET | Yes | Get generated structure |
-| `/api/jobs/{id}/retry` | POST | Yes | Retry failed job |
-| `/api/validate` | POST | Yes | Validate structure |
-| `/api/validation/history` | GET | Yes | Get validation history |
-| `/api/stats` | GET | Yes | Get granulation statistics |
-| `/api/ai-providers` | GET | Yes | List available AI providers |
-| `/api/economy/pricing` | GET | Yes | Get pricing information |
-| `/api/economy/estimate` | POST | Yes | Estimate cost |
-| `/api/economy/stats` | GET | Yes | Get resource consumption stats |
+Executes a specific stage of the content generation process.
 
----
+##### Request Body
+```json
+{
+  "project_id": 1,
+  "stage_number": 1,  // 1-4
+  "ai_config": {  // optional
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "temperature": 0.8,
+    "maxTokens": 16000
+  }
+}
+```
 
-## Core Endpoints
+##### Response
+```json
+{
+  "success": true,
+  "stage": {
+    "id": 1,
+    "stage_number": 1,
+    "stage_name": "big_picture",
+    "output": {
+      // Stage-specific output structure
+    },
+    "tokens_used": {
+      "input": 500,
+      "output": 2000
+    },
+    "next_stage": 2
+  }
+}
+```
 
-### 1. Execute Granulation
-**Endpoint:** `POST /api/execute`
+#### 3. Get Project Status
+**GET** `/api/projects/{projectId}`
 
-**Description:** Main endpoint for content granulation. Creates structured content from a topic.
+Retrieves complete project status and progress.
 
-**Request Body:**
+##### Response
+```json
+{
+  "success": true,
+  "project": {
+    "id": 1,
+    "project_name": "The Quantum Detective",
+    "content_type": "novel",
+    "current_stage": 3,
+    "status": "in_progress",
+    "stages": [
+      {
+        "stage_number": 1,
+        "stage_name": "big_picture",
+        "status": "completed",
+        "completed_at": "2025-08-08T15:32:00Z"
+      },
+      {
+        "stage_number": 2,
+        "stage_name": "objects_relations",
+        "status": "completed",
+        "completed_at": "2025-08-08T15:33:00Z"
+      }
+    ],
+    "statistics": {
+      "objects": 25,
+      "structural_units": 21,
+      "granular_units": 0,
+      "completed_stages": 2
+    }
+  }
+}
+```
+
+### Stage Output Structures
+
+#### Stage 1: Big Picture Output
+```json
+{
+  "core_concept": {
+    "premise": "Central story premise",
+    "genre": "Genre and sub-genre",
+    "unique_proposition": "What makes it unique"
+  },
+  "thematic_framework": {
+    "primary_theme": "Main theme",
+    "secondary_themes": ["theme1", "theme2"],
+    "philosophical_questions": ["question1"],
+    "emotional_journey": "Reader's emotional arc"
+  },
+  "narrative_arc": {
+    "beginning": "Initial state",
+    "middle": "Complications",
+    "end": "Resolution",
+    "turning_points": ["point1", "point2"]
+  },
+  "world_vision": {
+    "setting": "Where and when",
+    "atmosphere": "Tone and mood",
+    "rules": "World rules/logic"
+  },
+  "conflicts": {
+    "external": "Main external conflict",
+    "internal": "Character's internal struggle",
+    "philosophical": "Deeper questions"
+  }
+}
+```
+
+#### Stage 2: Objects & Relations Output
+```json
+{
+  "objects": [
+    {
+      "type": "character",
+      "code": "char_protagonist",
+      "name": "Kai Nakamura",
+      "description": "200-word character description...",
+      "backstory": "200-word backstory...",
+      "relationships": {
+        "char_antagonist": "rival",
+        "char_mentor": "student"
+      },
+      "metadata": {
+        "role": "protagonist",
+        "arc": "zero to hero"
+      }
+    }
+  ],
+  "timeline": [
+    {
+      "time": "10 years before story",
+      "description": "The quantum incident that changed everything",
+      "type": "backstory",
+      "objects": ["char_protagonist", "loc_tokyo"],
+      "impact": "critical"
+    }
+  ]
+}
+```
+
+#### Stage 3: Structure Output
+```json
+{
+  "structure": [
+    {
+      "type": "act",
+      "code": "1",
+      "title": "The Discovery",
+      "description": "200-word act description...",
+      "children": [
+        {
+          "type": "chapter",
+          "code": "1.1",
+          "title": "Neon Shadows",
+          "description": "200-word chapter description including opening hook, main events, character development, dialogue highlights, emotional beats, revelations, action sequences, reflection moments, and chapter ending...",
+          "objects": ["char_protagonist", "loc_tokyo_streets"],
+          "word_count": 5000,
+          "metadata": {
+            "pov": "Kai Nakamura",
+            "tone": "mysterious",
+            "plot_function": "inciting incident"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Stage 4: Granular Units Output
+```json
+{
+  "granular_units": [
+    {
+      "type": "scene",
+      "code": "1.1.1",
+      "parent_code": "1.1",
+      "title": "The Crime Scene",
+      "description": "200-word scene description with specific opening line, detailed action beats, dialogue snippets, sensory details, character emotions, micro-tensions, environmental details, body language, pacing notes, and transition...",
+      "word_count": 2000,
+      "style": "descriptive",
+      "research": ["quantum computing basics", "Tokyo street layout"],
+      "objects": ["char_protagonist", "char_victim", "loc_crime_scene"],
+      "arc": "curiosity → discovery → shock",
+      "key_lines": [
+        "The quantum signature was impossible to fake",
+        "In 2087 Tokyo, even death had gone digital"
+      ],
+      "notes": "Establish noir atmosphere, introduce quantum mystery"
+    }
+  ]
+}
+```
+
+## Legacy Single-Stage Endpoints
+
+### 1. Execute Granulation (Legacy)
+**POST** `/api/execute`
+
+Creates a new content structure using AI in a single operation.
+
+#### Request Body
 ```json
 {
   "action": "granulate",
   "input": {
-    "topic": "string",                    // Required: Topic to granulate
-    "structureType": "string",            // Required: course|quiz|novel|workflow|knowledge_map|learning_path
-    "templateName": "string",              // Optional: Specific template to use
-    "granularityLevel": 1-5,              // Optional: Detail level (default: 3)
-    "targetAudience": "string",            // Optional: Target audience description
-    "maxElements": number                 // Optional: Maximum elements to generate
+    "topic": "Subject matter to structure",
+    "structureType": "course|quiz|novel|workflow",
+    "granularityLevel": 3,  // Number of top-level elements
+    "targetAudience": "Target audience description",
+    "maxElements": 30       // Maximum total elements
   },
   "config": {
-    "aiProvider": "string",               // Optional: openai|claude|cloudflare
-    "aiModel": "string",                   // Optional: Specific model to use
-    "temperature": 0.0-1.0,                // Optional: AI temperature (default: 0.7)
-    "maxTokens": number,                   // Optional: Max tokens (default: 4000)
-    "systemPrompt": "string",              // Optional: Custom system prompt
-    "validation": boolean,                 // Optional: Enable validation (default: true)
-    "validationLevel": 1-3,                // Optional: Validation strictness
-    "validationThreshold": number          // Optional: Pass threshold (default: 85)
-  },
-  "timeout": number                        // Optional: Request timeout in ms
+    "aiProvider": "openai",
+    "aiModel": "gpt-4o-mini",
+    "temperature": 0.7,
+    "maxTokens": 4000,
+    "validation": false,
+    "validationLevel": 2,
+    "validationThreshold": 85
+  }
 }
 ```
 
-**Success Response (200):**
+#### Response
 ```json
 {
   "success": true,
   "output": {
     "jobId": 123,
-    "topic": "Topic Name",
+    "topic": "Subject matter",
     "structureType": "course",
+    "structure": { /* Generic structure object */ },
     "summary": {
-      "totalElements": 20,
-      "modules": 3,
-      "lessons": 9,
-      "assessments": 3,
-      "exercises": 9,
-      "wordCountEstimates": {
-        "total": 15000,
-        "bySection": {
-          "moduleIntroductions": 1200,
-          "lessonContent": 8000,
-          "examples": 2000,
-          "exercises": 2500,
-          "assessments": 1300
-        },
-        "byPriority": {
-          "high": 7500,
-          "medium": 4500,
-          "low": 3000
-        }
+      "totalElements": 25,
+      "levels": {
+        "1": 3,
+        "2": 10,
+        "3": 12
       },
-      "contentMetadata": {
-        "workerChain": {
-          "currentWorker": "bitware-content-granulator",
-          "nextWorkers": ["content-generator", "quality-validator"],
-          "outputFormat": "structured_json",
-          "version": "2.0"
-        },
-        "standardParameters": {
-          "topic": "string",
-          "structureType": "course",
-          "granularityLevel": 3,
-          "targetAudience": "string",
-          "language": "en",
-          "tone": "educational_engaging",
-          "style": "educational"
-        }
-      }
+      "qualityScore": 0.85
     },
-    "qualityScore": 0.92,
-    "structure": { /* Full structure object */ },
     "readyForContentGeneration": true
   },
   "usage": {
@@ -142,801 +474,472 @@ x-bitware-session-token: your-session-token
       "output": 2000
     }
   },
-  "duration": 5432,
-  "cost": 0.0025,
-  "metadata": {
-    "aiProvider": "openai",
-    "model": "gpt-4o-mini",
-    "validationEnabled": true,
-    "storageType": "inline"
-  }
+  "duration": 5000,
+  "cost": 0.0025
 }
 ```
 
-**Error Response (400/500):**
-```json
-{
-  "success": false,
-  "error": "Error message describing what went wrong",
-  "status": "failed",
-  "details": {
-    "code": "INVALID_TEMPLATE",
-    "context": "Template 'xyz' not found"
-  }
-}
-```
+### 2. Get Job Details
+**GET** `/api/jobs/{jobId}`
 
----
+Retrieves details of a specific granulation job.
 
-### 2. List Templates
-**Endpoint:** `GET /api/templates`
-
-**Query Parameters:**
-- `structure_type` (optional): Filter by structure type
-
-**Success Response (200):**
-```json
-{
-  "templates": [
-    {
-      "name": "educational_course_basic",
-      "structureType": "course",
-      "complexityLevel": 3,
-      "targetAudience": "general",
-      "usageCount": 150,
-      "description": "Basic educational course template"
-    }
-  ],
-  "total": 6
-}
-```
-
----
-
-### 3. Get Template Details
-**Endpoint:** `GET /api/templates/{name}`
-
-**Success Response (200):**
-```json
-{
-  "template": {
-    "name": "educational_course_basic",
-    "structureType": "course",
-    "complexityLevel": 3,
-    "targetAudience": "general",
-    "schema": {
-      "courseOverview": {
-        "title": "string",
-        "description": "string",
-        "duration": "string",
-        "prerequisites": ["string"],
-        "learningOutcomes": ["string"]
-      },
-      "modules": []
-    },
-    "validationRules": {
-      "minModules": 2,
-      "maxModules": 10,
-      "minLessonsPerModule": 2
-    },
-    "usageCount": 150,
-    "createdAt": "2025-01-01T00:00:00Z",
-    "aiPromptTemplate": "Template prompt..."
-  }
-}
-```
-
-**Error Response (404):**
-```json
-{
-  "error": "Template not found"
-}
-```
-
----
-
-## Job Management Endpoints
-
-### 4. List Jobs
-**Endpoint:** `GET /api/jobs`
-
-**Query Parameters:**
-- `status` (optional): Filter by status (processing|completed|failed|validating|retry)
-- `limit` (optional): Number of results (default: 20)
-- `offset` (optional): Pagination offset
-
-**Success Response (200):**
-```json
-{
-  "jobs": [
-    {
-      "id": 123,
-      "topic": "Python Basics",
-      "structureType": "course",
-      "status": "completed",
-      "qualityScore": 0.92,
-      "processingTimeMs": 5432,
-      "costUsd": 0.0025,
-      "createdAt": "2025-01-08T10:00:00Z",
-      "completedAt": "2025-01-08T10:00:05Z"
-    }
-  ],
-  "total": 50,
-  "page": 1,
-  "pageSize": 20
-}
-```
-
----
-
-### 5. Get Job Details
-**Endpoint:** `GET /api/jobs/{id}`
-
-**Success Response (200):**
+#### Response
 ```json
 {
   "job": {
     "id": 123,
-    "topic": "Python Basics",
+    "topic": "Python Programming",
     "structureType": "course",
-    "templateName": "educational_course_basic",
-    "granularityLevel": 3,
-    "targetAudience": "beginners",
     "status": "completed",
-    "actualElements": 20,
-    "qualityScore": 0.92,
-    "processingTimeMs": 5432,
-    "costUsd": 0.0025,
-    "validationEnabled": true,
-    "validationLevel": 2,
-    "validationThreshold": 85,
-    "startedAt": "2025-01-08T10:00:00Z",
-    "completedAt": "2025-01-08T10:00:05Z",
-    "clientId": "client_123",
-    "executionId": "exec_456"
-  }
+    "qualityScore": 0.85,
+    "processingTimeMs": 5000,
+    "costUsd": 0.0025
+  },
+  "structure": { /* Generic structure object */ }
 }
 ```
 
-**Error Response (404):**
+### 3. List Templates
+**GET** `/api/templates`
+
+Returns available structure templates.
+
+#### Query Parameters
+- `structureType` (optional): Filter by structure type
+
+#### Response
 ```json
 {
-  "error": "Job not found"
-}
-```
-
----
-
-### 6. Get Job Structure
-**Endpoint:** `GET /api/jobs/{id}/structure`
-
-**Success Response (200):**
-```json
-{
-  "structure": {
-    "courseOverview": {
-      "title": "Introduction to Python Programming",
-      "description": "...",
-      "duration": "8 weeks",
-      "prerequisites": [],
-      "learningOutcomes": []
-    },
-    "modules": [
-      {
-        "id": "module_1",
-        "title": "Getting Started",
-        "lessons": []
+  "templates": [
+    {
+      "templateName": "educational_course_basic",
+      "structureType": "course",
+      "description": "Basic educational course structure",
+      "structureRules": {
+        "levels": [
+          {
+            "level": 1,
+            "suggestedType": "module",
+            "minElements": 3,
+            "maxElements": 12,
+            "requiredMetadata": ["title", "duration", "objectives"]
+          }
+        ]
       }
-    ]
-  },
-  "storageInfo": {
-    "type": "inline",
-    "size": 45678
-  }
-}
-```
-
----
-
-### 7. Retry Failed Job
-**Endpoint:** `POST /api/jobs/{id}/retry`
-
-**Request Body (optional):**
-```json
-{
-  "config": {
-    "aiProvider": "claude",
-    "maxTokens": 5000
-  }
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "newJobId": 124,
-  "message": "Job retry initiated"
-}
-```
-
----
-
-## Validation Endpoints
-
-### 8. Validate Structure
-**Endpoint:** `POST /api/validate`
-
-**Request Body:**
-```json
-{
-  "jobId": 123,
-  "structure": { /* Optional: Structure to validate */ },
-  "validationLevel": 1-3,
-  "threshold": 85
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "valid": true,
-  "score": 92,
-  "details": {
-    "structureCompleteness": 95,
-    "contentCoherence": 90,
-    "qualityMetrics": 91
-  },
-  "issues": [],
-  "recommendations": []
-}
-```
-
----
-
-## Economy Endpoints
-
-### 9. Get Pricing Information
-**Endpoint:** `GET /api/economy/pricing`
-
-**Success Response (200):**
-```json
-{
-  "providers": [
-    {
-      "provider": "openai",
-      "models": [
-        {
-          "model": "gpt-4o-mini",
-          "pricing": {
-            "promptPer1k": "$0.00015",
-            "completionPer1k": "$0.0006",
-            "promptRaw": 0.00015,
-            "completionRaw": 0.0006
-          },
-          "example1k": "$0.0005",
-          "example10k": "$0.0046"
-        }
-      ]
-    }
-  ],
-  "recommendations": {
-    "costEffective": {
-      "provider": "cloudflare",
-      "model": "@cf/meta/llama-3-8b-instruct",
-      "reason": "Free with Workers subscription"
-    },
-    "balanced": {
-      "provider": "openai",
-      "model": "gpt-4o-mini",
-      "reason": "Best balance of cost, quality, and speed"
-    },
-    "highQuality": {
-      "provider": "claude",
-      "model": "claude-3-5-sonnet-20241022",
-      "reason": "Excellent for creative and complex content"
-    }
-  },
-  "lastUpdated": "2025-01-08"
-}
-```
-
----
-
-### 10. Estimate Cost
-**Endpoint:** `POST /api/economy/estimate`
-
-**Request Body:**
-```json
-{
-  "provider": "openai",
-  "model": "gpt-4o-mini",
-  "structureType": "course",
-  "granularityLevel": 3,
-  "tokens": 5000
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "estimate": {
-    "provider": "openai",
-    "model": "gpt-4o-mini",
-    "structureType": "course",
-    "granularityLevel": 3,
-    "tokens": {
-      "prompt": 1500,
-      "completion": 3500,
-      "total": 5000
-    },
-    "cost": {
-      "prompt": "$0.0002",
-      "completion": "$0.0021",
-      "total": "$0.0023",
-      "totalRaw": 0.00225
-    },
-    "pricing": {
-      "promptPer1k": "$0.00015",
-      "completionPer1k": "$0.0006"
-    }
-  },
-  "alternatives": [
-    {
-      "provider": "cloudflare",
-      "model": "@cf/meta/llama-3-8b-instruct",
-      "cost": "Free",
-      "savings": "$0.0023",
-      "note": "Included with Workers subscription"
     }
   ]
 }
 ```
 
----
+### 4. Get Template Details
+**GET** `/api/templates/{templateName}`
 
-### 11. Get Resource Consumption Stats
-**Endpoint:** `GET /api/economy/stats`
+Returns detailed information about a specific template.
 
-**Query Parameters:**
-- `days` (optional): Number of days to look back (default: 7)
+### 5. Get Statistics
+**GET** `/api/stats`
 
-**Success Response (200):**
+Returns granulation statistics.
+
+#### Response
 ```json
 {
-  "period": "7 days",
-  "summary": {
-    "totalCost": "$15.42",
-    "totalCostRaw": 15.42,
-    "potentialSavings": "$8.50",
-    "totalRequests": 523,
-    "totalTokens": 1250000
-  },
-  "dailyUsage": [
-    {
-      "date": "2025-01-08",
-      "provider": "openai",
-      "model": "gpt-4o-mini",
-      "requests": 75,
-      "tokens": 178500,
-      "cost": "$2.20",
-      "costRaw": 2.20,
-      "avgProcessingTime": 4500,
-      "throughput": 150
-    }
-  ],
-  "providerBreakdown": [
-    {
-      "provider": "openai",
-      "requests": 350,
-      "tokens": 875000,
-      "totalCost": "$10.50",
-      "totalCostRaw": 10.50,
-      "avgCostPer1k": "$0.012",
-      "avgProcessingTime": 4200,
-      "efficiency": {
-        "high": 280,
-        "medium": 60,
-        "low": 10
-      }
-    }
-  ],
-  "topModels": [
-    {
-      "model": "gpt-4o-mini",
-      "provider": "openai",
-      "usageCount": 300,
-      "avgCost": "$0.025",
-      "avgCostRaw": 0.025,
-      "avgTokens": 2500,
-      "avgTime": 4000,
-      "throughput": 625
-    }
-  ]
-}
-```
-
----
-
-## Error Handling
-
-### Error Response Format
-All error responses follow this structure:
-
-```json
-{
-  "error": "Human-readable error message",
-  "status": 400-500,
-  "code": "ERROR_CODE",
-  "details": {
-    "field": "Additional context",
-    "suggestion": "How to fix the error"
-  }
-}
-```
-
-### Common Error Codes
-
-| Code | Status | Description |
-|------|--------|-------------|
-| `INVALID_AUTH` | 401 | Authentication failed |
-| `INVALID_API_KEY` | 401 | API key is invalid or expired |
-| `INVALID_SESSION` | 401 | Session token is invalid |
-| `INVALID_WORKER_AUTH` | 401 | Worker authentication failed |
-| `TEMPLATE_NOT_FOUND` | 404 | Specified template doesn't exist |
-| `JOB_NOT_FOUND` | 404 | Job ID doesn't exist |
-| `INVALID_STRUCTURE_TYPE` | 400 | Structure type not supported |
-| `INVALID_GRANULARITY` | 400 | Granularity level must be 1-5 |
-| `INVALID_JSON` | 400 | Request body is not valid JSON |
-| `MISSING_REQUIRED_FIELD` | 400 | Required field is missing |
-| `AI_PROVIDER_ERROR` | 500 | AI provider request failed |
-| `AI_RESPONSE_INVALID` | 500 | AI returned invalid/unparseable response |
-| `DATABASE_ERROR` | 500 | Database operation failed |
-| `STORAGE_ERROR` | 500 | Failed to store structure |
-| `VALIDATION_FAILED` | 422 | Structure validation failed |
-| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
-| `REQUEST_TIMEOUT` | 408 | Request took too long |
-| `INTERNAL_ERROR` | 500 | Unexpected server error |
-
-### Error Examples
-
-#### Authentication Error (401)
-```json
-{
-  "error": "Invalid API key",
-  "status": 401,
-  "code": "INVALID_API_KEY",
-  "details": {
-    "suggestion": "Check your API key is correct and not expired"
-  }
-}
-```
-
-#### Validation Error (400)
-```json
-{
-  "error": "Invalid granularity level",
-  "status": 400,
-  "code": "INVALID_GRANULARITY",
-  "details": {
-    "field": "granularityLevel",
-    "value": 10,
-    "suggestion": "Granularity level must be between 1 and 5"
-  }
-}
-```
-
-#### AI Provider Error (500)
-```json
-{
-  "error": "AI provider request failed",
-  "status": 500,
-  "code": "AI_PROVIDER_ERROR",
-  "details": {
-    "provider": "openai",
-    "originalError": "Rate limit exceeded",
-    "suggestion": "Try again later or use a different AI provider"
-  }
-}
-```
-
-#### Template Not Found (404)
-```json
-{
-  "error": "Template not found",
-  "status": 404,
-  "code": "TEMPLATE_NOT_FOUND",
-  "details": {
-    "templateName": "non_existent_template",
-    "suggestion": "Use GET /api/templates to list available templates"
-  }
-}
-```
-
----
-
-## Rate Limiting
-
-The API implements rate limiting to ensure fair usage:
-
-- **Default limits:**
-  - 100 requests per minute per API key
-  - 10 concurrent requests per API key
-  - 50MB maximum request size
-
-- **Rate limit headers:**
-  ```http
-  X-RateLimit-Limit: 100
-  X-RateLimit-Remaining: 95
-  X-RateLimit-Reset: 1704714000
-  ```
-
-- **Rate limit exceeded response (429):**
-  ```json
-  {
-    "error": "Rate limit exceeded",
-    "status": 429,
-    "code": "RATE_LIMIT_EXCEEDED",
-    "details": {
-      "limit": 100,
-      "reset": "2025-01-08T10:00:00Z",
-      "suggestion": "Please wait before making more requests"
+  "data": {
+    "stats": {
+      "total_jobs": 100,
+      "success_rate": 95.5,
+      "avg_quality_score": 0.82,
+      "total_cost_usd": 12.50,
+      "avg_processing_time_ms": 4500
     }
   }
-  ```
-
----
-
-## Pagination
-
-Endpoints that return lists support pagination:
-
-**Query Parameters:**
-- `limit`: Number of items per page (default: 20, max: 100)
-- `offset`: Number of items to skip
-- `page`: Page number (alternative to offset)
-
-**Response includes:**
-```json
-{
-  "data": [],
-  "pagination": {
-    "total": 500,
-    "page": 1,
-    "pageSize": 20,
-    "totalPages": 25,
-    "hasNext": true,
-    "hasPrev": false
-  }
 }
 ```
 
----
-
-## Content Structure Types
+## Structure Types
 
 ### Course Structure
-```json
-{
-  "courseOverview": {
-    "title": "string",
-    "description": "string",
-    "duration": "string",
-    "prerequisites": ["string"],
-    "learningOutcomes": ["string"]
-  },
-  "modules": [
-    {
-      "id": "module_1",
-      "title": "string",
-      "description": "string",
-      "estimatedDuration": "string",
-      "learningObjectives": ["string"],
-      "lessons": [
-        {
-          "id": "lesson_1_1",
-          "title": "string",
-          "content": "string",
-          "keyPoints": ["string"],
-          "examples": ["string"],
-          "practicalExercises": ["string"]
-        }
-      ],
-      "assessment": {
-        "questions": [],
-        "passingScore": 70
-      }
-    }
-  ]
-}
-```
+- **Level 1**: Modules
+- **Level 2**: Lessons
+- **Level 3**: Activities
 
 ### Quiz Structure
-```json
-{
-  "quizOverview": {
-    "title": "string",
-    "description": "string",
-    "totalQuestions": 20,
-    "timeLimit": "30 minutes",
-    "passingScore": 70
-  },
-  "categories": [
-    {
-      "name": "string",
-      "questions": [
-        {
-          "id": "q_1",
-          "type": "multiple_choice",
-          "question": "string",
-          "options": ["string"],
-          "correctAnswer": 0,
-          "explanation": "string",
-          "difficulty": "easy|medium|hard"
-        }
-      ]
-    }
-  ]
-}
-```
+- **Level 1**: Categories
+- **Level 2**: Questions
+
+### Novel Structure
+- **Level 1**: Acts
+- **Level 2**: Chapters
+- **Level 3**: Scenes
 
 ### Workflow Structure
+- **Level 1**: Phases
+- **Level 2**: Steps
+- **Level 3**: Tasks
+
+## Quality Score Calculation
+
+Quality scores range from 0 to 1 and are based on:
+
+1. **Metadata Completeness (30%)**: How many metadata fields are filled
+2. **Structure Depth (20%)**: Number of hierarchy levels
+3. **Element Count (20%)**: Total number of elements
+4. **Balance (30%)**: Average children per parent element
+
+Target quality score: > 0.7
+
+## Template Structure Rules
+
+Templates define constraints for each level:
+
 ```json
 {
-  "workflowOverview": {
-    "name": "string",
-    "description": "string",
-    "purpose": "string",
-    "stakeholders": ["string"]
-  },
-  "steps": [
+  "levels": [
     {
-      "id": "step_1",
-      "name": "string",
-      "description": "string",
-      "responsible": "string",
-      "inputs": ["string"],
-      "outputs": ["string"],
-      "tools": ["string"],
-      "nextSteps": ["step_2"],
-      "conditions": []
+      "level": 1,
+      "suggestedType": "module",
+      "minElements": 3,
+      "maxElements": 12,
+      "requiredMetadata": ["title", "duration", "objectives"],
+      "allowsChildren": true
+    },
+    {
+      "level": 2,
+      "suggestedType": "lesson",
+      "minElements": 2,
+      "maxElements": 5,
+      "requiredMetadata": ["title", "content"],
+      "allowsChildren": true
     }
   ]
 }
 ```
-
----
-
-## Webhooks & Callbacks
-
-For long-running operations, you can provide a callback URL:
-
-**Request with callback:**
-```json
-{
-  "action": "granulate",
-  "input": { /* ... */ },
-  "callback": {
-    "url": "https://your-server.com/webhook",
-    "headers": {
-      "Authorization": "Bearer your-token"
-    },
-    "retries": 3
-  }
-}
-```
-
-**Callback payload:**
-```json
-{
-  "event": "granulation.completed",
-  "jobId": 123,
-  "status": "completed",
-  "result": { /* Full result */ },
-  "timestamp": "2025-01-08T10:00:00Z"
-}
-```
-
----
 
 ## Best Practices
 
-1. **Always specify AI provider** for consistent results
-2. **Use appropriate granularity levels:**
-   - 1-2: Basic outline
-   - 3: Standard detail (recommended)
-   - 4-5: Comprehensive detail
-3. **Enable validation** for production use
-4. **Cache template information** to reduce API calls
-5. **Implement exponential backoff** for retries
-6. **Monitor your usage** via economy endpoints
-7. **Use callbacks** for long-running operations
-8. **Handle all error codes** appropriately
+1. **Structure Design**
+   - Aim for 20-40 total elements for good quality scores
+   - Ensure balanced distribution across levels
+   - Fill all metadata fields
 
----
+2. **API Usage**
+   - Use appropriate granularity levels (3-5 for most cases)
+   - Choose the right AI model for your needs
+   - Enable validation for critical content
 
-## SDK Examples
+3. **Cost Optimization**
+   - Use gpt-4o-mini for most tasks
+   - Reserve gpt-4o for complex structures
+   - Consider Cloudflare AI for simple structures
 
-### JavaScript/Node.js
+## Content Type Examples
+
+### Novel Generation Workflow
 ```javascript
-const response = await fetch('https://bitware-content-granulator.jhaladik.workers.dev/api/execute', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer internal-worker-auth-token-2024',
-    'X-Worker-ID': 'your-worker',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    action: 'granulate',
-    input: {
-      topic: 'Python Basics',
-      structureType: 'course',
-      granularityLevel: 3
-    },
-    config: {
-      aiProvider: 'openai',
-      aiModel: 'gpt-4o-mini'
-    }
-  })
+// 1. Create novel project
+const project = await createProject({
+  project_name: "The Quantum Detective",
+  content_type: "novel",
+  topic: "A detective in cyberpunk Tokyo investigates quantum crimes",
+  target_audience: "Adult sci-fi thriller readers",
+  genre: "Cyberpunk Mystery"
 });
 
-const result = await response.json();
+// 2. Generate Big Picture (themes, conflicts, world)
+await executeStage(project.id, 1);
+
+// 3. Generate Objects (characters, locations, timeline)
+await executeStage(project.id, 2);
+
+// 4. Generate Structure (acts, chapters with 200-word descriptions)
+await executeStage(project.id, 3);
+
+// 5. Generate Scenes (detailed scenes ready for writing)
+await executeStage(project.id, 4);
 ```
 
-### Python
-```python
-import requests
+### Course Generation Workflow
+```javascript
+// 1. Create course project
+const project = await createProject({
+  project_name: "Machine Learning Fundamentals",
+  content_type: "course",
+  topic: "Introduction to ML for beginners",
+  target_audience: "Programming students",
+  metadata: {
+    duration: "8 weeks",
+    level: "beginner"
+  }
+});
 
-response = requests.post(
-    'https://bitware-content-granulator.jhaladik.workers.dev/api/execute',
-    headers={
-        'Authorization': 'Bearer internal-worker-auth-token-2024',
-        'X-Worker-ID': 'your-worker',
-        'Content-Type': 'application/json'
-    },
-    json={
-        'action': 'granulate',
-        'input': {
-            'topic': 'Python Basics',
-            'structureType': 'course',
-            'granularityLevel': 3
-        },
-        'config': {
-            'aiProvider': 'openai',
-            'aiModel': 'gpt-4o-mini'
-        }
-    }
-)
+// 2. Generate Learning Objectives & Pedagogy
+await executeStage(project.id, 1);
 
-result = response.json()
+// 3. Generate Concepts & Resources
+await executeStage(project.id, 2);
+
+// 4. Generate Modules & Lessons
+await executeStage(project.id, 3);
+
+// 5. Generate Activities & Exercises
+await executeStage(project.id, 4);
 ```
 
-### cURL
+### Documentary Generation Workflow
+```javascript
+// 1. Create documentary project
+const project = await createProject({
+  project_name: "Climate Change: The Human Story",
+  content_type: "documentary",
+  topic: "Personal stories of climate change impact",
+  target_audience: "General audience",
+  metadata: {
+    format: "6-part series",
+    duration: "60 minutes each"
+  }
+});
+
+// 2. Generate Thesis & Arguments
+await executeStage(project.id, 1);
+
+// 3. Generate Subjects & Evidence
+await executeStage(project.id, 2);
+
+// 4. Generate Episode Structure
+await executeStage(project.id, 3);
+
+// 5. Generate Scenes & Interviews
+await executeStage(project.id, 4);
+```
+
+### Podcast Series Workflow
+```javascript
+// 1. Create podcast project
+const project = await createProject({
+  project_name: "Tech Founders Unplugged",
+  content_type: "podcast",
+  topic: "Interviews with startup founders",
+  target_audience: "Entrepreneurs and tech enthusiasts",
+  metadata: {
+    format: "interview",
+    frequency: "weekly",
+    episode_length: "45 minutes"
+  }
+});
+
+// Execute all 4 stages...
+```
+
+## Error Codes
+
+- `400`: Bad Request - Invalid input parameters
+- `401`: Unauthorized - Invalid authentication
+- `404`: Not Found - Resource not found
+- `500`: Internal Server Error - Processing failed
+
+## Example: Creating a Novel Structure
+
 ```bash
 curl -X POST https://bitware-content-granulator.jhaladik.workers.dev/api/execute \
-  -H "Authorization: Bearer internal-worker-auth-token-2024" \
-  -H "X-Worker-ID: your-worker" \
+  -H "Authorization: Bearer YOUR_SECRET" \
+  -H "X-Worker-ID: YOUR_WORKER_ID" \
   -H "Content-Type: application/json" \
   -d '{
     "action": "granulate",
     "input": {
-      "topic": "Python Basics",
-      "structureType": "course",
-      "granularityLevel": 3
+      "topic": "A Mystery in Victorian London",
+      "structureType": "novel",
+      "granularityLevel": 3,
+      "targetAudience": "adult mystery readers",
+      "maxElements": 30
     },
     "config": {
       "aiProvider": "openai",
-      "aiModel": "gpt-4o-mini"
+      "aiModel": "gpt-4o-mini",
+      "temperature": 0.8,
+      "maxTokens": 4000,
+      "validation": false
     }
   }'
 ```
 
----
+## Frontend Integration Guide
 
-## Support
+### For the Granulation Page
 
-For issues or questions:
-- Check the `/help` endpoint for latest documentation
-- Review error codes and suggestions in error responses
-- Monitor the `/health` endpoint for service status
-- Use `/api/ai-providers` to check provider availability
+The frontend granulation page should be updated to support both legacy single-stage and new multi-stage generation:
+
+#### UI Components Needed
+
+1. **Project Creation Form**
+   - Project name input
+   - Content type selector (novel, course, documentary, podcast, etc.)
+   - Topic textarea
+   - Target audience input
+   - Genre input (optional)
+   - Metadata fields (dynamic based on content type)
+
+2. **Stage Progress Tracker**
+   - Visual indicator showing 4 stages
+   - Current stage highlight
+   - Stage status (pending, in_progress, completed, failed)
+   - Time and cost per stage
+
+3. **Stage Execution Panel**
+   - Execute button for each stage
+   - AI configuration options (model, temperature, max tokens)
+   - Stage output viewer (collapsible JSON/formatted view)
+   - Retry failed stages
+
+4. **Objects & Timeline Viewer** (After Stage 2)
+   - Character cards with descriptions
+   - Location gallery
+   - Timeline visualization
+   - Relationship graph
+
+5. **Structure Explorer** (After Stage 3)
+   - Tree view of acts/chapters/scenes
+   - 200-word description previews
+   - Word count targets
+   - Object references
+
+6. **Granular Units List** (After Stage 4)
+   - Scene/activity cards
+   - Research topics highlighted
+   - Key lines preview
+   - Ready for generation indicator
+
+#### Sample Frontend Code
+
+```javascript
+// Create a new project
+async function createProject(projectData) {
+  const response = await fetch('/api/granulator', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-bitware-session-token': sessionToken
+    },
+    body: JSON.stringify({
+      endpoint: '/projects/create',
+      method: 'POST',
+      data: projectData
+    })
+  });
+  return response.json();
+}
+
+// Execute a stage
+async function executeStage(projectId, stageNumber) {
+  const response = await fetch('/api/granulator', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-bitware-session-token': sessionToken
+    },
+    body: JSON.stringify({
+      endpoint: '/stages/execute',
+      method: 'POST',
+      data: {
+        project_id: projectId,
+        stage_number: stageNumber,
+        ai_config: {
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          temperature: 0.8,
+          maxTokens: 16000
+        }
+      }
+    })
+  });
+  return response.json();
+}
+
+// Get project status
+async function getProjectStatus(projectId) {
+  const response = await fetch('/api/granulator', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-bitware-session-token': sessionToken
+    },
+    body: JSON.stringify({
+      endpoint: `/projects/${projectId}`,
+      method: 'GET'
+    })
+  });
+  return response.json();
+}
+```
+
+#### UI Flow
+
+1. **Create Project**
+   - User fills in project details
+   - Selects content type
+   - Clicks "Create Project"
+
+2. **Stage 1: Big Picture**
+   - Auto-executes or user clicks "Generate Big Picture"
+   - Shows vision, themes, conflicts
+   - User can review and proceed
+
+3. **Stage 2: Objects & Relations**
+   - Click "Generate Objects & Timeline"
+   - Display character cards, location gallery
+   - Show timeline visualization
+
+4. **Stage 3: Structure**
+   - Click "Generate Structure"
+   - Display hierarchical tree view
+   - Show 200-word descriptions on hover/click
+
+5. **Stage 4: Granular Units**
+   - Click "Generate Scenes/Activities"
+   - Display scene cards with details
+   - Mark as "Ready for Content Generation"
+
+6. **Export/Handoff**
+   - Export complete structure as JSON
+   - Send to Content Generator
+   - Download for offline use
+
+### Progressive Enhancement
+
+The UI should support:
+- **Progress Saving**: Save after each stage
+- **Stage Editing**: Allow editing stage output before proceeding
+- **Partial Execution**: Skip stages if needed
+- **Batch Processing**: Multiple projects in parallel
+- **Templates**: Save successful projects as templates
+- **Collaboration**: Share projects with team members
+
+## Version History
+
+### v4.0 (Current)
+- Universal multi-stage generation system
+- 4-stage progressive refinement process
+- Support for any content type
+- 200-word descriptions at all levels
+- Object-centric architecture
+- Research identification
+- Cost tracking per stage
+
+### v3.0
+- Universal content structure for ANY content type
+- Object-centric design with entities (actors, locations, concepts, resources)
+- Two-step generation process (creative → structured)
+- User parametrization through mandatory/optional objects
+- Enhanced 3-level hierarchy guarantee
+- Objects referenced throughout structure
+
+### v2.0
+- Generic hierarchical structure system
+- Template-driven architecture
+- Improved quality scoring
+- Better array handling for metadata
+
+### v1.0
+- Initial release with hardcoded structures
+- Basic template support

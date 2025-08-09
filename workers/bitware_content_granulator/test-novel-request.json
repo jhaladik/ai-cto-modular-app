@@ -1,0 +1,35 @@
+{
+  "action": "granulate",
+  "input": {
+    "topic": "A detective story in cyberpunk Tokyo",
+    "structureType": "novel",
+    "templateName": "three_act_novel",
+    "granularityLevel": 3,
+    "targetAudience": "adult sci-fi readers",
+    "maxElements": 30,
+    "userObjects": {
+      "mandatory": [
+        {
+          "id": "detective_kai",
+          "type": "character",
+          "name": "Kai Nakamura",
+          "properties": {
+            "role": "Cybernetic detective",
+            "skills": ["hacking", "martial arts", "deduction"]
+          },
+          "usage_requirements": {
+            "min_appearances": 10,
+            "placement": ["1.1", "2.1", "3.1"]
+          }
+        }
+      ]
+    }
+  },
+  "config": {
+    "aiProvider": "openai",
+    "aiModel": "gpt-4o-mini",
+    "temperature": 0.8,
+    "maxTokens": 12000,
+    "validation": false
+  }
+}

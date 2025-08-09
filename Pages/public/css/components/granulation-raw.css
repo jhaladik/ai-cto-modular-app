@@ -1,0 +1,226 @@
+/* Raw Stage Data Display Styles */
+
+.stage-raw-content {
+    padding: 20px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+}
+
+.stage-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.stage-header h3 {
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+    font-size: 24px;
+}
+
+.stage-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 14px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-secondary);
+}
+
+.meta-item strong {
+    color: var(--text-primary);
+}
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.completed {
+    background: var(--success-bg);
+    color: var(--success-color);
+}
+
+.status-badge.in_progress {
+    background: var(--warning-bg);
+    color: var(--warning-color);
+}
+
+.status-badge.failed {
+    background: var(--danger-bg);
+    color: var(--danger-color);
+}
+
+/* UAOL Notations Section */
+.uaol-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.uaol-section h4 {
+    margin: 0 0 15px 0;
+    color: var(--primary-color);
+    font-size: 16px;
+}
+
+.uaol-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.uaol-notation {
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+}
+
+.uaol-notation code {
+    color: var(--accent-color);
+    font-size: 13px;
+    word-break: break-all;
+}
+
+/* Raw Data Section */
+.raw-data-section {
+    margin: 20px 0;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.section-header h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.raw-data-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    max-height: 600px;
+    overflow: auto;
+}
+
+.json-output {
+    margin: 0;
+    padding: 10px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+}
+
+/* JSON Syntax Highlighting (basic) */
+.json-output {
+    color: #d4d4d4;
+}
+
+/* Validation Section */
+.validation-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    border-radius: 8px;
+}
+
+.validation-section h4 {
+    margin: 0 0 10px 0;
+    color: var(--success-color);
+    font-size: 16px;
+}
+
+.validation-content pre {
+    margin: 0;
+    padding: 10px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-height: 200px;
+    overflow: auto;
+}
+
+/* Copy Button */
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-sm:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+/* Scrollbar Styling */
+.raw-data-container::-webkit-scrollbar,
+.json-output::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.raw-data-container::-webkit-scrollbar-track,
+.json-output::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+
+.raw-data-container::-webkit-scrollbar-thumb,
+.json-output::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.raw-data-container::-webkit-scrollbar-thumb:hover,
+.json-output::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stage-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .raw-data-container {
+        max-height: 400px;
+    }
+}
